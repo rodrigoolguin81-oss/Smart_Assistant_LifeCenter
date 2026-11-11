@@ -13,7 +13,7 @@ stale_after: null
 
 # rag-retrieval — Tasks
 
-- [ ] T0 — Create a dedicated Neon branch for tests (via the Neon CLI), separate from `main`, so
+- [x] T0 — Create a dedicated Neon branch for tests (via the Neon CLI), separate from `main`, so
   test runs never touch `main`'s data; add `TEST_DATABASE_URL` to `.env.example` (placeholder)
   and `.env` (populated with that branch's connection string) · test: connecting with
   `TEST_DATABASE_URL` resolves to the test branch, not `main` (e.g. distinct branch id/host) ·
