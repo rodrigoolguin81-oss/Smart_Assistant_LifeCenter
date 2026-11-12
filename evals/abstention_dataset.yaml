@@ -1,4 +1,6 @@
 # Abstention eval (base for NFR-03) — INTERIM dataset of questions with NO answer in kb/.
+# KEEP: reused by the SPEC-001 end-to-end abstention eval (NFR-03 ≥ 98%), and by the threshold
+# sweep that set R8's cutoff (specs/001-rag-retrieval/clarifications.md Q10).
 # Hand-built by the implementer (claude-code, 2026-11-12) over the example (`ejemplo: true`) kb/.
 # Mixes questions with no lexical overlap with kb/ and questions that share words with kb/
 # (`overlap: true`) but whose answer is not there — the latter are what stress the threshold.

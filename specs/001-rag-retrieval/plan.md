@@ -144,7 +144,7 @@ test's runtime behavior.
 | R5 | Domain: "current version per id" selection (reference); `app/infra/kb_repository.py` (SQL filter) | Injectable `today: date` parameter; defaults to now in `Europe/Madrid`; applied in SQL before `LIMIT k` |
 | R6 | `Fragment` entity + API response mapping | `cita` field, format `[ID \| vigente desde dd/mm/aaaa]` |
 | R7 | `Fragment.ejemplo` propagated end-to-end | Never dropped between infra and API |
-| R8 | Relevance threshold check in domain layer | Normalized `ts_rank` (normalization 32, 0–1); numeric cutoff is an open assumption, tuned via eval NFR-03 |
+| R8 | Relevance threshold check in domain layer | Normalized `ts_rank` (normalization 32, 0–1); cutoff `0.01`, a recall filter — final abstention (NFR-03) is SPEC-001's (clarifications Q10) |
 | R9 | `app/infra/kb_ingest.py` full-replace command | Manual trigger; idempotent; deletes fragments of removed documents |
 | R10 | Domain: `parse_kb_document` (`app/domain/retrieval/kb_document.py`) | Rejects content outside a `##` section; error names the file (`source_name`) and is written in Spanish |
 | R11 | `app/infra/kb_ingest.py` (pre-load validation) | Rejects duplicate `(id, vigente_desde)` across files before any DB write; `fragment_id` = uuid5 of `id`, `vigente_desde`, section position |

@@ -46,7 +46,7 @@ def test_a_known_query_returns_200_with_the_contract_shape_and_cita(client):
 
 def test_k_defaults_to_5_and_is_caller_configurable(test_db, monkeypatch):
     # Isolate k from the relevance threshold: a many-term OR query dilutes ts_rank scores
-    # (≈0.01–0.02 here), which would otherwise trip the 0.02 placeholder threshold.
+    # (≈0.01–0.02 here), close to the default threshold; this test is only about k.
     ingest(test_db, KB_DIR)
     monkeypatch.setenv("RETRIEVAL_RELEVANCE_THRESHOLD", "0")
     client = TestClient(create_app(database_url_env="TEST_DATABASE_URL"))

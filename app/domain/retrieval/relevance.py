@@ -7,11 +7,12 @@ from datetime import date
 from app.domain.retrieval.fragment import Fragment
 from app.domain.retrieval.ports import KnowledgeRepository
 
-DEFAULT_RELEVANCE_THRESHOLD = 0.02
-"""Placeholder cutoff over the normalized ts_rank score (option 32, 0–1).
+DEFAULT_RELEVANCE_THRESHOLD = 0.01
+"""Cutoff over the normalized ts_rank score (option 32, 0–1). Decision: clarifications.md Q10.
 
-Open assumption (clarifications.md): to be tuned against eval NFR-03. Chosen below the lowest
-top score observed for queries that do match the example kb/ (≈0.037).
+A recall filter, not the abstention guarantee: no lexical threshold separates unanswerable
+questions on its own; final abstention (NFR-03) is SPEC-001's responsibility. To be revisited if
+SPEC-001 misses NFR-03, and recalibrated with LifeCenter's real data (PRD DEP-01).
 """
 
 

@@ -88,6 +88,52 @@ without a vector database.
   different `vigente_desde`. The same `id` with different dates remains valid: those are distinct
   versions. Captured as R11.
 
+- Q10: Which numeric relevance threshold (R8) should retrieval use?
+  (Raised during T10/T11, decided by the human on 2026-11-12.)
+  → A: **`0.01`** (`DEFAULT_RELEVANCE_THRESHOLD`, overridable via the
+  `RETRIEVAL_RELEVANCE_THRESHOLD` env var).
+
+  Evidence — threshold sweep over the Neon test branch with the example `kb/`, using two
+  interim, hand-built datasets: 23 answerable questions (`evals/retrieval_dataset.yaml`) and 19
+  unanswerable ones (`evals/abstention_dataset.yaml`; 10 share words with `kb/`, 9 share none).
+  Column (1): answerable questions whose correct document is in the top-5 *and* whose top score
+  is ≥ the threshold. Column (2): unanswerable questions whose top score is < the threshold.
+
+  | Threshold | (1) Answerable kept | (2) Unanswerable rejected |
+  |---|---|---|
+  | 0.005 | 21/23 (91.3%) | 9/19 (47.4%) |
+  | 0.0075 | 21/23 (91.3%) | 9/19 (47.4%) |
+  | **0.010** | **21/23 (91.3%)** | **9/19 (47.4%)** |
+  | 0.0125 | 20/23 (87.0%) | 9/19 (47.4%) |
+  | 0.015 | 19/23 (82.6%) | 12/19 (63.2%) |
+  | 0.0175 | 19/23 (82.6%) | 12/19 (63.2%) |
+  | 0.020 | 19/23 (82.6%) | 14/19 (73.7%) |
+  | 0.0225 | 18/23 (78.3%) | 14/19 (73.7%) |
+  | 0.025 | 17/23 (73.9%) | 16/19 (84.2%) |
+  | 0.0275 | 16/23 (69.6%) | 16/19 (84.2%) |
+  | 0.030 | 14/23 (60.9%) | 16/19 (84.2%) |
+
+  Rationale: no threshold separates unanswerable questions on its own. Top scores of answerable
+  questions (≈0.012–0.071) overlap those of unanswerable questions that share vocabulary with
+  `kb/` (≈0.015–0.038; e.g. "¿La limpieza dental la cubre mi seguro?" scores 0.038): lexical
+  rank measures topic overlap, not whether the answer is present. Even at `0.030` only 84.2% of
+  unanswerable questions are rejected, while 39% of the answerable ones are lost (long questions
+  first, as `ts_rank` dilutes over many OR terms). Questions with no shared vocabulary return no
+  fragment at all, so any threshold > 0 rejects them. `0.010` keeps every hit `search()` finds
+  (91.3%, same as no threshold) and sits mid-plateau (0.005–0.010), with margin below the
+  lowest-scoring answerable question (≈0.0116).
+
+  Therefore the threshold acts as a **recall filter**, not as the abstention guarantee. Final
+  abstention is the responsibility of **SPEC-001** (prompt + citation validation), which must meet
+  **NFR-03 (≥ 98% abstention on unsupported questions) end to end**. `evals/abstention_dataset.yaml`
+  is kept as the interim base for that SPEC-001 eval.
+
+  Conditions:
+  1. If SPEC-001 does not reach NFR-03 end to end, this threshold will be revisited.
+  2. The threshold will be recalibrated (re-running this sweep) with LifeCenter's real data once
+     PRD DEP-01 is delivered — both the real `kb/` and the real question bank. With the interim
+     datasets each question moves a percentage by ≈4–5 points.
+
 ## Known limitations
 
 - **Vocabulary mismatch (lexical search).** Retrieval only matches words that share a stem with
@@ -106,12 +152,11 @@ without a vector database.
 
 ## Assumptions
 
-- The initial `ts_rank` relevance threshold for abstention is a placeholder value, to be tuned
-  against the NFR-03 eval (≥ 98% abstention on unsupported questions) once a real question bank
-  exists. The normalization method (option 32, 0–1 range) is fixed by R8; only the numeric
-  cutoff is open. Placeholder chosen during T8 (2026-11-12): `0.02`
-  (`DEFAULT_RELEVANCE_THRESHOLD`), just below the lowest top score observed for queries that do
-  match the example `kb/` documents (≈0.037; matching queries ranged ≈0.037–0.071).
+- The `ts_rank` relevance threshold is set to `0.01` (decision and evidence in Q10). It remains
+  provisional: the normalization method (option 32, 0–1 range) is fixed by R8, but the numeric
+  cutoff is to be revisited under the two conditions recorded in Q10. (History: T8 first set a
+  `0.02` placeholder from short queries only; the T11 eval showed it cut long answerable
+  questions.)
 - Until LifeCenter delivers the real knowledge base (DEP-01), `kb/` only contains example
   documents marked `ejemplo: true`; these must not be treated as real pricing/schedule data. For
   the same reason, the `eval_retrieval` eval (NFR-05: Recall@5 ≥ 90%) initially runs against a
