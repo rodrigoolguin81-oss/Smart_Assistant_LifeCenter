@@ -62,6 +62,11 @@ vectorial, por decisión registrada en [clarifications](./clarifications.md) Q1.
   document with no `##` heading at all — THEN the system SHALL reject that document with an
   error that names its file and explains, in plain Spanish, that all content must be placed
   inside a `##` section, instead of silently dropping that content from the index.
+- R11. IF two knowledge base documents share the same `id` and the same `vigente_desde`, THEN
+  the ingestion command SHALL reject them with an error that names both files and the shared
+  `id`, explaining in plain Spanish that each version of a document must have a different
+  `vigente_desde`, and SHALL leave the indexed fragments unchanged. Documents sharing an `id`
+  with different `vigente_desde` dates are distinct versions and SHALL be accepted (R5).
 
 ## Acceptance criteria
 
@@ -92,6 +97,9 @@ vectorial, por decisión registrada en [clarifications](./clarifications.md) Q1.
 - [ ] Given a `kb/` document with text before its first `##` heading (or with no `##` heading),
   it is rejected with an error naming its file and explaining in Spanish that all content must
   go inside a `##` section.
+- [ ] Given two `kb/` documents with the same `id` and the same `vigente_desde`, ingestion is
+  rejected with an error naming both files and the `id`, and the indexed table is unchanged;
+  given the same `id` with different `vigente_desde` dates, both versions are ingested.
 
 ## Out of scope
 

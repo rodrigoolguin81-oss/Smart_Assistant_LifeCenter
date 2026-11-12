@@ -117,6 +117,12 @@ function `select_current_versions(fragments, today)` (`app/domain/retrieval/vers
 remains the reference definition of this rule; the SQL must match it, and `today` comes from
 the same injectable source (`madrid_today()` by default).
 
+*Future improvement (not implemented):* the filter is a correlated subquery evaluated per
+matching row (`max(vigente_desde)` per `source_id`). That is negligible at the current size of
+`kb/` (a handful of documents), so no extra index is added for now. If `kb/` grows substantially,
+add a B-tree index on `kb_fragments (source_id, vigente_desde)` in a new idempotent migration
+(`app/infra/sql/002_…sql`) so that lookup is served by the index.
+
 ## Test environment
 
 T4 through T7 and T10 need a live Postgres to run against. They run against a **separate Neon
@@ -141,6 +147,7 @@ test's runtime behavior.
 | R8 | Relevance threshold check in domain layer | Normalized `ts_rank` (normalization 32, 0–1); numeric cutoff is an open assumption, tuned via eval NFR-03 |
 | R9 | `app/infra/kb_ingest.py` full-replace command | Manual trigger; idempotent; deletes fragments of removed documents |
 | R10 | Domain: `parse_kb_document` (`app/domain/retrieval/kb_document.py`) | Rejects content outside a `##` section; error names the file (`source_name`) and is written in Spanish |
+| R11 | `app/infra/kb_ingest.py` (pre-load validation) | Rejects duplicate `(id, vigente_desde)` across files before any DB write; `fragment_id` = uuid5 of `id`, `vigente_desde`, section position |
 
 **Eval `eval_retrieval` (NFR-05):** a small offline script, outside the production code path,
 that runs `KnowledgeRepository.search()` against a dataset of annotated questions and computes

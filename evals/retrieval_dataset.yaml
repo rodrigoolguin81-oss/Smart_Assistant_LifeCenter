@@ -1,0 +1,56 @@
+# eval_retrieval (NFR-05) — INTERIM dataset over the example (`ejemplo: true`) kb/ documents.
+# Hand-built by the implementer (claude-code, 2026-11-12) with knowledge of kb/: optimistic by
+# construction. Replace with the 100 real annotated patient questions once PRD DEP-01 lands.
+# Long questions are included on purpose to surface ts_rank dilution vs. the relevance threshold.
+
+# --- TAR-001 · tarifas ---
+- question: ¿Cuánto cuesta una limpieza dental?
+  expected_id: TAR-001
+- question: precio limpieza
+  expected_id: TAR-001
+- question: Cuanto vale el blanqueamiento?
+  expected_id: TAR-001
+- question: ¿La primera visita se paga?
+  expected_id: TAR-001
+- question: ¿Cuánto me cobráis por una radiografía panorámica?
+  expected_id: TAR-001
+- question: Hola, buenas tardes, quería saber qué precio tiene hacerse un blanqueamiento en la clínica porque tengo una boda en verano
+  expected_id: TAR-001
+- question: Me gustaría pedir información sobre cuánto cuesta la primera visita con la odontóloga y si incluye el diagnóstico
+  expected_id: TAR-001
+
+# --- HOR-001 · horario ---
+- question: ¿A qué hora abrís?
+  expected_id: HOR-001
+- question: horario de la clinica
+  expected_id: HOR-001
+- question: ¿Abrís los sábados?
+  expected_id: HOR-001
+- question: ¿Está abierta la clínica los domingos?
+  expected_id: HOR-001
+- question: ¿Qué horario tenéis en agosto?
+  expected_id: HOR-001
+- question: ¿Cerráis a mediodía entre semana?
+  expected_id: HOR-001
+- question: Buenas, trabajo de lunes a viernes hasta las siete y quería saber hasta qué hora abrís por la tarde para poder ir después del trabajo
+  expected_id: HOR-001
+- question: Estoy de vacaciones en agosto y me gustaría saber si la clínica abre por las tardes durante ese mes
+  expected_id: HOR-001
+
+# --- TRA-001 · tratamiento (limpieza) ---
+- question: ¿En qué consiste una limpieza dental?
+  expected_id: TRA-001
+- question: ¿Tengo que prepararme antes de la limpieza?
+  expected_id: TRA-001
+- question: ¿Puedo comer después de la limpieza?
+  expected_id: TRA-001
+- question: ¿Puedo tomar café después de la limpieza?
+  expected_id: TRA-001
+- question: Estoy embarazada, ¿puedo hacerme una limpieza?
+  expected_id: TRA-001
+- question: tomo anticoagulantes, tengo que avisar antes de la limpieza?
+  expected_id: TRA-001
+- question: Mañana tengo cita para la limpieza y quería saber qué cuidados tengo que tener después, si puedo comer o beber algo
+  expected_id: TRA-001
+- question: Me han dicho que la limpieza quita el sarro y la placa pero no sé muy bien cómo es el procedimiento ni cuánto dura
+  expected_id: TRA-001

@@ -78,12 +78,40 @@ without a vector database.
   offending file and explains in plain Spanish that all content must go inside a `##` section,
   since whoever maintains `kb/` is not necessarily technical. Captured as R10.
 
+- Q9: What happens if two `kb/` files declare the same `id` and the same `vigente_desde`?
+  (Raised during implementation of T5, 2026-11-12.)
+  → A: Ingestion rejects them before touching the database. A version of a document is
+  identified by `(id, vigente_desde)`; two files with the same pair are ambiguous (R5 could not
+  pick one) and would also collide on the deterministic `fragment_id` that makes ingestion
+  idempotent (R9), surfacing as an opaque Postgres duplicate-key error. Instead, the error names
+  both files and the shared `id`, and explains in plain Spanish that each version must have a
+  different `vigente_desde`. The same `id` with different dates remains valid: those are distinct
+  versions. Captured as R11.
+
+## Known limitations
+
+- **Vocabulary mismatch (lexical search).** Retrieval only matches words that share a stem with
+  the `kb/` text (Q1 excludes semantic search). In the interim `eval_retrieval` run (T11,
+  2026-11-12; Recall@5 = 91.3%, 21/23) the 2 misses are both of this kind, against `HOR-001`:
+  "¿A qué hora abrís?" (the document says "abre", never "hora") and "¿Cerráis a mediodía entre
+  semana?" (the document only gives the time ranges; "cerrada" appears only for Sundays). Possible
+  improvements, neither implemented yet:
+  1. A synonym dictionary in Postgres (a `synonym` / `thesaurus` text search dictionary chained
+     into `spanish_unaccent`, mapping patient wording to the documents' wording, e.g.
+     `abrís → abre`, `hora → horario`, `cerráis → cerrada`), applied equally at index and query
+     time.
+  2. Writing `kb/` documents to include the ways patients actually ask (e.g. "¿A qué hora
+     abrís? La clínica abre…", "cerramos a mediodía de 14:00 a 16:00"), so the wording overlaps
+     by construction. Needs no code; relies on whoever maintains `kb/`.
+
 ## Assumptions
 
 - The initial `ts_rank` relevance threshold for abstention is a placeholder value, to be tuned
   against the NFR-03 eval (≥ 98% abstention on unsupported questions) once a real question bank
   exists. The normalization method (option 32, 0–1 range) is fixed by R8; only the numeric
-  cutoff is open.
+  cutoff is open. Placeholder chosen during T8 (2026-11-12): `0.02`
+  (`DEFAULT_RELEVANCE_THRESHOLD`), just below the lowest top score observed for queries that do
+  match the example `kb/` documents (≈0.037; matching queries ranged ≈0.037–0.071).
 - Until LifeCenter delivers the real knowledge base (DEP-01), `kb/` only contains example
   documents marked `ejemplo: true`; these must not be treated as real pricing/schedule data. For
   the same reason, the `eval_retrieval` eval (NFR-05: Recall@5 ≥ 90%) initially runs against a

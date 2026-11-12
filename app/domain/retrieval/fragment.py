@@ -13,3 +13,8 @@ class Fragment:
     vigente_desde: date
     ejemplo: bool
     score: float | None = None
+
+    @property
+    def cita(self) -> str:
+        """Source citation required in every grounded answer (R6)."""
+        return f"[{self.source_id} | vigente desde {self.vigente_desde:%d/%m/%Y}]"

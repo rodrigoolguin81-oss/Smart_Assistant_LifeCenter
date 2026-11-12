@@ -1,0 +1,44 @@
+# Abstention eval (base for NFR-03) — INTERIM dataset of questions with NO answer in kb/.
+# Hand-built by the implementer (claude-code, 2026-11-12) over the example (`ejemplo: true`) kb/.
+# Mixes questions with no lexical overlap with kb/ and questions that share words with kb/
+# (`overlap: true`) but whose answer is not there — the latter are what stress the threshold.
+# Replace/extend with real unsupported patient questions once PRD DEP-01 lands.
+
+- question: ¿Aceptáis el seguro de Sanitas?
+  overlap: false
+- question: ¿Trabajáis con Adeslas o con DKV?
+  overlap: false
+- question: ¿Cuánto cuesta un implante dental?
+  overlap: true
+- question: ¿Cuánto vale la ortodoncia invisible?
+  overlap: false
+- question: ¿Hacéis empastes y cuánto cuestan?
+  overlap: true
+- question: ¿Se puede pagar a plazos o financiar el tratamiento?
+  overlap: false
+- question: ¿Aceptáis pago con tarjeta o Bizum?
+  overlap: false
+- question: ¿Cuál es la dirección de la clínica?
+  overlap: true
+- question: ¿Hay aparcamiento cerca de la clínica?
+  overlap: true
+- question: ¿Cuál es el número de teléfono?
+  overlap: false
+- question: ¿Atendéis a niños pequeños?
+  overlap: false
+- question: ¿La limpieza dental la cubre mi seguro?
+  overlap: true
+- question: ¿El blanqueamiento daña el esmalte de los dientes?
+  overlap: true
+- question: Si no puedo ir a mi cita, ¿cómo la cancelo?
+  overlap: true
+- question: ¿Hacéis extracciones de las muelas del juicio?
+  overlap: false
+- question: Me sangran las encías al cepillarme, ¿es normal?
+  overlap: true
+- question: ¿Tenéis servicio de urgencias por la noche?
+  overlap: false
+- question: ¿Cuántos odontólogos trabajan en la clínica?
+  overlap: true
+- question: ¿Puedo pedir cita por WhatsApp?
+  overlap: true  # "puedo", "cita" appear in kb/
