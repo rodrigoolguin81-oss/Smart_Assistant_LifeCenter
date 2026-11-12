@@ -18,14 +18,16 @@ stale_after: null
   and `.env` (populated with that branch's connection string) · test: connecting with
   `TEST_DATABASE_URL` resolves to the test branch, not `main` (e.g. distinct branch id/host) ·
   covers: (infra prerequisite for T4–T7, T10)
-- [ ] T1 — Define the `kb/*.md` frontmatter schema and write 2-3 example documents
+- [x] T1 — Define the `kb/*.md` frontmatter schema and write 2-3 example documents
   (`ejemplo: true`) covering `tarifa`, `horario` and `tratamiento` · test: a schema validator
-  rejects a document missing `id`/`tipo`/`titulo`/`vigente_desde` · covers: R1
-- [ ] T2 — Implement the domain `Fragment` entity and the chunking function (pure, no I/O): one
+  rejects a document missing `id`/`tipo`/`titulo`/`vigente_desde`; and rejects a document with
+  content outside a `##` section, with an error naming its file and explaining in Spanish that
+  all content must go inside a `##` section · covers: R1, R10
+- [x] T2 — Implement the domain `Fragment` entity and the chunking function (pure, no I/O): one
   fragment per Markdown `##` section, with the document's `titulo` carried on every fragment ·
   test: chunking a document with three `##` sections produces three fragments, each carrying
   that document's `titulo` · covers: R1, R2
-- [ ] T3 — Implement "current version per id" selection logic in the domain layer, taking
+- [x] T3 — Implement "current version per id" selection logic in the domain layer, taking
   "today" as an injectable `date` parameter (defaulting to now in the `Europe/Madrid` timezone
   when not supplied) · test: given two versions of the same `id` (past and future
   `vigente_desde`) and an injected fixed `today`, only the valid current one is selected ·

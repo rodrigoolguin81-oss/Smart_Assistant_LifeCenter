@@ -106,6 +106,17 @@ ever reaches the SQL string) while still achieving the OR ranking semantics of R
 `below_threshold: true` flag signals R8 (no sufficiently relevant fragment) — consumed by the
 abstention feature (SPEC-001), not decided here.
 
+**Current-version filtering in the query (R5):** the R5 filter is applied **inside the SQL
+query, before `ORDER BY … LIMIT k`** — never in Python on the already-limited result. Filtering
+after the `LIMIT` would let superseded or future-dated fragments take top-`k` slots and then be
+discarded, so the caller would get fewer than `k` fragments even when enough current ones exist.
+The query keeps only rows whose `vigente_desde` is the latest one `<= today` for their
+`source_id` (e.g. a `vigente_desde = (SELECT max(vigente_desde) … WHERE vigente_desde <= %s)`
+condition, or an equivalent CTE), with `today` passed as a bound parameter. The pure domain
+function `select_current_versions(fragments, today)` (`app/domain/retrieval/versioning.py`)
+remains the reference definition of this rule; the SQL must match it, and `today` comes from
+the same injectable source (`madrid_today()` by default).
+
 ## Test environment
 
 T4 through T7 and T10 need a live Postgres to run against. They run against a **separate Neon
@@ -124,11 +135,12 @@ test's runtime behavior.
 | R2 | Domain chunking rule (`app/domain/retrieval/`) | One fragment per `##` section; `titulo` carried on each fragment |
 | R3 | `app/infra/kb_ingest.py`, Neon table `kb_fragments`, `spanish_unaccent` text search configuration | `tsvector` over the `spanish_unaccent` config, GIN index; same configuration applied to queries |
 | R4 | `app/infra/kb_repository.py` (`ts_rank` query) | Parameterized `plainto_tsquery('spanish_unaccent', %s)` with `&` → `\|` substitution; top `k` (default 5, configurable) |
-| R5 | Domain: "current version per id" selection | Injectable `today: date` parameter; defaults to now in `Europe/Madrid` |
+| R5 | Domain: "current version per id" selection (reference); `app/infra/kb_repository.py` (SQL filter) | Injectable `today: date` parameter; defaults to now in `Europe/Madrid`; applied in SQL before `LIMIT k` |
 | R6 | `Fragment` entity + API response mapping | `cita` field, format `[ID \| vigente desde dd/mm/aaaa]` |
 | R7 | `Fragment.ejemplo` propagated end-to-end | Never dropped between infra and API |
 | R8 | Relevance threshold check in domain layer | Normalized `ts_rank` (normalization 32, 0–1); numeric cutoff is an open assumption, tuned via eval NFR-03 |
 | R9 | `app/infra/kb_ingest.py` full-replace command | Manual trigger; idempotent; deletes fragments of removed documents |
+| R10 | Domain: `parse_kb_document` (`app/domain/retrieval/kb_document.py`) | Rejects content outside a `##` section; error names the file (`source_name`) and is written in Spanish |
 
 **Eval `eval_retrieval` (NFR-05):** a small offline script, outside the production code path,
 that runs `KnowledgeRepository.search()` against a dataset of annotated questions and computes

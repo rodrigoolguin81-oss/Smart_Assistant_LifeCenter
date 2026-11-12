@@ -57,6 +57,11 @@ vectorial, por decisión registrada en [clarifications](./clarifications.md) Q1.
   changes under `kb/`, that replaces all indexed fragments with the current content of `kb/` —
   including deleting the fragments of any document removed from `kb/` — so the indexed table
   never serves a stale or orphaned fragment.
+- R10. IF a knowledge base document contains any non-whitespace content outside a Markdown
+  section introduced by a level-2 heading (`##`) — including text before the first `##`, or a
+  document with no `##` heading at all — THEN the system SHALL reject that document with an
+  error that names its file and explains, in plain Spanish, that all content must be placed
+  inside a `##` section, instead of silently dropping that content from the index.
 
 ## Acceptance criteria
 
@@ -84,6 +89,9 @@ vectorial, por decisión registrada en [clarifications](./clarifications.md) Q1.
 - [ ] Given a `kb/` document removed from disk, running the ingestion command removes its
   fragments from the indexed table; running it twice in a row with no changes under `kb/` leaves
   the table unchanged (idempotent).
+- [ ] Given a `kb/` document with text before its first `##` heading (or with no `##` heading),
+  it is rejected with an error naming its file and explaining in Spanish that all content must
+  go inside a `##` section.
 
 ## Out of scope
 

@@ -69,6 +69,15 @@ without a vector database.
   fragments of any document that was removed from `kb/`. There is no automatic file-watcher for
   v1.0; running the command twice with no changes leaves the table unchanged.
 
+- Q8: Under the Q6 chunking rule, content placed before a document's first `##` heading belongs
+  to no fragment. Should that content be silently dropped, or should the document be rejected?
+  (Raised during implementation of T2, 2026-11-11.)
+  → A: Rejected. A document with any non-whitespace content outside a `##` section (text before
+  the first `##`, or no `##` heading at all) fails validation, so the problem surfaces when the
+  document is parsed instead of that content silently becoming unsearchable. The error names the
+  offending file and explains in plain Spanish that all content must go inside a `##` section,
+  since whoever maintains `kb/` is not necessarily technical. Captured as R10.
+
 ## Assumptions
 
 - The initial `ts_rank` relevance threshold for abstention is a placeholder value, to be tuned
