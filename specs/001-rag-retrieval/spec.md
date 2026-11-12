@@ -4,7 +4,7 @@ spec_id: SPEC-002
 title: rag-retrieval — Functional Spec
 description: Functional requirements for indexing LifeCenter's knowledge base and retrieving relevant, sourced fragments via lexical search (RF-001, RF-002), in EARS notation.
 tags: [spec, rag-retrieval, SPEC-002]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md]
 generated: { by: claude-code, at: 2026-11-10T00:00:00Z }
 verified: { by: human, at: 2026-11-11T00:00:00Z }

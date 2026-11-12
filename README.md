@@ -45,7 +45,7 @@ Every knowledge artifact in `specs/` is plain Markdown with YAML frontmatter:
 | `type` | Document kind: `constitution`, `clarifications`, `spec`, `plan`, `tasks`, `index`. |
 | `title` / `description` | Human-readable summary. |
 | `tags` | Categorical labels. |
-| `status` | `draft` \| `active` \| `verified` \| `deprecated`. |
+| `status` | `draft` \| `active` \| `verified` \| `implemented` \| `deprecated`. For a feature's spec/plan/tasks the lifecycle is `draft` → `verified` (a human confirmed the content) → `implemented` (all its tasks are done and their tests pass) → `deprecated`. |
 | `sources` | Documents this one derives from (relative paths or URLs). |
 | `generated` | `{ by, at }` — creation metadata. |
 | `verified` | `{ by, at }` — `null` until a human confirms it. |
@@ -61,7 +61,29 @@ Documents link to each other with relative Markdown links (e.g. `[plan](./plan.m
 3. (Pending) Stand up the n8n instance (Docker + Tailscale Funnel) and register the n8n MCP
    server and skills once it's reachable — see `AGENTS.md` and `.env.example` for the
    `N8N_BASE_URL` / `N8N_MCP_TOKEN` placeholders.
-4. Run the test suite once application code exists (none yet — scaffolding only).
+4. Install, test and run the retrieval tooling (SPEC-002). Requires Python ≥ 3.12 and these
+   variables in `.env` (see `.env.example`): `DATABASE_URL` (pooled, used by the API),
+   `DIRECT_URL` (direct, used by ingestion for DDL), `TEST_DATABASE_URL` (direct connection to the
+   dedicated Neon `test` branch) and, optionally, `RETRIEVAL_RELEVANCE_THRESHOLD`.
+
+   ```bash
+   # Install the package and dev dependencies into the project virtualenv
+   python -m venv .venv
+   source .venv/Scripts/activate     # Windows Git Bash (PowerShell: .venv\Scripts\Activate.ps1;
+                                     # macOS/Linux: source .venv/bin/activate)
+   pip install -e ".[dev]"
+
+   # Run the test suite — database tests only ever use TEST_DATABASE_URL, never main
+   pytest
+
+   # Ingest kb/ into the database: applies the schema, then fully replaces kb_fragments.
+   # Uses DIRECT_URL (the main branch) by default — run it deliberately, after editing kb/.
+   python -m app.infra.kb_ingest
+
+   # Retrieval eval (NFR-05, Recall@5): re-ingests kb/ into the test branch and reports the
+   # result; exits non-zero below 90%. Uses TEST_DATABASE_URL and refuses to run against main.
+   python -m evals.eval_retrieval
+   ```
 
 ## Git rule
 

@@ -14,11 +14,16 @@ stale_after: null
 
 - [constitution](./constitution.md) — project-wide principles, constraints and conventions.
 - **001-rag-retrieval** — knowledge base indexing and lexical retrieval (PRD `RF-001`, `RF-002`,
-  traceability row **SPEC-002**):
-  - [clarifications](./001-rag-retrieval/clarifications.md)
+  traceability row **SPEC-002**) — **implemented** (2026-11-12; tasks T0–T11 done, R1–R11):
+  - [clarifications](./001-rag-retrieval/clarifications.md) — includes the relevance threshold
+    decision (Q10) and known limitations (vocabulary mismatch)
   - [spec](./001-rag-retrieval/spec.md)
   - [plan](./001-rag-retrieval/plan.md)
   - [tasks](./001-rag-retrieval/tasks.md)
+  - Code: `app/` · tests: `tests/` · evals: `evals/` (`eval_retrieval` Recall@5 = 91.3% on the
+    interim dataset; `abstention_dataset.yaml` kept for SPEC-001's NFR-03 eval)
+  - Open follow-ups: recalibrate retrieval (eval + threshold) with real data once PRD DEP-01 is
+    delivered; revisit the threshold if SPEC-001 misses NFR-03 end to end.
 
 Pending (not yet scaffolded): SPEC-001 (abstención), SPEC-003 (urgencias), SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

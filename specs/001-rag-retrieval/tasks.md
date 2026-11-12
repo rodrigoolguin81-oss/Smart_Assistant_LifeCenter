@@ -4,7 +4,7 @@ spec_id: SPEC-002
 title: rag-retrieval — Task Breakdown
 description: Granular, testable tasks derived from the plan for knowledge base ingestion and retrieval.
 tags: [tasks, rag-retrieval, SPEC-002]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-10T00:00:00Z }
 verified: { by: human, at: 2026-11-11T00:00:00Z }

@@ -4,7 +4,7 @@ spec_id: SPEC-002
 title: rag-retrieval — Technical Plan
 description: Architecture, module boundaries and contracts for indexing and retrieving LifeCenter knowledge base fragments via Postgres full-text search.
 tags: [plan, rag-retrieval, SPEC-002]
-status: verified
+status: implemented
 sources: [./spec.md]
 generated: { by: claude-code, at: 2026-11-10T00:00:00Z }
 verified: { by: human, at: 2026-11-11T00:00:00Z }
