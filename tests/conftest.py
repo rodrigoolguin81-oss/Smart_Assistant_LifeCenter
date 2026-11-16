@@ -9,6 +9,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_model_api_key(monkeypatch):
+    """Tests never call Gemini (SPEC-001 plan): without the key, an accidental real call fails
+    instead of spending free-tier quota. Only the evals, run by hand, use the real key."""
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+
+
 @pytest.fixture(scope="session")
 def test_database_url() -> str:
     url = os.environ.get("TEST_DATABASE_URL")

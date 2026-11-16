@@ -25,5 +25,15 @@ stale_after: null
   - Open follow-ups: recalibrate retrieval (eval + threshold) with real data once PRD DEP-01 is
     delivered; revisit the threshold if SPEC-001 misses NFR-03 end to end.
 
-Pending (not yet scaffolded): SPEC-001 (abstención), SPEC-003 (urgencias), SPEC-004 (citas), and
+- **002-answer-generation** — grounded answer generation with layered deterministic abstention,
+  citation + figure validation and pseudonymization (PRD `RF-002`, `RF-003`, `US-001`, `US-002`,
+  `NFR-03`, `NFR-06`, `RES-02`, traceability row **SPEC-001**) — **specified** (2026-11-13; spec
+  verified by human; plan and tasks verified 2026-11-16; implementation in progress, T0 first):
+  - [clarifications](./002-answer-generation/clarifications.md) — Q1–Q15, including the Gemini
+    free-tier condition (dev only) and the SPEC-003 precondition for real patients
+  - [spec](./002-answer-generation/spec.md)
+  - [plan](./002-answer-generation/plan.md) — includes the figure normalization rule
+  - [tasks](./002-answer-generation/tasks.md) — T0–T16
+
+Pending (not yet scaffolded): SPEC-003 (urgencias), SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.
