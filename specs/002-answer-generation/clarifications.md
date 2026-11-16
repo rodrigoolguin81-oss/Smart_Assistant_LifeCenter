@@ -165,6 +165,21 @@ responsibility.
   threshold is revisited (SPEC-002 Q10, condition 1).
 - Eval datasets remain interim and hand-built over the example `kb/` until PRD DEP-01.
 
+## Known limitations
+
+- **Figure attribution within a document (raised at T5, human, 2026-11-16).** A citation
+  identifies a document version, not a section: every retrieved section of a cited document
+  backs the answer (SPEC-002's `[ID | vigente desde dd/mm/aaaa]` does not distinguish sections).
+  The literal figure check (R10 d) therefore cannot detect a figure attributed to the wrong item
+  of the same document — e.g. "la limpieza cuesta 280 € [TAR-001 | …]" passes because 280 € (the
+  whitening price) is in TAR-001. Mitigation: the T14 eval's judge rubric checks that each figure
+  answers what was asked, and a small trap dataset (`evals/attribution_dataset.yaml`, 2–3
+  questions with their expected figure) measures it. A stricter fix (section-level citations or
+  per-section figure checks) would change the SPEC-002 citation format and is not planned for
+  v1.0.
+- **Durations are not validated figures** (T4/T6): the prompt requires "horas"/"minutos" and the
+  T14 eval reports unsupported durations, but the validator does not reject them.
+
 ## Dependencies and conditions
 
 - **SPEC-003** (urgencies/symptoms) — must be implemented before opening the bot to real patients.

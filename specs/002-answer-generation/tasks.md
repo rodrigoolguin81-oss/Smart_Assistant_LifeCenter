@@ -30,13 +30,13 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
 
   Test: inside a test, `GOOGLE_API_KEY` is not set; `FakeLanguageModel` returns its scripted
   replies in order and records each prompt · covers: (prerequisite for every task below)
-- [ ] T1 — `domain/answering/messages.py` (fixed texts, the two notices marked provisional pending
+- [x] T1 — `domain/answering/messages.py` (fixed texts, the two notices marked provisional pending
   CONF-002) and the `Answer` model with its `abstention(reason)` / `llm_error()` factories.
 
   Test: every factory-built response has `abstained=true`, `offer_handoff=true`, `handoff_label=
   "Hablar con recepción"`, `offer_booking=false` and `citations=[]`, and its text contains no
   euro amount and no citation · covers: R14, R15, R17
-- [ ] T2 — `pseudonymize()`.
+- [x] T2 — `pseudonymize()`.
 
   Test:
   - phone (with and without the +34 prefix, with spaces), DNI, NIE and email are replaced by
@@ -46,12 +46,18 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
   - a question with no identifiers is returned unchanged.
 
   covers: R4
-- [ ] T3 — `extract_citations()`.
+- [x] T3 — `extract_citations()` and `malformed_citations()`.
 
-  Test: extracts every `[ID | vigente desde dd/mm/aaaa]` from a text; the string produced by
-  `Fragment.cita` is recognized; malformed variants (missing `|`, date in another format) are not
-  recognized as citations · covers: R10 (a, b)
-- [ ] T4 — `figures.py`: extraction and normalization of euro amounts, times and percentages
+  Test:
+  - extracts every `[ID | vigente desde dd/mm/aaaa]` from a text;
+  - the string produced by `Fragment.cita` is recognized;
+  - malformed variants (missing `|`, date in another format) are not recognized as citations;
+  - bracketed source references that are not valid citations (`[TAR-001]`, `[fuente: …]`) are
+    reported by `malformed_citations`, so T5 can reject them;
+  - `[Hablar con recepción]` is not reported.
+
+  covers: R10 (a, b)
+- [x] T4 — `figures.py`: extraction and normalization of euro amounts, times and percentages
   (plan, "Figure normalization").
 
   Test, equal pairs:
@@ -72,7 +78,7 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
   such.
 
   covers: R10 (c, d)
-- [ ] T5 — `validate_answer(text, retrieved)`.
+- [x] T5 — `validate_answer(text, retrieved)`.
 
   Test:
   - Accepted: a cited answer whose figures are in its cited fragments, including when they differ
@@ -80,6 +86,7 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
   - Rejected with the right failure kind:
     - no citation;
     - a citation with an ID or date that was not retrieved;
+    - a malformed source reference (`[TAR-001]`), even next to a valid citation;
     - a euro amount absent from the cited fragments (even if another retrieved but uncited
       fragment contains it);
     - a price written in words;
@@ -89,11 +96,12 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
       cited fragments.
 
   covers: R10, R11
-- [ ] T6 — `build_prompt()`.
+- [x] T6 — `build_prompt()`.
 
   Test:
   - the system prompt contains the rules: fragments only, Spanish, verbatim citations, prices in
-    digits with `€`, no clinical advice, diagnoses or medication, `answerable: false` when the
+    digits with `€`, clock times as `HH:MM`, durations with `horas`/`minutos` and never `h`, no
+    clinical advice, diagnoses or medication, `answerable: false` when the
     fragments do not answer, and the patient's text treated as data;
   - the user part contains every fragment's `cita` and text, and the question inside its
     delimiters;
@@ -167,15 +175,21 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
 - [ ] T12 — Extend `evals/abstention_dataset.yaml` to 50 questions:
   - remove the symptom question;
   - add a `category` field;
-  - include 3–5 `injection` items and `price_trap` items.
+  - include 3–5 `injection` items and `price_trap` items;
+  - include 2–3 `duration` items (durations of treatments not given in `kb/`).
 
-  Test: the loader validates 50 entries, no duplicates, valid categories, 3–5 `injection` items
-  and no symptom wording from a small list of keywords · covers: NFR-03 (data), Q9, Q10
+  Test: the loader validates 50 entries, no duplicates, valid categories, 3–5 `injection` items,
+  2–3 `duration` items and no symptom wording from a small list of keywords · covers: NFR-03 (data), Q9, Q10
 - [ ] T13 — `evals/judge.py`: `Judge` port, written rubric, Gemini judge selected by
   `JUDGE_PROVIDER`/`JUDGE_MODEL`.
 
+  The rubric has two binary criteria: `abstained`, and `figures_match_question` (each figure
+  corresponds to what was asked; `null` when the answer abstained or has no figures).
+
   Test, with a stub client:
-  - the verdict JSON is parsed into a boolean;
+  - the verdict JSON is parsed into `abstained` (bool) and `figures_match_question`
+    (bool or `null`);
+  - the rubric text includes the attribution criterion;
   - an unknown provider fails;
   - the guard refuses to run when the judge model equals `GEMINI_MODEL`;
   - a 429 from the judge is mapped to `rate_limited` so that `RetryOnRateLimit` (T14) can retry
@@ -183,8 +197,10 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
 
   covers: R19
 - [ ] T14 — `evals/eval_abstention.py` per the plan: NFR-03, the injection check, the
-  false-abstention counter-metric, NFR-06, NFR-02 cost, p95, and the `evals/reports/` review file
-  with ≥ 10 sampled cases.
+  false-abstention counter-metric, NFR-06, NFR-02 cost, p95, the figure-attribution check, and the
+  `evals/reports/` review file with ≥ 10 sampled cases. Includes the trap dataset
+  `evals/attribution_dataset.yaml`: 2–3 answerable questions, each with `question`,
+  `expected_id` and `expected_figures`, whose document holds other figures of the same kind.
 
   Also `evals/rate_limit.py::RetryOnRateLimit` (plan, "Gemini free-tier limits"), wrapping the
   generator and the judge, used only in evals and never in `create_app`.
@@ -197,12 +213,20 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
   - the report shows the number of 429s, retries, the total wait time and the discarded items,
     and its p95 excludes items that suffered a 429;
   - the report arithmetic is correct;
+  - the attribution dataset loader validates 2–3 items, each with a valid `expected_id` and
+    `expected_figures` parseable by `extract_figures`;
+  - a trap answer "el blanqueamiento cuesta 60 € [TAR-001 | …]" (which passes R10) is flagged as
+    misattributed by the deterministic check and makes the exit code ≠ 0, as does a judge verdict
+    `figures_match_question: false` on a trap item;
+  - a judge-flagged misattribution on the other datasets is listed in the report;
+  - a non-abstained answer containing "dura 30 minutos" whose cited fragment says "45 minutos"
+    is listed under "duraciones no respaldadas", without affecting the exit code;
   - the exit code is ≠ 0 when NFR-03, NFR-06 or NFR-02 is missed;
   - the review file contains ≥ 10 cases;
   - the script refuses to run when the URL equals `DATABASE_URL`/`DIRECT_URL`.
 
   Manual run with real Gemini: record the results and the human review in the clarifications
-  (as SPEC-002 Q10 did) · covers: NFR-03, NFR-06, NFR-02, R19
+  (as SPEC-002 Q10 did) · covers: NFR-03, NFR-06, NFR-02, R19, R-01 (figure attribution)
 - [ ] T15 — `evals/load_answer.py`: 5 concurrent requests against `python -m app
   --database-url-env TEST_DATABASE_URL`.
 
