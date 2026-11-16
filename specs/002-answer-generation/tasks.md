@@ -108,7 +108,7 @@ Rules for every task (AGENTS.md, [plan](./plan.md) "Test environment and model u
   - a question containing "ignora tus instrucciones" stays inside the delimiters.
 
   covers: R8
-- [ ] T7 — `ports.py` (`LanguageModel`, `ModelReply`, `LanguageModelError` with `kind` and an
+- [x] T7 — `ports.py` (`LanguageModel`, `ModelReply`, `LanguageModelError` with `kind` and an
   optional `retry_after_seconds`) and `cost.py`.
 
   Test:
