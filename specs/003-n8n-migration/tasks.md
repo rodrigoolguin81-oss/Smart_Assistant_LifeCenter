@@ -35,15 +35,22 @@ tests stay untouched and must keep passing.
   `DIRECT_URL` = `main`) after the human approves · check: 3 documents, 9 fragments · covers: D3
   — done 2026-11-18: already loaded (HOR-001, TAR-001, TRA-001 × 3 fragments, vigente desde
   01/01/2026, `ejemplo: true`; `spanish_unaccent` present); no ingest run.
-- [ ] N2 — Workflow skeleton: Telegram Trigger, Switch, Code "Seudonimizar", Telegram "Responder"
+- [x] N2 — Workflow skeleton: Telegram Trigger, Switch, Code "Seudonimizar", Telegram "Responder"
   echoing the pseudonymized text · check: pinned-data runs of the SPEC-001 T2 cases (phone, DNI,
   email, "me llamo…", "soy alérgica…" unchanged); then [humano] a Telegram message with a phone
   number comes back with `[TELEFONO]`; a sticker gets the D12 text · covers: D2, D12
   — 2026-11-18: workflow `q3f5dVrl8OUsXJrG` created; JS port passes the 36 T2 cases locally
-  (Node) and the pinned run (execution 20) matches; pending the human Telegram check.
+  (Node) and the pinned run (execution 20) matches. Telegram check by the human, executions
+  21–33 reviewed: phone → `[TELEFONO]`, email → `[EMAIL]`, "me llamo …" → `[NOMBRE]`; "soy
+  diabetico", prices, times and "para mi hermana" unchanged; an image → D12 text. Execution 25
+  ("la cita va con <nombre completo>") kept the name: the known Q5 limitation (no introduction).
 - [ ] N3 — Retrieval and threshold: Postgres "Buscar en kb", IF, Code "Abstención" · check:
   "¿Cuánto cuesta una limpieza?" → `top_score ≥ 0.01` with `TAR-001` first; "¿Aceptáis el seguro
   de Sanitas?" → abstention message · covers: D3, D4
+  — 2026-11-18: SQL run read-only on `main` (limpieza 0.0436 with TAR-001 first; Sanitas 0 rows;
+  sábados 0.0247 with HOR-001 first); nodes added with a temporary "Contexto encontrado (N3)"
+  reply (removed in N4) and the "Hablar con recepción" button; pinned run (execution 34) routes
+  both cases correctly; pending the human Telegram check after publishing the new version.
 - [ ] N4 — Generation: Code "Preparar prompt", HTTP Request "Gemini", Code "Error" · check: the
   request body carries the T6 system prompt verbatim and the schema; a forced bad model name
   produces the error message after one call · covers: D5, D7
