@@ -74,7 +74,10 @@ prompt**, because the HTTP body needs the prompt text built from the fragments (
    boolean, `answer` string).
 7. **HTTP Request: Gemini** — `POST https://generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`;
    credential `Gemini API` (Header Auth `x-goog-api-key`); model name written in the URL (not a
-   secret; `gemini-3.8-flash` unless the human picks another); timeout 4 000 ms; **Retry on fail
+   secret; `gemini-3.1-flash-lite` — changed 2026-11-18 from `gemini-3.8-flash`, which on the free
+   tier exceeded the 4 s timeout or returned 503 "high demand", while `gemini-3.1-flash-lite`
+   answered in 1.6–2.5 s with valid structured output); timeout **20 000 ms** in the demo (a
+   deviation from NFR-01, see clarifications "Demo deviation from NFR-01"); **Retry on fail
    off**; On Error → "continue (using error output)" to node 9.
 8. **Code: Validar y componer** — port of `citations.py`, `figures.py` (amounts and percentages as
    integers in hundredths, since JavaScript has no `Decimal`), `validation.py` and the notices of

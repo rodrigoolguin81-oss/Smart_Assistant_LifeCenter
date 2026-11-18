@@ -39,6 +39,21 @@ created from `.env` via the API — now created by the human in the n8n UI), D1,
 **superseded**; Q3 (JavaScript), Q4/Q8 (MCP from Claude Code; export to `n8n/workflows/`) and D4
 **stand**. SPEC-001 T8–T16 stay pending and are not part of the demo.
 
+### Demo deviation from NFR-01: Gemini timeout 20 s (human, 2026-11-18)
+
+- **Decision:** the "Gemini" HTTP Request node uses a **20 000 ms** timeout in the demo, instead
+  of the 4 000 ms that keeps the whole reply within NFR-01 (p95 ≤ 5 s). It was first raised to
+  10 000 ms and then to 20 000 ms after the measurement below.
+- **Cause:** the Gemini free tier has variable latency. Real calls from the workflow timed out
+  at 4 s with both `gemini-3.8-flash` (execution 37) and `gemini-3.1-flash-lite` (execution 38),
+  and direct probes saw 503 "high demand" and waits from 1.6 s to over 15 s. Three direct calls
+  to `gemini-3.1-flash-lite` with the workflow's real prompt took 1.26 s, 1.03 s and 17.22 s.
+- **Consequence:** in the demo a reply can take up to about 20 s, and NFR-01 is **not** measured
+  or claimed. The D7 path (error message + "Hablar con recepción") still covers calls that fail
+  or exceed 20 s.
+- **Production:** this would be solved with a paid Gemini plan or another provider (SPEC-001
+  Q1), going back to a timeout within the 5 s budget.
+
 ## Original record (before the scope reduction)
 
 **Change CHG-001** (workflow phase "Change"). On 2026-11-17 the human decided to build the whole

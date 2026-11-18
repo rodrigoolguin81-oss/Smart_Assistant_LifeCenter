@@ -44,16 +44,28 @@ tests stay untouched and must keep passing.
   21–33 reviewed: phone → `[TELEFONO]`, email → `[EMAIL]`, "me llamo …" → `[NOMBRE]`; "soy
   diabetico", prices, times and "para mi hermana" unchanged; an image → D12 text. Execution 25
   ("la cita va con <nombre completo>") kept the name: the known Q5 limitation (no introduction).
-- [ ] N3 — Retrieval and threshold: Postgres "Buscar en kb", IF, Code "Abstención" · check:
+- [x] N3 — Retrieval and threshold: Postgres "Buscar en kb", IF, Code "Abstención" · check:
   "¿Cuánto cuesta una limpieza?" → `top_score ≥ 0.01` with `TAR-001` first; "¿Aceptáis el seguro
   de Sanitas?" → abstention message · covers: D3, D4
   — 2026-11-18: SQL run read-only on `main` (limpieza 0.0436 with TAR-001 first; Sanitas 0 rows;
   sábados 0.0247 with HOR-001 first); nodes added with a temporary "Contexto encontrado (N3)"
   reply (removed in N4) and the "Hablar con recepción" button; pinned run (execution 34) routes
-  both cases correctly; pending the human Telegram check after publishing the new version.
+  both cases correctly. Human Telegram check reported done; the saved executions after
+  publishing show only execution 35 (real Neon query, no context → abstention with button).
 - [ ] N4 — Generation: Code "Preparar prompt", HTTP Request "Gemini", Code "Error" · check: the
   request body carries the T6 system prompt verbatim and the schema; a forced bad model name
   produces the error message after one call · covers: D5, D7
+  — 2026-11-18: "Contexto encontrado (N3)" replaced by Preparar prompt → Gemini (Header Auth
+  `Gemini API`, `gemini-3.8-flash`, 4 000 ms, no retries, error output) → Error; temporary
+  "Respuesta sin validar (N4)" until N5. Pinned run (execution 36): system prompt 1 520 chars,
+  verbatim; schema answerable/answer; `<` `>` neutralized; `[NOMBRE]` in the body; non-JSON reply
+  → error message with button. First real call (execution 37): `timeout` after 4 s
+  (ECONNABORTED, no HTTP code) — the D7 path works. Direct probes: `gemini-3.8-flash` timeouts and
+  503 "high demand"; switched to `gemini-3.1-flash-lite` (4/4 HTTP 200, 1.6–2.5 s). Pending:
+  publish, real Gemini answer from Telegram, forced bad model name. Execution 38 (published
+  `gemini-3.1-flash-lite`) also hit `timeout` at 4 s → timeout raised to 10 000 ms, then 20 000 ms, for the demo
+  (clarifications "Demo deviation from NFR-01"). 3 direct calls with the real 5-fragment prompt:
+  1.26 s, 1.03 s, 17.22 s (all HTTP 200, 60 € with the TAR-001 citation).
 - [ ] N5 — Validation: Code "Validar y componer" · check: pinned replies from SPEC-001 T5 — a
   correct cited 60 € passes with both notices; 65 €, "sesenta euros", `[TAR-001]` and an unknown
   ID end in abstention · covers: D6
