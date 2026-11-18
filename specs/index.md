@@ -28,12 +28,22 @@ stale_after: null
 - **002-answer-generation** — grounded answer generation with layered deterministic abstention,
   citation + figure validation and pseudonymization (PRD `RF-002`, `RF-003`, `US-001`, `US-002`,
   `NFR-03`, `NFR-06`, `RES-02`, traceability row **SPEC-001**) — **specified** (2026-11-13; spec
-  verified by human; plan and tasks verified 2026-11-16; implementation in progress, T0 first):
+  verified by human; plan and tasks verified 2026-11-16; Python T0–T7 done at `946162b`; T8–T16
+  paused while the n8n demo (CHG-001) is built, which ports T2, T5 and T6 logic):
   - [clarifications](./002-answer-generation/clarifications.md) — Q1–Q15, including the Gemini
     free-tier condition (dev only) and the SPEC-003 precondition for real patients
   - [spec](./002-answer-generation/spec.md)
   - [plan](./002-answer-generation/plan.md) — includes the figure normalization rule
   - [tasks](./002-answer-generation/tasks.md) — T0–T16
+
+- **003-n8n-migration** — change **CHG-001**, reduced to a **demo MVP**: one n8n workflow
+  (Telegram → pseudonymize → Neon FTS → threshold → Gemini → validation → Telegram); Python code
+  and `kb/` ingestion kept; constitution Amendment 1 — **verified** (2026-11-17; spec, plan and
+  tasks verified by human; implementation N0 next):
+  - [clarifications](./003-n8n-migration/clarifications.md) — scope reduction on top
+  - [spec](./003-n8n-migration/spec.md) — D1–D11
+  - [plan](./003-n8n-migration/plan.md) — node-by-node design
+  - [tasks](./003-n8n-migration/tasks.md) — N0–N8
 
 Pending (not yet scaffolded): SPEC-003 (urgencias), SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

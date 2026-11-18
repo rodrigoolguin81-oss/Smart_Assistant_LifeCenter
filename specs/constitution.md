@@ -27,7 +27,12 @@ stale_after: null
   configuration; n8n as the channel adapter (receives the Telegram webhook, calls the FastAPI
   API over HTTP, relays the response back to Telegram — channel-independent architecture per
   PRD RES-03); Neon (serverless Postgres) as the database.
-- All secrets live in `.env` (never committed).
+- *Amendment 1 (2026-11-17, CHG-001):* n8n contains the orchestration of the demo (Telegram →
+  pseudonymize → retrieval → Gemini → validation → Telegram, see
+  `specs/003-n8n-migration/`); the Python code is kept in the repository (`kb/` ingestion into
+  Neon still runs with `python -m app.infra.kb_ingest`).
+- All secrets live in `.env` (never committed). *Amendment 1:* the demo's keys (Gemini, Telegram,
+  Neon) live only in n8n credentials and never in exported workflow JSON.
 - No data is sent to external model APIs that includes direct patient identifiers or raw health
   data; context is pseudonymized first (PRD RES-02).
 - The system never writes to LifeCenter's clinical management software in v1.0; it operates on
