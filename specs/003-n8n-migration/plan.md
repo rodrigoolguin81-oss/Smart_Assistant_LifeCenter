@@ -39,7 +39,7 @@ prompt**, because the HTTP body needs the prompt text built from the fragments (
 1. **Telegram Trigger** — credential `Telegram LifeCenter Bot`; updates `message` and
    `callback_query`.
 2. **Switch** — `callback_query` present → node 10; text message → node 3; anything else (photo,
-   sticker) → reply asking for text (fixed text, same tone).
+   sticker) → Telegram "Pedir texto" with the D12 text.
 3. **Code: Seudonimizar** — JavaScript port of `pseudonymize.py` (same regexes and name rules,
    "soy X" excluded). Output: `{ chatId, question }` with the pseudonymized `question` only.
 4. **Postgres: Buscar en kb** — credential `Neon main`. One query returning a single row, so the IF
@@ -153,3 +153,4 @@ then a check that the file contains no key/token (`grep` for `key`, `token`, `pa
 | D9 | credentials table; export check |
 | D10 | Funnel paths (`/webhook`, `/webhook-test` in development); `n8n-start.ps1` |
 | D11 | workflow setting "save executions" left on; clarifications |
+| D12 | nodes 2 (fallback output), "Pedir texto" |

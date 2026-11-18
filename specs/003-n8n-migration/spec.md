@@ -53,6 +53,9 @@ sigue haciéndose con él.
 - D8. WHEN the reply is an abstention or an error, the workflow SHALL attach a "Hablar con
   recepción" button; WHEN the patient taps it, the workflow SHALL reply "Ahora mismo no puedo
   pasar tu consulta automáticamente. Llama a recepción en horario de atención."
+- D12. WHEN a Telegram message without text arrives (photo, sticker, voice note…), the workflow
+  SHALL reply "Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?" without calling
+  Neon or Gemini (text approved by the human, 2026-11-18).
 
 ### Secrets, exposure, versioning, privacy
 

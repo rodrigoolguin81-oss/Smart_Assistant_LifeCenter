@@ -16,7 +16,9 @@ stale_after: null
 Steps marked **[humano]** need the human's accounts, browser or secrets. The Python code and its
 tests stay untouched and must keep passing.
 
-- [ ] N0 — Setup **[humano + agente]**:
+- [x] N0 — Setup **[humano + agente]** — done 2026-11-18 (n8n 2.48.4; MCP over OAuth on
+  localhost via `N8N_EDITOR_BASE_URL`; the three credentials listed by name; Funnel answers 404 on
+  `/`, `/rest`, `/mcp-oauth`, `/mcp-server` and reaches n8n on `/webhook/…`):
   - [agente] create `n8n-start.ps1` (reads `N8N_WEBHOOK_URL` from `.env`, sets `WEBHOOK_URL`,
     runs `n8n start`) and document `N8N_WEBHOOK_URL` in `.env.example`;
   - [humano] Funnel for `/webhook` and, during development, `/webhook-test`;
@@ -36,7 +38,9 @@ tests stay untouched and must keep passing.
 - [ ] N2 — Workflow skeleton: Telegram Trigger, Switch, Code "Seudonimizar", Telegram "Responder"
   echoing the pseudonymized text · check: pinned-data runs of the SPEC-001 T2 cases (phone, DNI,
   email, "me llamo…", "soy alérgica…" unchanged); then [humano] a Telegram message with a phone
-  number comes back with `[TELEFONO]` · covers: D2
+  number comes back with `[TELEFONO]`; a sticker gets the D12 text · covers: D2, D12
+  — 2026-11-18: workflow `q3f5dVrl8OUsXJrG` created; JS port passes the 36 T2 cases locally
+  (Node) and the pinned run (execution 20) matches; pending the human Telegram check.
 - [ ] N3 — Retrieval and threshold: Postgres "Buscar en kb", IF, Code "Abstención" · check:
   "¿Cuánto cuesta una limpieza?" → `top_score ≥ 0.01` with `TAR-001` first; "¿Aceptáis el seguro
   de Sanitas?" → abstention message · covers: D3, D4
