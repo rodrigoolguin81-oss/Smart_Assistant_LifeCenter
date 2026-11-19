@@ -4,7 +4,7 @@ spec_id: CHG-001
 title: n8n-migration — Technical Plan (demo MVP)
 description: Node-by-node design of the single n8n demo workflow, its credentials, public exposure, export procedure and the Python ingestion it relies on.
 tags: [plan, change, n8n-migration, CHG-001, demo]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md]
 generated: { by: claude-code, at: 2026-11-17T00:00:00Z }
 verified: { by: human, at: 2026-11-17T00:00:00Z }
@@ -133,7 +133,9 @@ the exported JSON only carries the credential name and id.
 
 After each change: `n8n export:workflow --id=<id> --output=n8n/workflows/lifecenter-telegram-demo.json --pretty`,
 then a check that the file contains no key/token (`grep` for `key`, `token`, `password`,
-`postgres://`, `AIza`).
+`postgres://`, `AIza`). The export also carries a `shared` block with the owner's project name
+and e-mail; it is removed before committing (the repo is public; the block is not needed to
+import). The exact commands are in the README, "Export after changing the workflow".
 
 ## Verification (no evals in this MVP)
 

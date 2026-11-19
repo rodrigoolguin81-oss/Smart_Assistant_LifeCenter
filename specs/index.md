@@ -38,12 +38,16 @@ stale_after: null
 
 - **003-n8n-migration** — change **CHG-001**, reduced to a **demo MVP**: one n8n workflow
   (Telegram → pseudonymize → Neon FTS → threshold → Gemini → validation → Telegram); Python code
-  and `kb/` ingestion kept; constitution Amendment 1 — **verified** (2026-11-17; spec, plan and
-  tasks verified by human; implementation N0 next):
+  and `kb/` ingestion kept; constitution Amendment 1 — **implemented** (2026-11-19; N0–N8 done, all
+  acceptance criteria met from Telegram). Demo
+  deviations: Gemini timeout 20 s (NFR-01 not met) and model alias `gemini-flash-lite-latest` on
+  the free tier:
   - [clarifications](./003-n8n-migration/clarifications.md) — scope reduction on top
-  - [spec](./003-n8n-migration/spec.md) — D1–D11
+  - [spec](./003-n8n-migration/spec.md) — D1–D12
   - [plan](./003-n8n-migration/plan.md) — node-by-node design
   - [tasks](./003-n8n-migration/tasks.md) — N0–N8
+  - Workflow: [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json)
+    · how to run it: README, "Demo (n8n + Telegram)"
 
 Pending (not yet scaffolded): SPEC-003 (urgencias), SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.
