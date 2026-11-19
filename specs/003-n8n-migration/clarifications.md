@@ -54,6 +54,19 @@ created from `.env` via the API — now created by the human in the n8n UI), D1,
 - **Production:** this would be solved with a paid Gemini plan or another provider (SPEC-001
   Q1), going back to a timeout within the 5 s budget.
 
+### Demo model: `gemini-flash-lite-latest` (human, 2026-11-19)
+
+- **Decision:** the demo calls `gemini-flash-lite-latest`, with the 20 s timeout above.
+- **Why:** it was chosen for stability on the free tier. It is the only model that returned a
+  valid answer (60 € with the exact TAR-001 citation) in 6 of 6 calls, all under 20 s
+  (3.9–17.7 s), in the 2026-11-19 benchmark with the workflow's real body.
+  - `gemini-3.1-flash-lite` (5/6, one call over 25 s) failed in the workflow with a 503 "high
+    demand" (execution 42) and a 20 s timeout (execution 43).
+  - The 3.5–3.8 Flash models mostly returned 503, 429 or no answer.
+- **Caveat:** `gemini-flash-lite-latest` is an **alias**. Google can change the model behind it
+  without notice, so the demo is not pinned to a fixed model version.
+- **Production:** pin a concrete model version on a paid plan (SPEC-001 Q1).
+
 ## Original record (before the scope reduction)
 
 **Change CHG-001** (workflow phase "Change"). On 2026-11-17 the human decided to build the whole

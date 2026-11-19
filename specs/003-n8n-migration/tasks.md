@@ -52,7 +52,7 @@ tests stay untouched and must keep passing.
   reply (removed in N4) and the "Hablar con recepción" button; pinned run (execution 34) routes
   both cases correctly. Human Telegram check reported done; the saved executions after
   publishing show only execution 35 (real Neon query, no context → abstention with button).
-- [ ] N4 — Generation: Code "Preparar prompt", HTTP Request "Gemini", Code "Error" · check: the
+- [x] N4 — Generation: Code "Preparar prompt", HTTP Request "Gemini", Code "Error" · check: the
   request body carries the T6 system prompt verbatim and the schema; a forced bad model name
   produces the error message after one call · covers: D5, D7
   — 2026-11-18: "Contexto encontrado (N3)" replaced by Preparar prompt → Gemini (Header Auth
@@ -65,10 +65,27 @@ tests stay untouched and must keep passing.
   publish, real Gemini answer from Telegram, forced bad model name. Execution 38 (published
   `gemini-3.1-flash-lite`) also hit `timeout` at 4 s → timeout raised to 10 000 ms, then 20 000 ms, for the demo
   (clarifications "Demo deviation from NFR-01"). 3 direct calls with the real 5-fragment prompt:
-  1.26 s, 1.03 s, 17.22 s (all HTTP 200, 60 € with the TAR-001 citation).
+  1.26 s, 1.03 s, 17.22 s (all HTTP 200, 60 € with the TAR-001 citation). Published version with
+  20 000 ms: executions 39 (limpieza → 60 € with TAR-001, ~3.7 s) and 40 (sábados → 10:00–14:00
+  with HOR-001, ~2.3 s). No Sanitas execution was saved after publishing. The forced bad model
+  name was not run: the D7 path was instead exercised by the real timeouts (executions 37, 38).
 - [ ] N5 — Validation: Code "Validar y componer" · check: pinned replies from SPEC-001 T5 — a
   correct cited 60 € passes with both notices; 65 €, "sesenta euros", `[TAR-001]` and an unknown
   ID end in abstention · covers: D6
+  — 2026-11-18: "Respuesta sin validar (N4)" replaced by "Validar y componer" (JS port of
+  citations/figures/validation with integer hundredths, plus the R12/R13 notices). The port
+  passes 80 local cases (Node): every case of the Python T3–T5 tests plus compose cases. Pinned run
+  (execution 41): 60 € → answer + price + example notices; 65 € → `figure_not_in_source`;
+  "sesenta euros" → `unvalidatable_currency`; `[TAR-001]` → `malformed_citation`; TAR-999 →
+  `unknown_citation`; `answerable: false` → `model_abstained`; a time answer → example notice only.
+  Pending: publish and Telegram check. Published 2026-11-19: execution 42 → Gemini HTTP 503
+  "high demand" in 1.8 s (`api_error`); execution 43 → timeout at 20 s (`timeout`). Benchmark the
+  same day (3 calls/model, real body, 25 s cap; then a sequential rerun of the candidates):
+  `gemini-flash-lite-latest` 6/6 HTTP 200 (3.9–17.7 s); `gemini-3.1-flash-lite` 5/6 (one
+  timeout; 5.2–20.9 s); `gemini-3-flash-preview` 4/6 (2.7–5.0 s in the rerun, but one timeout and
+  one 503 before); the 3.5–3.8 Flash models and `gemini-flash-latest` mostly 503/429/timeout;
+  `gemini-2.5-flash-lite` 404. Human chose `gemini-flash-lite-latest` (alias; see clarifications
+  "Demo model"); timeout kept at 20 s.
 - [ ] N6 — Handoff button and callback text · check: abstention shows the button; tapping it
   replies with the D8 text · covers: D8
 - [ ] N7 — Demo run **[humano]**: unpublish `/webhook-test` from Funnel, activate the workflow and
