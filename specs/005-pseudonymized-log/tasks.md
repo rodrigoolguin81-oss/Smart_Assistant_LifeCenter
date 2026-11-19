@@ -123,12 +123,58 @@ committed unless the human asks.
   - Check: the pinned run (text → B → reply to the right chat id; button → D8; sticker → D12); B's
     execution from that run has no identifier; A's settings end as none, none, false, false.
   - Covers: P1, P3, P4, P8.
-- [ ] L3: Retention in `n8n-start.ps1` (plan Step 3).
+- [x] L3: Retention in `n8n-start.ps1` (plan Step 3).
+  - Done 2026-11-19.
+  - **Parameter:** `-ExecutionsMaxAgeHours` (`[int]`, default 720, `ValidateRange(1, 87600)`).
+  - **Process variables:** the script sets `EXECUTIONS_DATA_PRUNE=true` and
+    `EXECUTIONS_DATA_MAX_AGE=<n>` for its own process only. The other pruning variables are not
+    set.
+  - **Messages on start:** it prints "Retención de ejecuciones: EXECUTIONS_DATA_PRUNE=true
+    EXECUTIONS_DATA_MAX_AGE=<n> (horas)". With any value other than 720 it shows a yellow warning
+    to restart with `.\n8n-start.ps1` after the test.
+  - **Checks:**
+    - the PowerShell parser reports 0 errors;
+    - the UTF-8 BOM is kept;
+    - the parsed default is 720;
+    - 0 and -5 are rejected by the validation before anything runs.
+
+    A valid value was not run, because it would start n8n. That happens in L4.
   - Add the `-ExecutionsMaxAgeHours` parameter (default 720), set `EXECUTIONS_DATA_PRUNE=true`
     and `EXECUTIONS_DATA_MAX_AGE`, and print both values.
   - Check: the PowerShell parser reports 0 errors and the BOM is kept.
   - Covers: P10, P12 (mechanism).
-- [ ] L4 **[humano]**: Restart, publish and test from Telegram (plan Step 4).
+- [x] L4 **[humano]**: Restart, publish and test from Telegram (plan Step 4).
+  - **Closed 2026-11-19 after a re-send** (20:46–20:48 local time). Four new B executions:
+    - 88 (from A 87), the injection → `model_abstained`;
+    - 90 (from A 89), the severe message → `severe` (112);
+    - 92 (from A 91), "¿la limpieza duele?" → `none`, then `model_abstained`;
+    - 95 (from A 94), "Una pegatina" written as text → `below_threshold`.
+
+    The button (D8) and a photo (D12) replied correctly in Telegram and, as designed, produced no
+    B execution.
+  - **Scan:** none of the 9 B executions (77–85, 88–95) contains a chat id, Telegram profile
+    name, username, "Ana García" or "612 345 678". A still has **0** stored executions.
+  - **Unexplained:** the first attempt at those three messages (around 20:42–20:45) left no B
+    execution. A stores nothing, failures included, so n8n has no trace of the cause; the re-send
+    worked. This is the accepted cost of Q4. If it happens again, the n8n console is the only
+    source.
+  - **In progress, 2026-11-19.** The human restarted n8n (PRUNE=true, MAX_AGE=720), published B
+    and then A, and sent the test messages from 20:41 local time.
+  - **What the agent found:**
+    - **A:** 0 stored executions, as P8 and P9 require. Its executions 76, 78, 80, 82 and 84 exist
+      only as `parentExecution` references from B.
+    - **B:** 5 executions:
+      - 77, limpieza → 60 €;
+      - 79, sábados → HOR-001;
+      - 81, Sanitas → `below_threshold`;
+      - 83, name and phone → `[NOMBRE]`/`[TELEFONO]`, 280 €;
+      - 85, gum bleeding → `urgent`.
+    - **Scan of those 5:** no chat id, Telegram profile name or username, "Ana García" or
+      "612 345 678".
+  - **Open:** there is no B execution for the injection, the severe message or "¿la limpieza
+    duele?", and none at all after 20:42:54 local time. Because A stores nothing, failures
+    included, n8n leaves no trace. Pending: the human's report of the Telegram replies and of the
+    n8n console, or a re-send.
   - Restart n8n with `.\n8n-start.ps1`; it must print PRUNE=true and MAX_AGE=720.
   - Publish **B, then A**, and send the acceptance messages and the button. The agent checks the
     Executions list and scans the new B executions.
