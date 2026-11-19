@@ -39,6 +39,13 @@ created from `.env` via the API — now created by the human in the n8n UI), D1,
 **superseded**; Q3 (JavaScript), Q4/Q8 (MCP from Claude Code; export to `n8n/workflows/`) and D4
 **stand**. SPEC-001 T8–T16 stay pending and are not part of the demo.
 
+### D11 superseded by SPEC-005 (human, 2026-11-19)
+
+D11 (keep the full execution history, raw messages included) is superseded by
+[SPEC-005](../005-pseudonymized-log/spec.md). The demo is split into a channel workflow that saves
+no executions and a core workflow that saves only pseudonymized executions, and stored executions
+are deleted after 30 days (US-007, NFR-08).
+
 ### Demo deviation from NFR-01: Gemini timeout 20 s (human, 2026-11-18)
 
 - **Decision:** the "Gemini" HTTP Request node uses a **20 000 ms** timeout in the demo, instead

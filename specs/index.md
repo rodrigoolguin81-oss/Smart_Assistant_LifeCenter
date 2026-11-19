@@ -64,5 +64,15 @@ stale_after: null
     `node n8n/code/urgencias.test.js` · dataset
     [`evals/urgency_dataset.yaml`](../evals/urgency_dataset.yaml)
 
+- **005-pseudonymized-log** — split the n8n demo into a channel workflow that stores nothing and
+  a core workflow with pseudonymized executions only, deleted after 30 days (PRD `US-007`,
+  `NFR-08`, `RES-02`, `R-06`; new traceability row **SPEC-005**; supersedes CHG-001 D11) —
+  **specified** (2026-11-19; clarifications, spec, plan and tasks verified by human;
+  implementation L0 next):
+  - [clarifications](./005-pseudonymized-log/clarifications.md)
+  - [spec](./005-pseudonymized-log/spec.md) — P1–P17
+  - [plan](./005-pseudonymized-log/plan.md) — Steps 0–7
+  - [tasks](./005-pseudonymized-log/tasks.md) — L0–L7
+
 Pending (not yet scaffolded): SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

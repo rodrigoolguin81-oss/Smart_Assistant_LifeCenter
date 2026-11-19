@@ -4,7 +4,16 @@
 # https://<machine>.<tailnet>.ts.net/) and sets WEBHOOK_URL for this process, so the Telegram
 # Trigger registers the public URL with Telegram. No other .env value is loaded.
 #
+# Execution retention (SPEC-005, NFR-08): n8n deletes stored executions older than
+# -ExecutionsMaxAgeHours (default 720 h = 30 days) for the whole instance.
+#
 # Usage (from the repo root):  .\n8n-start.ps1
+#   One-off short pruning test (SPEC-005 task L6):  .\n8n-start.ps1 -ExecutionsMaxAgeHours 1
+
+param(
+    [ValidateRange(1, 87600)]
+    [int]$ExecutionsMaxAgeHours = 720
+)
 
 $ErrorActionPreference = 'Stop'
 $envFile = Join-Path $PSScriptRoot '.env'
@@ -36,6 +45,13 @@ $env:WEBHOOK_URL = $url
 # Keep the editor (and the MCP OAuth issuer/endpoints n8n derives from it) on localhost: only
 # /webhook is published through Funnel, so OAuth must never point at the public host (D10).
 $env:N8N_EDITOR_BASE_URL = 'http://localhost:5678/'
+# Retention for this process only (SPEC-005 P10); other pruning settings keep n8n's defaults.
+$env:EXECUTIONS_DATA_PRUNE = 'true'
+$env:EXECUTIONS_DATA_MAX_AGE = "$ExecutionsMaxAgeHours"
 Write-Host "Arrancando n8n con WEBHOOK_URL=$url y N8N_EDITOR_BASE_URL=$env:N8N_EDITOR_BASE_URL"
+Write-Host "Retención de ejecuciones: EXECUTIONS_DATA_PRUNE=$env:EXECUTIONS_DATA_PRUNE EXECUTIONS_DATA_MAX_AGE=$env:EXECUTIONS_DATA_MAX_AGE (horas)"
+if ($ExecutionsMaxAgeHours -ne 720) {
+    Write-Host "AVISO: retención distinta de 720 h (30 días). Vuelve a arrancar con .\n8n-start.ps1 al terminar la prueba." -ForegroundColor Yellow
+}
 Write-Host 'Editor local: http://localhost:5678  (Ctrl+C para parar)'
 n8n start
