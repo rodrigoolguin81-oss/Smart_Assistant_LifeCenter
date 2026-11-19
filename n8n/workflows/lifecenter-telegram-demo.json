@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-19T17:51:32.123Z",
+    "updatedAt": "2026-11-19T18:30:09.894Z",
     "createdAt": "2026-11-18T18:28:42.757Z",
     "id": "q3f5dVrl8OUsXJrG",
     "name": "lifecenter-telegram-demo",
@@ -118,7 +118,7 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "position": [
-          2016,
+          2464,
           96
         ],
         "parameters": {
@@ -171,7 +171,7 @@
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.8,
         "position": [
-          672,
+          1120,
           0
         ],
         "parameters": {
@@ -194,7 +194,7 @@
         "type": "n8n-nodes-base.if",
         "typeVersion": 2.4,
         "position": [
-          896,
+          1344,
           0
         ],
         "parameters": {
@@ -226,7 +226,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1120,
+          1568,
           96
         ],
         "parameters": {
@@ -241,7 +241,7 @@
         "type": "n8n-nodes-base.if",
         "typeVersion": 2.4,
         "position": [
-          1792,
+          2240,
           0
         ],
         "parameters": {
@@ -274,7 +274,7 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "position": [
-          2016,
+          2464,
           -96
         ],
         "parameters": {
@@ -318,7 +318,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1120,
+          1568,
           -96
         ],
         "parameters": {
@@ -333,7 +333,7 @@
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.5,
         "position": [
-          1344,
+          1792,
           -96
         ],
         "parameters": {
@@ -364,7 +364,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1568,
+          2016,
           0
         ],
         "parameters": {
@@ -379,7 +379,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1568,
+          2016,
           -192
         ],
         "parameters": {
@@ -436,6 +436,55 @@
           }
         },
         "webhookId": "30aea96f-9f33-4b0a-9c42-f1dc3a59548c"
+      },
+      {
+        "id": "e0cd9a14-686a-4b21-8344-f0252a8d8705",
+        "name": "Detectar urgencia",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-003 urgency detector (specs/004-urgencies/plan.md). Deterministic: no LLM, no network.\n// Paste-ready for the n8n Code node \"Detectar urgencia\": no require/module/export here; the node\n// appends only its input/output wiring (U16). Tested by n8n/code/urgencias.test.js.\n\n// --- Configuration (U13) — the clinic's urgency phone. Example value until DEP-01. ---\nconst URGENCY_PHONE = '000 000 000';\nconst URGENCY_PHONE_IS_EXAMPLE = true;\n\n// --- Fixed texts (spec \"Fixed texts\"; approved by the human 2026-11-19; pending clinical review) ---\nconst URGENT_MESSAGE =\n  `No puedo valorar síntomas por aquí. Llama a la clínica al ${URGENCY_PHONE}. ` +\n  'Si es grave o tienes dificultad para respirar, llama al 112.';\nconst SEVERE_MESSAGE =\n  'Si tienes dificultad para respirar o tragar, una hemorragia que no para o te has dado un golpe ' +\n  'fuerte en la cara o la cabeza, llama ahora al 112. No puedo valorar síntomas por aquí. ' +\n  `Si no es una emergencia, llama a la clínica al ${URGENCY_PHONE}.`;\nconst EXAMPLE_PHONE_NOTICE =\n  '(Este teléfono es de ejemplo: todavía no tenemos el número real de la clínica.)';\n\n// --- Question flag and normalization (U10) ---\n// The flag is read on the raw (pseudonymized) text, before normalize() removes punctuation.\nfunction isQuestion(text) {\n  return /[¿?]/.test(String(text ?? ''));\n}\n\n// Lowercase, no accents, SPEC-001 placeholders removed, punctuation removed, single spaces.\nfunction normalize(text) {\n  return String(text ?? '')\n    .toLowerCase()\n    .normalize('NFD').replace(/\\p{M}+/gu, '')\n    .replace(/\\[(nombre|telefono|dni|email)\\]/g, ' ')\n    .replace(/[^\\p{L}\\p{N}\\s]+/gu, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\n// --- Rule tables (provisional clinical criteria, clarifications A1/A3; pending Prince Calderon).\n// Every pattern works on normalize()d text. A rule with several patterns needs all of them. ---\nconst SWELLING = /\\b(hinch\\w*|inflam\\w*)\\b/;\nconst BLEEDING = /\\bsangr\\w*/;\nconst BLOW = /\\b(golpe\\w*|caida|me cai|me he caido|se ha caido|accidente|traumatismo)\\b/;\n\n// Removed from the text before classifying (U8).\nconst FIGURATIVE = [\n  { id: 'fig_duele_que', re: /\\b(?:me |te |nos )?duele (?:pensar|pagar|gastar|tener que|que|ver|saber|el bolsillo|la cartera)\\b/g },\n  { id: 'fig_de_golpe', re: /\\bde golpe\\b/g },\n  { id: 'fig_me_muero_de', re: /\\bme muero de (?:ganas|risa)\\b/g },\n];\n\n// A1 — severe signs.\nconst SEVERE_RULES = [\n  { id: 'sev_breath_swallow', all: [/\\b(?:no puedo|me cuesta|le cuesta|dificultad para|no consigo|no puede)(?: \\w+)? (?:respirar|tragar)\\b/] },\n  { id: 'sev_swelling_neck_eye', all: [SWELLING, /\\b(?:cuello|ojo|ojos|no puedo abrir)\\b/] },\n  { id: 'sev_bleeding_nonstop', all: [BLEEDING, /\\b(?:no para|no se para|no deja de|sin parar|no se corta|a chorro)\\b/] },\n  { id: 'sev_blow_face_head', all: [BLOW, /\\b(?:cara|cabeza|mandibula)\\b/] },\n  { id: 'sev_blow_unconscious', all: [BLOW, /\\b(?:desmay\\w*|conocimiento|inconsciente)\\b/] },\n  { id: 'sev_blow_tooth_out', all: [BLOW, /\\b(?:se me ha caido|se le ha caido|arrancado)(?: \\w+)? (?:un |el )?(?:diente|muela)\\b/] },\n  { id: 'sev_fever_swelling', all: [/\\bfiebre\\b/, SWELLING] },\n];\n\n// A3 — symptom terms.\nconst SYMPTOM_TERMS = [\n  { id: 'sym_pain', all: [/\\b(?:dolor\\w*|duele|duelen|doler|dolera|doloros\\w*|molest\\w*|pinchazo\\w*)\\b/] },\n  { id: 'sym_bleeding', all: [BLEEDING] },\n  { id: 'sym_swelling', all: [SWELLING] },\n  { id: 'sym_fever', all: [/\\bfiebre\\b/] },\n  { id: 'sym_infection', all: [/\\b(?:pus|absces\\w*|flemon\\w*|infecc\\w*)\\b/] },\n  { id: 'sym_blow', all: [/\\b(?:golpe\\w*|traumatismo)\\b/] },\n  { id: 'sym_tooth_damage', all: [\n    /\\b(?:diente|dientes|muela|muelas|corona|empaste|funda|puente)\\b/,\n    /\\b(?:roto|rota|partido|partida|caido|caida|se mueve|se me mueve|suelto|suelta|flojo|floja|movido)\\b/,\n  ] },\n];\n\n// Hypothetical forms about a treatment: they take precedence over \"me\" (plan, step 4).\nconst HYPOTHETICAL = [\n  /\\b(?:me |te )?(?:va|van) a doler\\b/g,\n  /\\bdolera\\b/g,\n  /\\bes doloros[oa]\\b/g,\n  /\\bduele mucho (?:la|el)\\b/g,\n];\n\n// Signs that the patient reports an own, current or recent state.\nconst PERSONAL_MARKERS = [\n  /\\bme (?:duele\\w*|sangr\\w*|molest\\w*|hinch\\w*|ha|he|han|esta\\w*|noto|sale|cuesta|di|hicieron|pusieron)\\b/,\n  /\\bmis?\\b/,\n  /\\b(?:tengo|tiene|estoy|llevo|lleva|noto|sigue)\\b/,\n  /\\bse (?:me|le)\\b/,\n  /\\bdesde (?:ayer|hace|esta|el|que)\\b/,\n  /\\b(?:hoy|anoche|ahora)\\b/,\n];\n\nconst TREATMENT_WORDS =\n  /\\b(?:limpieza|blanqueamiento|ortodoncia|implantes?|endodoncia|extraccion|empastes?|tratamiento|anestesia|revision|radiografia|brackets)\\b/;\n\nfunction firing(rules, text) {\n  return rules.filter((r) => r.all.every((re) => re.test(text))).map((r) => r.id);\n}\n\n// --- Classification (U5–U9) ---\nfunction detectUrgency(text) {\n  const question = isQuestion(text);\n  let t = normalize(text);\n  const matched = [];\n\n  for (const f of FIGURATIVE) {\n    if (f.re.test(t)) {\n      matched.push(f.id);\n      f.re.lastIndex = 0;\n      t = t.replace(f.re, ' ').replace(/\\s+/g, ' ').trim();\n    }\n    f.re.lastIndex = 0;\n  }\n\n  const severe = firing(SEVERE_RULES, t);\n  if (severe.length) return { level: 'severe', matched: matched.concat(severe), question };\n\n  const symptoms = firing(SYMPTOM_TERMS, t);\n  if (!symptoms.length) return { level: 'none', matched, question };\n  matched.push(...symptoms);\n\n  let withoutHypothetical = t;\n  let hypothetical = false;\n  for (const re of HYPOTHETICAL) {\n    re.lastIndex = 0;\n    if (re.test(withoutHypothetical)) {\n      hypothetical = true;\n      re.lastIndex = 0;\n      withoutHypothetical = withoutHypothetical.replace(re, ' ');\n    }\n    re.lastIndex = 0;\n  }\n  const personal = PERSONAL_MARKERS.some((re) => re.test(withoutHypothetical));\n  if (!personal && TREATMENT_WORDS.test(t) && (question || hypothetical)) {\n    matched.push(hypothetical ? 'info_hypothetical' : 'info_question');\n    return { level: 'none', matched, question };\n  }\n\n  matched.push(personal ? 'reported_state' : 'doubt');\n  return { level: 'urgent', matched, question };\n}\n\n// --- Reply (U11–U13): fixed text only, built from the level, never from the message. ---\nfunction composeUrgencyReply(level) {\n  const base = level === 'severe' ? SEVERE_MESSAGE : URGENT_MESSAGE;\n  return URGENCY_PHONE_IS_EXAMPLE ? `${base}\\n\\n${EXAMPLE_PHONE_NOTICE}` : base;\n}\n\n// --- n8n wiring (U16): only input/output from here on ---\nconst r = detectUrgency($json.question);\nif (r.level === 'none') return { json: { ...$json, urgency_level: 'none' } };\nreturn { json: {\n  chatId: $json.chatId, text: composeUrgencyReply(r.level), handoff: true,\n  reason: 'urgency', urgency_level: r.level, matched: r.matched,\n} };\n"
+        },
+        "notes": "SPEC-003. Código = n8n/code/urgencias.js + cableado. Cambia el teléfono en URGENCY_PHONE (primeras líneas)."
+      },
+      {
+        "id": "5eb2e1a8-5a43-4b9e-a088-0bf28209ed3a",
+        "name": "¿Es urgencia?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.4,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.reason === 'urgency' }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
       }
     ],
     "connections": {
@@ -469,17 +518,6 @@
           [
             {
               "node": "Pedir texto",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Seudonimizar": {
-        "main": [
-          [
-            {
-              "node": "Buscar en kb",
               "type": "main",
               "index": 0
             }
@@ -605,6 +643,46 @@
             }
           ]
         ]
+      },
+      "Seudonimizar": {
+        "main": [
+          [
+            {
+              "node": "Detectar urgencia",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Detectar urgencia": {
+        "main": [
+          [
+            {
+              "node": "¿Es urgencia?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Es urgencia?": {
+        "main": [
+          [
+            {
+              "node": "¿Ofrecer recepción?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Buscar en kb",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "settings": {
@@ -618,15 +696,15 @@
     },
     "nodeGroups": [],
     "pinData": null,
-    "versionId": "948f4fcb-540c-42db-a1cf-6aff40c6c952",
-    "activeVersionId": "948f4fcb-540c-42db-a1cf-6aff40c6c952",
-    "versionCounter": 10,
+    "versionId": "ad1637b1-6900-4a5d-a89a-8d71efbdc9d9",
+    "activeVersionId": "ad1637b1-6900-4a5d-a89a-8d71efbdc9d9",
+    "versionCounter": 11,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],
     "versionMetadata": {
-      "name": "N6: botón Hablar con recepción",
-      "description": "Salida Botón del Switch → Telegram answerQuery (quita el indicador de carga del botón) → Telegram sendMessage con el texto de D8."
+      "name": "SPEC-003 U2: detector de urgencias",
+      "description": "Detectar urgencia (n8n/code/urgencias.js + cableado) y ¿Es urgencia? entre Seudonimizar y Buscar en kb. Urgencia → ¿Ofrecer recepción? (texto fijo con teléfono de urgencias y botón), sin Neon ni Gemini; none → camino de CHG-001 sin cambios."
     }
   }
 ]

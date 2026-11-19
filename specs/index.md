@@ -49,5 +49,20 @@ stale_after: null
   - Workflow: [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json)
     · how to run it: README, "Demo (n8n + Telegram)"
 
-Pending (not yet scaffolded): SPEC-003 (urgencias), SPEC-004 (citas), and
+- **004-urgencies** — deterministic symptom/urgency detection in the n8n demo workflow, fixed
+  two-level reply with the clinic's urgency phone, never reaching Gemini (PRD `US-003`, `RF-004`,
+  `NFR-04`, `RES-04`, `CONF-003`, `R-02`, traceability row **SPEC-003**) — **implemented for
+  the demo** (2026-11-19; U0–U5 done; NFR-04 30/30 on the dataset with 0 false positives; every
+  acceptance criterion met from Telegram. The clinical review by Prince Calderon is **pending**:
+  the criteria stay provisional and opening to real patients stays blocked. Example phone
+  `000 000 000` until DEP-01):
+  - [clarifications](./004-urgencies/clarifications.md)
+  - [spec](./004-urgencies/spec.md) — U1–U19
+  - [plan](./004-urgencies/plan.md) — normalization, rules, test and workflow wiring
+  - [tasks](./004-urgencies/tasks.md) — U0–U5
+  - Code: [`n8n/code/urgencias.js`](../n8n/code/urgencias.js) · test
+    `node n8n/code/urgencias.test.js` · dataset
+    [`evals/urgency_dataset.yaml`](../evals/urgency_dataset.yaml)
+
+Pending (not yet scaffolded): SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.
