@@ -4,7 +4,7 @@ spec_id: SPEC-005
 title: pseudonymized-log — Functional Spec
 description: Requirements to split the n8n demo into a channel workflow that stores nothing and a core workflow that stores only pseudonymized executions, and to delete stored executions after 30 days (US-007, NFR-08, RES-02, R-06), in EARS notation. Supersedes CHG-001 D11.
 tags: [spec, pseudonymized-log, SPEC-005, US-007, NFR-08, RES-02, R-06]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../003-n8n-migration/spec.md, ../004-urgencies/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-19T00:00:00Z }
 verified: { by: human, at: 2026-11-19T00:00:00Z }
@@ -104,24 +104,28 @@ Todo lo guardado se borra a los 30 días.
 
 ## Acceptance criteria
 
-- [ ] From Telegram, every behaviour is unchanged:
+- [x] From Telegram, every behaviour is unchanged:
   - the CHG-001 messages: limpieza, sábados, Sanitas, the name and phone message, the injection
     and a sticker;
   - the SPEC-003 messages: an urgent one, a severe one and a non-urgent one;
   - the button, which still gives the D8 text.
-- [ ] After those messages, the Executions list shows **no** new entry for A, and one entry for B
+- [x] After those messages, the Executions list shows **no** new entry for A, and one entry for B
   per text message that reached B (not for the sticker or the button).
-- [ ] A scan of those B executions finds none of the following: the test chat id, the Telegram
+- [x] A scan of those B executions finds none of the following: the test chat id, the Telegram
   profile name, the username, "Ana García" or "612 345 678". The name and phone message shows
   only `[NOMBRE]` and `[TELEFONO]`.
-- [ ] On start, `n8n-start.ps1` prints `EXECUTIONS_DATA_PRUNE=true` and
+- [x] On start, `n8n-start.ps1` prints `EXECUTIONS_DATA_PRUNE=true` and
   `EXECUTIONS_DATA_MAX_AGE=720`.
 - [ ] The short test with `EXECUTIONS_DATA_MAX_AGE=1` deletes executions older than one hour, and
   720 is restored afterwards.
-- [ ] Both workflows are exported with no secret or personal data, and A's export shows its "save
+  - **Pending** (2026-11-20). The first attempt never ran: n8n failed to start because the port
+    was in use, and the instance with 720 h kept running. Closed for the demo with a
+    configuration check only (tasks L6, option b). `n8n-start.ps1` now refuses to start when the
+    port is in use.
+- [x] Both workflows are exported with no secret or personal data, and A's export shows its "save
   no executions" settings.
-- [ ] `node n8n/code/urgencias.test.js` is green, with the sync check against B's export.
-- [ ] The human has deleted the pre-switch history, and no execution older than the switch
+- [x] `node n8n/code/urgencias.test.js` is green, with the sync check against B's export.
+- [x] The human has deleted the pre-switch history, and no execution older than the switch
   remains.
 
 ## Out of scope

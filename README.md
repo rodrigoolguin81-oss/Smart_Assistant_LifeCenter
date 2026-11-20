@@ -155,7 +155,9 @@ hold no keys: they only reference three n8n credentials by name.
 
    `-ExecutionsMaxAgeHours <n>` changes the retention, for example `.\n8n-start.ps1
    -ExecutionsMaxAgeHours 1` for a short pruning test. It prints a warning when the value is not
-   720: start again with `.\n8n-start.ps1` afterwards. If the execution policy blocks the script,
+   720: start again with `.\n8n-start.ps1` afterwards. The script refuses to start, and says which
+   process holds the port, when port 5678 is already in use: a running n8n would keep its own
+   settings (stop it first). If the execution policy blocks the script,
    run `powershell -ExecutionPolicy Bypass -File .\n8n-start.ps1`.
 4. On a new instance, create the credentials in the n8n UI with these exact names:
 

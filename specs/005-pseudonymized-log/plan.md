@@ -4,7 +4,7 @@ spec_id: SPEC-005
 title: pseudonymized-log — Technical Plan
 description: How to check the current retention, build the core workflow lifecenter-demo-core, slim the channel workflow down to receive, pseudonymize and reply with no stored executions, set 30-day pruning in n8n-start.ps1, run the one-off short pruning test, and export and document both workflows.
 tags: [plan, pseudonymized-log, SPEC-005, n8n]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md, ../003-n8n-migration/plan.md, ../004-urgencies/plan.md]
 generated: { by: claude-code, at: 2026-11-19T00:00:00Z }
 verified: { by: human, at: 2026-11-19T00:00:00Z }

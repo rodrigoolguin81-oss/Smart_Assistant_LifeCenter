@@ -41,6 +41,20 @@ if (-not (Get-Command n8n -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Refuse to start if another process (usually an n8n already running) holds the port: n8n would
+# fail with "port 5678 is already in use" and the running instance would keep its own settings,
+# e.g. a different retention (SPEC-005 task L6).
+$port = if ($env:N8N_PORT) { [int]$env:N8N_PORT } else { 5678 }
+$listener = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($listener) {
+    $owner = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+    $who = if ($owner) { "$($owner.ProcessName) (PID $($owner.Id), arrancado $($owner.StartTime))" } else { "PID $($listener.OwningProcess)" }
+    Write-Host "El puerto $port ya está ocupado por $who." -ForegroundColor Red
+    Write-Host 'Probablemente ya hay un n8n en marcha, con su propia configuración (por ejemplo, otra retención).' -ForegroundColor Red
+    Write-Host "Páralo (Ctrl+C en su consola o Stop-Process -Id $($listener.OwningProcess)) y vuelve a lanzar este script." -ForegroundColor Red
+    exit 1
+}
+
 $env:WEBHOOK_URL = $url
 # Keep the editor (and the MCP OAuth issuer/endpoints n8n derives from it) on localhost: only
 # /webhook is published through Funnel, so OAuth must never point at the public host (D10).

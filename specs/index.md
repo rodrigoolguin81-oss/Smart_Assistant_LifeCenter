@@ -67,9 +67,11 @@ stale_after: null
 - **005-pseudonymized-log** — split the n8n demo into a channel workflow that stores nothing and
   a core workflow with pseudonymized executions only, deleted after 30 days (PRD `US-007`,
   `NFR-08`, `RES-02`, `R-06`; new traceability row **SPEC-005**; supersedes CHG-001 D11) —
-  **built, pending L6** (2026-11-20; clarifications, spec, plan and tasks verified by human;
-  L0–L5 and L7 done; L6 short pruning test awaiting its final check. Accepted limitation: A's
-  running execution stays in n8n's local database for up to about 15 minutes):
+  **implemented for the demo** (2026-11-20; L0–L7 done; 7 of 8 acceptance criteria met. L6 was
+  closed by checking the configuration only: the short test never ran because port 5678 was
+  already in use, so the **real deletion test is pending**. `n8n-start.ps1` now refuses to start
+  when the port is in use. Accepted limitation: A's running execution stays in n8n's local
+  database for up to about 15 minutes, which blocks real patients until DEP-04):
   - [clarifications](./005-pseudonymized-log/clarifications.md)
   - [spec](./005-pseudonymized-log/spec.md) — P1–P17
   - [plan](./005-pseudonymized-log/plan.md) — Steps 0–7

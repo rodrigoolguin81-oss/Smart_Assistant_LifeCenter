@@ -4,7 +4,7 @@ spec_id: SPEC-005
 title: pseudonymized-log — Task Breakdown
 description: Ordered tasks to check the retention, build the core workflow B, slim the channel workflow A, publish and test, set 30-day pruning, delete the old history, run the short pruning test and export and document.
 tags: [tasks, pseudonymized-log, SPEC-005]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-19T00:00:00Z }
 verified: { by: human, at: 2026-11-19T00:00:00Z }
@@ -191,7 +191,32 @@ committed unless the human asks.
     This includes all old executions of A and the synthetic one of L2.
   - The agent then checks that none older than the switch remains.
   - Covers: P13; acceptance criterion 8.
-- [ ] L6 **[humano, asks for confirmation before restarting]**: Short pruning test (plan Step 6).
+- [x] L6 **[humano, asks for confirmation before restarting]**: Short pruning test (plan Step 6).
+  - **Closed 2026-11-20 by configuration check only (option b, human's decision).** The real
+    deletion test is **pending**.
+  - **What happened:** the start with `-ExecutionsMaxAgeHours 1` at 19:36 local time **failed**
+    with "port 5678 is already in use". Another n8n was already running, started on 2026-11-19
+    at 20:35:52 local time for L4 with 720 h (node PID 22256, still listening on 5678). That
+    instance handled every message, so pruning at 1 h never ran and nothing was deleted.
+  - **State confirmed** (read-only DB query, 2026-11-20): B 77–95 and 98 are still in
+    `execution_entity`, none soft-deleted; `execution_data` has 10 rows. No execution after 98.
+  - **What the earlier notes got wrong:** the "initial" and "intermediate" checks assumed
+    MAX_AGE=1. The finding on P8 still holds: A 97's soft-delete comes from A's "save no
+    executions" setting, not from pruning, so it does not depend on MAX_AGE.
+  - **Configuration check (n8n 2.48.4):**
+    - `@n8n/config/dist/configs/executions.config.js` maps `EXECUTIONS_DATA_PRUNE` to
+      `pruneData` and `EXECUTIONS_DATA_MAX_AGE` to `pruneDataMaxAge` (hours, default 336).
+    - `@n8n/db/dist/repositories/execution.repository.js` soft-deletes executions whose
+      `stoppedAt` is at or before now − `pruneDataMaxAge` hours.
+    - `n8n-start.ps1` sets both variables for its own process (L3).
+  - **Fix:** `n8n-start.ps1` now checks the port (5678, or `N8N_PORT` if set) before starting. If
+    it is in use, it prints the owning process and its start time, says to stop it, and exits
+    with code 1 without starting n8n. Checked: 0 parser errors, the BOM is kept, and with the
+    running n8n it refused to start (exit 1).
+  - **Pending, real deletion test:** stop the running n8n, start with `.\n8n-start.ps1
+    -ExecutionsMaxAgeHours 1`, wait about 2–2.5 h (soft-delete pass every 60 min plus the 1 h
+    buffer and a 15-min hard-delete pass), check that the old B executions are gone and a recent
+    one remains, then restart with `.\n8n-start.ps1`.
   - Preconditions: L5 done, and at least one execution of B more than 1 hour old.
   - The agent asks for confirmation and warns that the test deletes **every** execution older than
     1 hour on the whole instance.
@@ -227,8 +252,8 @@ committed unless the human asks.
       18:35 UTC, the soft-delete pass runs every 60 min, and hard deletion comes 1 h later.
     - B 98 is present.
     - No execution after 98: the message the human had just sent had not reached B.
-  - **Final check pending,** around 21:50 local time, with a fresh text message sent just
-    before.
+  - ~~Final check around 21:50 local time~~: not run, because pruning at 1 h never started (see
+    the closing note above).
 - [x] L7: Exports and docs (plan Step 7).
   - Done 2026-11-20, while L6 waits for its final check. n8n was not restarted.
   - **Exports**, both with the `shared` block removed and both matching the published version, with
