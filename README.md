@@ -85,19 +85,32 @@ Documents link to each other with relative Markdown links (e.g. `[plan](./plan.m
 
 ## Demo (n8n + Telegram)
 
-The demo is one n8n workflow, `lifecenter-telegram-demo` (change CHG-001,
-[specs/003-n8n-migration](specs/003-n8n-migration/plan.md)). It runs the SPEC-003 urgency
-detector ([specs/004-urgencies](specs/004-urgencies/plan.md)), the SPEC-002 retrieval and the
-SPEC-001 answer rules. Each message's path can be followed in n8n's Executions list:
+The demo runs on two n8n workflows (CHG-001,
+[specs/003-n8n-migration](specs/003-n8n-migration/plan.md), split by SPEC-005,
+[specs/005-pseudonymized-log](specs/005-pseudonymized-log/plan.md)):
+
+- **`lifecenter-telegram-demo` (A, channel).** It receives from Telegram, pseudonymizes, calls B
+  with the pseudonymized text only, and replies. It handles stickers, photos and the "Hablar con
+  recepción" button on its own. It **saves no executions**.
+- **`lifecenter-demo-core` (B, core).** It runs the SPEC-003 urgency detector
+  ([specs/004-urgencies](specs/004-urgencies/plan.md)), the SPEC-002 retrieval and the SPEC-001
+  answer rules. It receives **only** the pseudonymized `question`, with no chat id and no Telegram
+  data. It **saves its executions**, kept for 30 days, so **each message's path is followed in
+  the Executions of `lifecenter-demo-core`**.
 
 ```text
-Telegram → Seudonimizar → Detectar urgencia → ¿Es urgencia?
-  ├─ yes → fixed urgency reply (clinic phone / 112) ───────────────────────┐
-  └─ no  → Buscar en kb (Neon FTS) → ¿Hay contexto? (≥ 0.01)                │
-             ├─ no  → Abstención ───────────────────────────────────────────┤
-             └─ yes → Preparar prompt → Gemini ─┬─ ok    → Validar y componer ┤→ Telegram reply
-                                                └─ error → Error ─────────────┘  (+ "Hablar con
-                                                         recepción" button on urgency, abstention or error)
+A  Telegram → ¿Qué ha llegado? ─ button  → D8 handoff text
+                               ─ other   → "Solo puedo leer mensajes de texto…"
+                               ─ text    → Seudonimizar → Llamar al núcleo ──question──▶ B
+                                            ◀── reply fields ── Componer respuesta (+ A's chat id)
+                                            → Telegram reply (+ "Hablar con recepción" button)
+
+B  Recibir pregunta → Detectar urgencia → ¿Es urgencia?
+     ├─ yes → fixed urgency reply (clinic phone / 112) ──────────────────────┐
+     └─ no  → Buscar en kb (Neon FTS) → ¿Hay contexto? (≥ 0.01)               │
+                ├─ no  → Abstención ──────────────────────────────────────────┤
+                └─ yes → Preparar prompt → Gemini ─┬─ ok    → Validar y componer ┤→ Resultado
+                                                   └─ error → Error ─────────────┘
 ```
 
 Messages that report a symptom never reach Neon or Gemini. The detector is deterministic (no
@@ -107,8 +120,10 @@ LLM). Its code is [n8n/code/urgencias.js](n8n/code/urgencias.js), the same code 
 which reports NFR-04 and the false positives, and also checks that the exported node carries the
 same code.
 
-The workflow is versioned in [n8n/workflows/lifecenter-telegram-demo.json](n8n/workflows/lifecenter-telegram-demo.json).
-It holds no keys: it only references three n8n credentials by name.
+Both workflows are versioned in
+[n8n/workflows/lifecenter-telegram-demo.json](n8n/workflows/lifecenter-telegram-demo.json) (A)
+and [n8n/workflows/lifecenter-demo-core.json](n8n/workflows/lifecenter-demo-core.json) (B). They
+hold no keys: they only reference three n8n credentials by name.
 
 ### Prerequisites
 
@@ -131,9 +146,17 @@ It holds no keys: it only references three n8n credentials by name.
    #   and remove it before the demo: tailscale funnel --set-path /webhook-test off
    ```
 
-3. Start n8n with `.\n8n-start.ps1`. The script reads `N8N_WEBHOOK_URL`, sets `WEBHOOK_URL` and
-   keeps the editor at `http://localhost:5678`. If the execution policy blocks it, run
-   `powershell -ExecutionPolicy Bypass -File .\n8n-start.ps1`.
+3. Start n8n with `.\n8n-start.ps1`. The script:
+   - reads `N8N_WEBHOOK_URL` and sets `WEBHOOK_URL`;
+   - keeps the editor at `http://localhost:5678`;
+   - sets the **30-day retention** for the whole instance (`EXECUTIONS_DATA_PRUNE=true`,
+     `EXECUTIONS_DATA_MAX_AGE=720` hours) and prints both values. n8n deletes stored executions
+     older than that.
+
+   `-ExecutionsMaxAgeHours <n>` changes the retention, for example `.\n8n-start.ps1
+   -ExecutionsMaxAgeHours 1` for a short pruning test. It prints a warning when the value is not
+   720: start again with `.\n8n-start.ps1` afterwards. If the execution policy blocks the script,
+   run `powershell -ExecutionPolicy Bypass -File .\n8n-start.ps1`.
 4. On a new instance, create the credentials in the n8n UI with these exact names:
 
    | Name | Type | Value |
@@ -142,18 +165,24 @@ It holds no keys: it only references three n8n credentials by name.
    | `Gemini API` | Header Auth, name `x-goog-api-key` | Gemini API key |
    | `Neon main` | Postgres, SSL `require` | host, database, user and password of the direct connection |
 
-   Then import the workflow with
-   `n8n import:workflow --input=n8n/workflows/lifecenter-telegram-demo.json`. Credential ids
-   differ between instances, so select the three credentials again in the Telegram, Postgres
-   and Gemini nodes.
-5. **Publish** the workflow in the editor. This registers the bot's webhook at
-   `<N8N_WEBHOOK_URL>webhook/…`. After editing it, publish again: the active version does not
-   change on its own.
+   Then import **B first, then A**:
+   - `n8n import:workflow --input=n8n/workflows/lifecenter-demo-core.json`;
+   - `n8n import:workflow --input=n8n/workflows/lifecenter-telegram-demo.json`.
+
+   On another instance, three ids change:
+   - select the credentials again: Postgres and Gemini in B, the Telegram nodes in A;
+   - point A's "Llamar al núcleo" node at B's id;
+   - in B's settings, allow only A's id as a caller.
+5. **Publish B, then A**, in the editor. Publishing A registers the bot's webhook at
+   `<N8N_WEBHOOK_URL>webhook/…`. After editing either one, publish it again: the active version
+   does not change on its own.
 
 ### Try it
 
-Send these messages to the bot, then open **Executions** in n8n to see each one's path. Each
-reply's `reason` is shown in the last Code node.
+Send these messages to the bot, then open the **Executions of `lifecenter-demo-core`** in n8n to
+see each one's path. The reply's fields, including `reason`, are in its last node, "Resultado".
+A shows no executions by design. Stickers, photos and the button do not reach B, so they leave no
+execution.
 
 | Message | Expected reply |
 |---|---|
@@ -169,7 +198,8 @@ reply's `reason` is shown in the last Code node.
 
 To set the clinic's real urgency phone, change `URGENCY_PHONE` (and set `URGENCY_PHONE_IS_EXAMPLE`
 to `false`) at the top of `n8n/code/urgencias.js`. Then paste the file into the "Detectar
-urgencia" node, keeping its last lines (the wiring), publish, re-export and run the test.
+urgencia" node of `lifecenter-demo-core`, keeping its last lines (the wiring), publish,
+re-export and run the test.
 
 ### Known limitations of the demo
 
@@ -178,10 +208,18 @@ urgencia" node, keeping its last lines (the wiring), publish, re-export and run 
   [clarifications](specs/003-n8n-migration/clarifications.md), "Demo deviation from NFR-01".
 - **Model:** `gemini-flash-lite-latest` is an alias, chosen for stability on the free tier. In
   production, pin a concrete version on a paid plan.
-- **Privacy:** n8n stores every execution, including the raw Telegram message. Use team test
-  messages only. SPEC-003 is in place, but real patients are still blocked. See
-  [SPEC-003 clarifications](specs/004-urgencies/clarifications.md), "Dependencies and
-  conditions".
+- **Privacy (SPEC-005):**
+  - Only B's executions are stored. They hold the pseudonymized text and no identifier, and are
+    deleted after 30 days. The 30 days come from the PRD; n8n's default is 14, and LifeCenter's
+    management (DEP-04) may shorten it.
+  - n8n still writes A's running execution to its local database, with the raw message, the
+    chat id and the Telegram name and username. It removes it within about 15 minutes. It is
+    never shown in the editor or through the MCP, and removing it depends on pruning being on.
+  - The pseudonymized texts B keeps can still contain a name written without "me llamo"/"mi
+    nombre es"/"a nombre de", and symptoms, which are health data.
+  - Use team test messages only. Real patients are still blocked. See
+    [SPEC-005 clarifications](specs/005-pseudonymized-log/clarifications.md), "Known
+    limitations" and "Dependencies and conditions".
 - **Names:** a name is only detected after "me llamo", "mi nombre es" or "a nombre de".
 - **Urgencies:**
   - The phone is an example (`000 000 000`) until LifeCenter provides the real one (DEP-01).
@@ -193,11 +231,16 @@ urgencia" node, keeping its last lines (the wiring), publish, re-export and run 
 ### Export after changing the workflow
 
 ```bash
-n8n export:workflow --id=<id> --output=n8n/workflows/lifecenter-telegram-demo.json --pretty
-# Drop the owner block ("shared": project name and e-mail) before committing:
-python -c "import json,sys;p=sys.argv[1];d=json.load(open(p,encoding='utf-8'));[w.pop('shared',None) for w in d];open(p,'w',encoding='utf-8',newline='\n').write(json.dumps(d,ensure_ascii=False,indent=2)+'\n')" n8n/workflows/lifecenter-telegram-demo.json
+n8n export:workflow --id=<A id> --output=n8n/workflows/lifecenter-telegram-demo.json --pretty
+n8n export:workflow --id=<B id> --output=n8n/workflows/lifecenter-demo-core.json --pretty
+# Drop the owner block ("shared": project name and e-mail) from both before committing:
+for f in n8n/workflows/lifecenter-telegram-demo.json n8n/workflows/lifecenter-demo-core.json; do
+  python -c "import json,sys;p=sys.argv[1];d=json.load(open(p,encoding='utf-8'));[w.pop('shared',None) for w in d];open(p,'w',encoding='utf-8',newline='\n').write(json.dumps(d,ensure_ascii=False,indent=2)+'\n')" "$f"
+done
 # Must print nothing:
-grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/lifecenter-telegram-demo.json
+grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/*.json
+# The urgency test also checks that B's "Detectar urgencia" carries n8n/code/urgencias.js:
+node n8n/code/urgencias.test.js
 ```
 
 ## Git rule

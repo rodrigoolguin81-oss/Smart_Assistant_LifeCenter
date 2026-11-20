@@ -69,6 +69,12 @@ Todo lo guardado se borra a los 30 días.
 
 - P8. A SHALL save **no** execution data: not for successful runs, not for failed runs, not for
   manual runs, and no execution progress.
+  - **Accepted limitation** (human, 2026-11-20, found in task L6): n8n still writes A's running
+    execution to its local database. On finishing it soft-deletes it, and the next hard-delete
+    pass removes it **within about 15 minutes**.
+  - It is never visible in the editor or through the MCP.
+  - It is a blocking condition for real patients (DEP-04). See clarifications, Known
+    limitations.
 - P9. WHEN a message has been handled, n8n's Executions list SHALL show **no** entry for A. It
   SHALL show one entry for B for each text message that reached B.
 

@@ -7,7 +7,8 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const SOURCE_PATH = path.join(__dirname, 'urgencias.js');
 const DATASET_PATH = path.join(ROOT, 'evals', 'urgency_dataset.yaml');
-const EXPORT_PATH = path.join(ROOT, 'n8n', 'workflows', 'lifecenter-telegram-demo.json');
+// SPEC-005 P15: "Detectar urgencia" lives in the core workflow B since the split.
+const EXPORT_PATH = path.join(ROOT, 'n8n', 'workflows', 'lifecenter-demo-core.json');
 const NODE_NAME = 'Detectar urgencia';
 const LEVELS = ['urgent', 'severe', 'none'];
 

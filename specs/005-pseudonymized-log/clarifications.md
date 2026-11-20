@@ -122,6 +122,17 @@ period is set. **This spec supersedes CHG-001 D11.**
     content);
   - nor are backups of n8n's own database.
 - **Grouping.** With no identifier in B, its executions cannot be grouped by conversation.
+- **A's execution is kept briefly in n8n's local database** (found in task L6, accepted by the
+  human on 2026-11-20 for the demo).
+  - With "save no executions", n8n still writes A's execution, with its full data, to its local
+    database (`~/.n8n/database.sqlite`) while it runs. On finishing it marks the execution
+    soft-deleted.
+  - The next hard-delete pass, every 15 min, removes it. Until then (**up to about 15 minutes**)
+    it holds the raw message, the chat id and the Telegram profile name and username.
+  - It is never shown in the editor or through the MCP, and it is not reachable from outside.
+  - Execution 97 was seen soft-deleted at 18:38 UTC and gone at 18:51 UTC (L6).
+  - Removing it depends on n8n's pruning being on (`EXECUTIONS_DATA_PRUNE=true`, set by
+    `n8n-start.ps1`).
 
 ## Dependencies and conditions
 
@@ -134,4 +145,6 @@ period is set. **This spec supersedes CHG-001 D11.**
   - the example data and phone (DEP-01);
   - the clinical review (SPEC-003 U5);
   - consent (CONF-005);
+  - **the raw data A leaves in n8n's local database for up to about 15 minutes** (Known
+    limitations), which LifeCenter's management must accept or have mitigated;
   - DEP-04.

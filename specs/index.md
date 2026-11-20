@@ -67,12 +67,17 @@ stale_after: null
 - **005-pseudonymized-log** — split the n8n demo into a channel workflow that stores nothing and
   a core workflow with pseudonymized executions only, deleted after 30 days (PRD `US-007`,
   `NFR-08`, `RES-02`, `R-06`; new traceability row **SPEC-005**; supersedes CHG-001 D11) —
-  **specified** (2026-11-19; clarifications, spec, plan and tasks verified by human;
-  implementation L0 next):
+  **built, pending L6** (2026-11-20; clarifications, spec, plan and tasks verified by human;
+  L0–L5 and L7 done; L6 short pruning test awaiting its final check. Accepted limitation: A's
+  running execution stays in n8n's local database for up to about 15 minutes):
   - [clarifications](./005-pseudonymized-log/clarifications.md)
   - [spec](./005-pseudonymized-log/spec.md) — P1–P17
   - [plan](./005-pseudonymized-log/plan.md) — Steps 0–7
   - [tasks](./005-pseudonymized-log/tasks.md) — L0–L7
+  - Workflows: [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json)
+    (A, channel, saves nothing) and
+    [`n8n/workflows/lifecenter-demo-core.json`](../n8n/workflows/lifecenter-demo-core.json) (B,
+    core, executions kept 30 days) · retention: `n8n-start.ps1 -ExecutionsMaxAgeHours`
 
 Pending (not yet scaffolded): SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

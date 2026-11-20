@@ -154,10 +154,8 @@ committed unless the human asks.
     B execution.
   - **Scan:** none of the 9 B executions (77–85, 88–95) contains a chat id, Telegram profile
     name, username, "Ana García" or "612 345 678". A still has **0** stored executions.
-  - **Unexplained:** the first attempt at those three messages (around 20:42–20:45) left no B
-    execution. A stores nothing, failures included, so n8n has no trace of the cause; the re-send
-    worked. This is the accepted cost of Q4. If it happens again, the n8n console is the only
-    source.
+  - **Correction (human, 2026-11-20):** the three "missing" messages had not been sent before
+    20:46. They were first sent at 20:46–20:48, so there was no failure.
   - **In progress, 2026-11-19.** The human restarted n8n (PRUNE=true, MAX_AGE=720), published B
     and then A, and sent the test messages from 20:41 local time.
   - **What the agent found:**
@@ -179,7 +177,15 @@ committed unless the human asks.
   - Publish **B, then A**, and send the acceptance messages and the button. The agent checks the
     Executions list and scans the new B executions.
   - Covers: acceptance criteria 1–4.
-- [ ] L5 **[humano]**: Delete the old history (plan Step 5).
+- [x] L5 **[humano]**: Delete the old history (plan Step 5).
+  - Done 2026-11-20 by the human from the editor. Deleted:
+    - every execution of `lifecenter-telegram-demo` (52 in all, including the synthetic 73);
+    - executions 72–75 of `lifecenter-demo-core`.
+  - **Agent check:**
+    - **Through the MCP:** only B executions 77–95 remain, dated 2026-11-19 from 19:41 to 19:47
+      UTC, all after the switch. There is none of A.
+    - **Read-only query on `~/.n8n/database.sqlite`, table `execution_entity`:** 9 rows, all of
+      B, none soft-deleted, and no row of any other workflow. `execution_data` also has 9 rows.
   - **Reminder:** once L4 passes, delete from the n8n editor every execution from before the
     switch. They contain raw messages, your Telegram profile name and username, and test phones.
     This includes all old executions of A and the synthetic one of L2.
@@ -192,7 +198,57 @@ committed unless the human asks.
   - Start with `.\n8n-start.ps1 -ExecutionsMaxAgeHours 1`, check that the old B executions are
     deleted and the recent ones remain, then restart with `.\n8n-start.ps1` (720).
   - Covers: P11, P12; acceptance criterion 5.
-- [ ] L7: Exports and docs (plan Step 7).
+  - **In progress, 2026-11-20.** The human confirmed, restarted n8n with
+    `-ExecutionsMaxAgeHours 1` (it prints MAX_AGE=1 and the warning), and sent "¿Cuánto cuesta
+    una limpieza?" at 19:36 local time (18:36 UTC).
+  - **Initial state** (read-only query on `~/.n8n/database.sqlite`, 18:38 UTC):
+    - `execution_entity` has B 77–95, the 9 old ones (2026-11-19 19:41–19:47 UTC), not
+      soft-deleted, plus the new B 98 (18:36:47 UTC). It also has **A 97** (18:36:46 UTC), already
+      soft-deleted. `execution_data` has 11 rows.
+  - **Finding on P8:** A's "save no executions" setting does **not** keep its data out of the
+    database. n8n writes A's execution while it runs, and on finishing marks it soft-deleted with
+    `deletedAt` = start − 1 h, so the next hard-delete pass (every 15 min) removes it. Until then
+    its `execution_data` row (execution 97) **does** contain the chat id, `first_name`,
+    `username` and the message text (checked by presence only, no value printed). It never shows
+    in the editor or the MCP.
+  - **For the final check (around 21:50 local time):**
+    - 77–95 are deleted;
+    - 97 (A) is hard-deleted;
+    - the human's fresh message survives;
+    - 98 is deleted too, being over 1 h old by then.
+
+    The finding on P8 was **accepted** by the human on 2026-11-20 as a documented limitation
+    for the demo, and is recorded in the clarifications (Known limitations and blocking
+    conditions) and in spec P8.
+  - **Intermediate check** (19:51 local time, 18:51 UTC; read-only DB query):
+    - **A 97 is hard-deleted**, row and data gone, within about 15 min. This confirms the
+      transient window.
+    - B 77–95 are still present and not soft-deleted. That is expected: n8n restarted at about
+      18:35 UTC, the soft-delete pass runs every 60 min, and hard deletion comes 1 h later.
+    - B 98 is present.
+    - No execution after 98: the message the human had just sent had not reached B.
+  - **Final check pending,** around 21:50 local time, with a fresh text message sent just
+    before.
+- [x] L7: Exports and docs (plan Step 7).
+  - Done 2026-11-20, while L6 waits for its final check. n8n was not restarted.
+  - **Exports**, both with the `shared` block removed and both matching the published version, with
+    no `pinData`:
+    - A → `n8n/workflows/lifecenter-telegram-demo.json`: 11 nodes; settings none, none, false,
+      false; credential `Telegram LifeCenter Bot`;
+    - B → `n8n/workflows/lifecenter-demo-core.json`: 11 nodes; save all; caller policy
+      limited to A; credentials `Neon main` and `Gemini API`; **no node references `chatId`**.
+  - **Scan** of both files: no keys, connection strings, e-mail, profile name, username or chat
+    id.
+  - **`n8n/code/urgencias.test.js`:** the sync check now reads B's export. Output: GREEN, NFR-04
+    30/30, severe 8/8, 0 false positives, 0 false negatives, sync check run (not skipped).
+  - **README "Demo" section:**
+    - the two workflows and their diagram;
+    - where each path is seen (B's Executions, "Resultado");
+    - the 30-day retention and `-ExecutionsMaxAgeHours`;
+    - import and publish B before A, with the ids to re-link on another instance;
+    - the SPEC-005 privacy limitations;
+    - the export commands for both workflows.
+  - **`specs/index.md`:** "built, pending L6".
   - Export A and B with the `shared` block removed, and run the scan.
   - Point the sync check of `urgencias.test.js` at B's export; the test must be green.
   - Update the README "Demo" section and `specs/index.md`.
