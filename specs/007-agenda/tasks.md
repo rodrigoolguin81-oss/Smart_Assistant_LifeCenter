@@ -89,7 +89,30 @@ Same pattern as SPEC-006 K0–K3. **Nothing is touched before the plan is approv
   - Only write it here: **do not run it against Neon** until E2 is confirmed.
   - Check: it compiles locally (`py_compile`), and every criterion maps to at least one test.
   - Covers: G19 and the acceptance criteria.
-- [ ] E2 **[confirmación]**: `003_agenda.sql` on the test branch (plan Step 2).
+- [x] E2 **[confirmación]**: `003_agenda.sql` on the test branch (plan Step 2).
+  - Done 2026-11-22, after the human saw the summarized SQL, the exact commands and the host
+    (`ep-blue-firefly-…`, the test branch) and confirmed. **Main was not touched.**
+  - **`app/infra/sql/003_agenda.sql`** (343 lines, idempotent):
+    - `btree_gist`, then 6 configuration tables seeded with `ON CONFLICT DO NOTHING` and
+      `agenda_appointments`, which carries the two exclusion constraints and a role trigger;
+    - `REVOKE … FROM PUBLIC`;
+    - 7 functions: `agenda_subject`, `agenda_purge`, `agenda_slot_problem`,
+      `agenda_free_slots_at`, `agenda_book_at`, and the public `agenda_free_slots` and
+      `agenda_book`, which take no time parameter.
+    - It has no `DROP`, `TRUNCATE` or write on `kb_fragments`, `consent` or `consent_key`.
+  - **Red first.** The run excluded the `reapplying` tests and the file-exists test, so nothing
+    was created. Result: 54 failed, 1 passed, 3 deselected.
+    - Every failure was a missing agenda object: `UndefinedFunction` on `agenda_book_at`,
+      `agenda_free_slots_at`, `agenda_subject` and `agenda_free_slots`, `UndefinedTable` on the
+      `agenda_*` tables, or an assertion that found no columns or functions.
+    - The one that passed is "no new key table", correct before the schema.
+  - **Schema applied:** "Esquema aplicado en ep-blue-firefly-….neon.tech (TEST_DATABASE_URL)."
+  - **Green at the first run.** `test_agenda_sql.py`: **58 passed** (40 s), with no change to the
+    SQL. All of `tests/infra`: **117 passed** (SPEC-002 and SPEC-006 unaffected).
+  - **Afterwards** (read-only, test branch):
+    - 0 appointments and 0 closures, so the cleanup worked;
+    - `consent` has 0 rows and `consent_key` 1;
+    - `horizon` is back to 30 days after the "keeps changed values" test.
   - Write `app/infra/sql/003_agenda.sql`.
   - **Before running anything,** show the human the full SQL and the exact commands, and check
     the target host.
