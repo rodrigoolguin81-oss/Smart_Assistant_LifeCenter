@@ -8,7 +8,11 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SOURCE_PATH = path.join(__dirname, 'urgencias.js');
 const DATASET_PATH = path.join(ROOT, 'evals', 'urgency_dataset.yaml');
 // SPEC-005 P15: "Detectar urgencia" lives in the core workflow B since the split.
-const EXPORT_PATH = path.join(ROOT, 'n8n', 'workflows', 'lifecenter-demo-core.json');
+// SPEC-006 C25: A runs it too (before the consent check), so both exports are checked.
+const EXPORT_PATHS = [
+  path.join(ROOT, 'n8n', 'workflows', 'lifecenter-demo-core.json'),
+  path.join(ROOT, 'n8n', 'workflows', 'lifecenter-telegram-demo.json'),
+];
 const NODE_NAME = 'Detectar urgencia';
 const LEVELS = ['urgent', 'severe', 'none'];
 
@@ -130,14 +134,18 @@ check('replies never echo the message (U12)', () => {
 });
 
 // --- Sync with the exported workflow (U16) ---
-check('n8n node carries this exact code', () => {
-  if (!fs.existsSync(EXPORT_PATH)) { console.log('SKIP sync check: no export'); return; }
-  const wf = JSON.parse(fs.readFileSync(EXPORT_PATH, 'utf8'));
-  const nodes = (Array.isArray(wf) ? wf[0] : wf).nodes;
-  const node = nodes.find((n) => n.name === NODE_NAME);
-  if (!node) { console.log(`SKIP sync check: node "${NODE_NAME}" not in the export yet`); return; }
-  if (!node.parameters.jsCode.startsWith(source)) throw new Error(`"${NODE_NAME}" jsCode does not start with urgencias.js`);
-});
+for (const exportPath of EXPORT_PATHS) {
+  const file = path.basename(exportPath);
+  check(`n8n node carries this exact code (${file})`, () => {
+    if (!fs.existsSync(exportPath)) { console.log(`SKIP sync check: no export ${file}`); return; }
+    const wf = JSON.parse(fs.readFileSync(exportPath, 'utf8'));
+    const nodes = (Array.isArray(wf) ? wf[0] : wf).nodes;
+    const node = nodes.find((n) => n.name === NODE_NAME);
+    if (!node) { console.log(`SKIP sync check: node "${NODE_NAME}" not in ${file} yet`); return; }
+    if (!node.parameters.jsCode.startsWith(source)) throw new Error(`"${NODE_NAME}" jsCode in ${file} does not start with urgencias.js`);
+    console.log(`sync check run: ${file}`);
+  });
+}
 
 // --- Report ---
 console.log('\n== SPEC-003 urgency report');

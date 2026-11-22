@@ -25,7 +25,29 @@ before the plan is approved.** Steps marked **[humano]** need the human, and ste
 **[confirmación]** wait for the human's go-ahead before creating anything. Nothing is committed
 unless the human asks.
 
-- [ ] K0: Facts, read-only (plan Step 0).
+- [x] K0: Facts, read-only (plan Step 0).
+  - Done 2026-11-22. Nothing was created or changed: read-only connections to Neon, and reads of
+    the installed n8n package.
+  - **Roles** (read from `.env`, user name only; no password or URL printed):
+    - `DIRECT_URL`, `DATABASE_URL` (pooled) and `TEST_DATABASE_URL` all use **`neondb_owner`**.
+      The test branch has a different host from main.
+    - `Neon main` was built from the parts of `DIRECT_URL` (human), so n8n uses `neondb_owner`
+      too. That role owns `kb_fragments` and has `CREATE` on schema `public`, so it can create
+      and call the functions; no `GRANT` is needed.
+    - It is not a superuser, but it is a member of `neon_superuser`, which is what Neon requires
+      to run `CREATE EXTENSION`.
+    - The same role that n8n uses can read `consent_key`. `REVOKE … FROM PUBLIC` does not change
+      that; it is the accepted limitation (spec, Known limitations).
+  - **Neon:** PostgreSQL 18.7 on both branches.
+    - `pgcrypto` 1.4 is **available and not installed** on the test branch or on main.
+    - `consent` and `consent_key` do not exist on either.
+  - **n8n 2.48.4:**
+    - In the Telegram node, the inline-keyboard button's `callback_data` is a plain string field
+      without `noDataExpression`, so it accepts expressions. Its description states the limit:
+      "1-64 bytes".
+    - `$('<node>').isExecuted` is implemented in `n8n-workflow`'s data proxy
+      (`workflow-data-proxy.js`), which Code nodes use for `$()`. n8n's own error message
+      suggests it for nodes that may not have run.
   - Check that `pgcrypto` is available and installed on the test branch and on main.
   - Read the role names in `DIRECT_URL` and `TEST_DATABASE_URL` from `.env`, without printing
     the password or the full URL. `Neon main` was created from the parts of `DIRECT_URL`
@@ -34,7 +56,37 @@ unless the human asks.
     `isExecuted` in Code nodes.
   - Check: the findings are recorded here, and nothing was created or changed.
   - Covers: preconditions of C18, C19 and Step 4.
-- [ ] K1: `consentimiento.js` and its Node test (plan Step 1).
+- [x] K1: `consentimiento.js` and its Node test (plan Step 1).
+  - Done 2026-11-22. Nothing was touched in n8n or Neon.
+  - **Red first.** `n8n/code/consentimiento.test.js` was written with the texts typed
+    independently and a 28-case decision table. `consentimiento.js` at first held only the
+    version, texts, labels and fixed `callback_data`, as in SPEC-003 U0. Red for the right
+    reason:
+    - 10 checks failed, all with "… is not implemented": `callbackAccept`, `parseCommand`,
+      `parseCallback`, `classifyUpdate`, `isConsentInForce`, `formatDate` and `decide`;
+    - the version, texts and button labels passed;
+    - the sync checks were skipped ("Clasificar" and "Decidir" are not in A's export yet).
+  - **Green.** With the functions added, every check passes.
+  - **Choices made in the code:**
+    - commands are exact but **case-insensitive** (`/Privacidad`, `/PRIVACIDAD`), as the human
+      asked on 2026-11-22. The spec ("Command") was updated, the test got the cases first (red:
+      2 checks), and then the `i` flag made it green;
+    - **urgencies without consent**, checked end to end because the human asked (2026-11-22).
+      The real `urgencias.js` runs with B's wiring on the urgent and severe acceptance messages,
+      for three states: never accepted, withdrawn, and an older notice. Each time `decide()`
+      returns the urgency reply with «Hablar con recepción», never `core` (B not called) and
+      never the notice; the severe one carries the 112. It passed at once, because the
+      behaviour was already there;
+    - an empty text counts as "no text" (`other`), as A's current switch does;
+    - `decide()` throws for the handoff route, so a wiring mistake is not silently answered
+      (C12);
+    - with consent in force, an urgency goes to B (`core`), so it is still recorded there (C3).
+  - **Copies checked against the current workflows:** `TEXT_ONLY_TEXT` equals A's "Pedir texto"
+    (D12), `ERROR_TEXT` is the text in B's "Error" (D7), and the «Hablar con recepción» label
+    matches A's button.
+  - **`urgencias.test.js`:** the sync check now covers both exports. B's runs; A's is skipped
+    until A has "Detectar urgencia". Still GREEN: NFR-04 30/30, severe 8/8, 0 false positives
+    and 0 false negatives.
   - First `n8n/code/consentimiento.test.js`: the texts, the decision table, the 64-byte limit,
     commands, version, dates and the sync check. It must be **red** for the right reason: only
     the missing functions fail.

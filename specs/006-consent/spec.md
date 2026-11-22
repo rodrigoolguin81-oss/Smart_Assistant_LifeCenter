@@ -40,7 +40,9 @@ siempre, con o sin consentimiento.
 - *Consent module*: `n8n/code/consentimiento.js`, which holds `CONSENT_TEXT_VERSION`, every text
   below and the decision logic (clarifications Q11).
 - *Command*: a text message that is exactly `/start` or `/privacidad`, optionally followed by
-  `@<bot name>`, ignoring surrounding spaces.
+  `@<bot name>`, ignoring surrounding spaces and **letter case** (`/Privacidad`, `/PRIVACIDAD`;
+  human, 2026-11-22, because phone keyboards often capitalize the first letter). A command
+  followed by other text is not a command.
 
 **Fixed texts.**
 
