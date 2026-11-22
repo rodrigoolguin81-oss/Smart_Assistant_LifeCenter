@@ -122,7 +122,27 @@ unless the human asks.
     creates `pgcrypto`, `consent_key` with its key, `consent` and the functions.
   - Check: the test is green on `TEST_DATABASE_URL`, and the key is never printed.
   - Covers: C17–C20.
-- [ ] K3 **[confirmación]**: Neon schema on main (plan Step 3).
+- [x] K3 **[confirmación]**: Neon schema on main (plan Step 3).
+  - Done 2026-11-22, after the human confirmed. Beforehand the human was shown the exact command,
+    the main host (`ep-steep-resonance-…eu-central-1`, which differs from the test host), the
+    proof that re-applying `001_kb_fragments.sql` only uses `IF NOT EXISTS`, and the read-only
+    check.
+  - **Read-only check, before and after.** The check printed only counts, existence and an md5
+    digest of the whole `kb_fragments` table, no values:
+
+    | | Before | After |
+    |---|---|---|
+    | `kb_fragments` rows | 9 | 9 |
+    | `kb_fragments` md5 | `73ef6b7e…cdf5d` | `73ef6b7e…cdf5d` (same) |
+    | `consent` | does not exist | exists, 0 rows |
+    | `consent_key` | does not exist | exists, 1 row |
+    | `consent_*` functions | 0 of 5 | 5 of 5 |
+    | `pgcrypto` | not installed | installed |
+
+  - **Applied:** `python -m app.infra.schema --database-url-env DIRECT_URL` → "Esquema aplicado en
+    ep-steep-resonance-….neon.tech (DIRECT_URL)."
+  - **Operating rule** added to the spec (Known limitations): main's key must never be
+    regenerated or deleted.
   - **The agent asks for confirmation**, then runs `python -m app.infra.schema
     --database-url-env DIRECT_URL`.
   - Check with a read-only query, no values printed: two tables, 1 key row, 0 consent rows, 3

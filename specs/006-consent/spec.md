@@ -190,6 +190,14 @@ Tested from Telegram with a team account that has no consent record (clarificati
 - **The HMAC key is in the same database as the consent records** (accepted by the human for the
   demo, 2026-11-22). Anyone with full access to the Neon database can compute the subject of a
   known Telegram id. In production the key would live outside the database (DEP-04).
+- **Operating rule: the key in main's `consent_key` must never be regenerated or deleted**
+  (human, 2026-11-22). Every stored subject is an HMAC under that key. A new key would make
+  every record unrecognizable: everyone would be asked again, and the old rows could no longer
+  be withdrawn or matched.
+  - Re-applying the schema keeps the key (`ON CONFLICT DO NOTHING`, checked in K2).
+  - Never `DROP` or `TRUNCATE` `consent_key`, nor delete its row.
+  - Rotating the key would need a migration and is out of scope.
+  - The key was created in main on 2026-11-22 (task K3).
 - The other limitations are listed in the [clarifications](./clarifications.md), "Known
   limitations".
 
