@@ -48,9 +48,13 @@ specs posteriores, que llamarán a estas funciones.
   | `blanqueamiento` | Blanqueamiento | 90 min | dentist | no (request only) |
   | `tratamiento_largo` | Implantes, ortodoncia u otro tratamiento largo | — | dentist | no (request only) |
 
-- *Opening block*: a weekday with a start and an end time. The example blocks are the same as
-  HOR-001: Monday to Friday 9:00–14:00 and 16:00–20:00, and Saturday 10:00–14:00. There are none
-  on Sunday.
+- *Opening block*: a weekday, a start and an end time, and the set of months in which it applies
+  (clarifications Q15). The example blocks are the same as HOR-001:
+  - Monday to Friday 9:00–14:00 all year;
+  - Monday to Friday 16:00–20:00 every month except August;
+  - Saturday 10:00–14:00 all year. Keeping it in August is an interpretation of example data, to
+    confirm with the clinic (DEP-03).
+  - There are none on Sunday.
 - *Closure*: a date on which the clinic is closed (holidays). There are none until LifeCenter
   provides its calendar.
 - *Slot*: a start time on the 15-minute grid. The whole appointment must fit inside one opening
@@ -79,7 +83,9 @@ All times are Europe/Madrid wall-clock times, stored as `timestamptz` (clarifica
 - G3. Every appointment type SHALL state the role it needs. A professional SHALL be assigned
   only to types of their own role (clarifications Q3).
 - G4. The agenda's opening blocks SHALL equal the hours stated in HOR-001
-  (`kb/horario-clinica.md`). A test SHALL fail when they differ.
+  (`kb/horario-clinica.md`), **month by month**, including its August rule: mornings only from
+  Monday to Friday, and the Saturday reading of Q15. A test SHALL fail when they differ, or when
+  HOR-001's wording can no longer be read.
 
 ### Free slots (US-004, clarifications Q5, Q6)
 

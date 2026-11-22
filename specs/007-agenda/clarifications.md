@@ -165,6 +165,19 @@ campaigns.
   Madrid local time in the weeks of the change: the last Sunday of March and the last Sunday of
   October.
 
+### Added at task E1 (human, 2026-11-22)
+
+- **Q15: August hours.**
+  - Found in E1: HOR-001 has a third rule, «Durante el mes de agosto la clínica abre solo por
+    las mañanas, de 9:00 a 14:00». The weekday-only opening blocks did not cover it.
+  - **Decision:** each opening block in `agenda_hours` has a **set of months** in which it
+    applies.
+    - **In August**, Monday to Friday is 9:00–14:00, with **no afternoon**.
+    - **Saturdays keep 10:00–14:00** in August.
+  - **The Saturday reading is an interpretation of example data.** HOR-001 does not say whether
+    "only mornings, from 9:00 to 14:00" also moves Saturday to 9:00. It must be **confirmed with
+    the clinic (DEP-03)**, together with the rest of the hours (DEP-01).
+
 ## Questions as asked, with the agent's proposals
 
 - **Q1: Id, scope and later specs.**

@@ -21,7 +21,38 @@ Same pattern as SPEC-006 K0–K3. **Nothing is touched before the plan is approv
 - No n8n change in this spec.
 - Nothing is committed unless the human asks.
 
-- [ ] E0: Preflight, read-only (plan Step 0; G21).
+- [x] E0: Preflight, read-only (plan Step 0; G21).
+  - Done 2026-11-22. Only read-only connections were opened; nothing was created or changed.
+  - **Hosts and branches** (from `.env`: host and user only; no password or URL printed):
+
+    | | Host | Neon branch |
+    |---|---|---|
+    | `DIRECT_URL` (main) | `ep-steep-resonance-…` | `br-crimson-scene-…` |
+    | `TEST_DATABASE_URL` | `ep-blue-firefly-…` | `br-cool-feather-…` |
+
+    - The hosts differ.
+    - Both are in the same Neon project, on two different branches.
+    - Both use user `neondb_owner` and database `neondb`, which is why only the host tells them
+      apart (AGENTS.md preflight).
+  - **n8n credential:** not used by this spec (G22). `Neon main` was last verified to point to
+    `main` in SPEC-006 K5, by a write read back from `main`. It is not re-verified here, because
+    that would need a write.
+  - **On both branches:**
+    - `btree_gist` 1.8 is **available and not installed**, so E2 installs it;
+    - `pgcrypto` 1.4 is installed;
+    - `consent_key` has 1 row;
+    - **no `agenda_*` object** exists (0 relations, 0 functions, 0 types);
+    - the server knows `Europe/Madrid`.
+  - **Daylight saving time:** the server's Madrid offset at noon is `+1` on 27–28 March and `+2`
+    from 29 March, and `+2` on 23–24 October and `+1` from 25 October. This confirms the 2026
+    change dates for the DST tests.
+  - **Finding for E2:** the session time zone (`TimeZone`) is **GMT** on both branches.
+    - So every conversion to Madrid local time must use `AT TIME ZONE 'Europe/Madrid'`
+      explicitly.
+    - Never `::date` or `::time` on a `timestamptz`, which would use GMT, nor `SET TIME ZONE`.
+    - n8n's Postgres sessions may have another time zone. The functions must give the same
+      result whatever the session's time zone, and a test in E1 checks it by running with a
+      different `TimeZone`.
   - Print only the hosts of `DIRECT_URL` and `TEST_DATABASE_URL`, and check that they differ and
     are two branches (`neon.branch_id`) of the same project.
   - Record that this spec uses no n8n credential, and that `Neon main` was last verified to point
@@ -33,7 +64,24 @@ Same pattern as SPEC-006 K0–K3. **Nothing is touched before the plan is approv
     - that no `agenda_*` object exists yet;
     - that the server knows Europe/Madrid, with its 2026 changes on 29 March and 25 October.
   - Check: the findings are recorded here, and nothing was created or changed.
-- [ ] E1: The tests first (plan Step 1).
+- [x] E1: The tests first (plan Step 1).
+  - Done 2026-11-22. `tests/infra/test_agenda_sql.py` has **43 test functions, 58 tests** once
+    parametrized. It was **not run against Neon**: it compiles (`py_compile`), and its date and
+    HOR-001 helpers were exercised locally.
+  - **Dates are computed from today** (`date.today()`):
+    - the base Monday is at least 2 weeks ahead and never in August;
+    - `p_now` is the Friday before at 07:00 Madrid;
+    - the DST tests use the next changes still ahead, now 28/03/2027 and 31/10/2027.
+
+    This keeps synthetic appointments out of the real 30-day purge, and the tests do not age.
+  - **Finding: HOR-001 has a third rule**, «Durante el mes de agosto la clínica abre solo por las
+    mañanas, de 9:00 a 14:00», which the spec's weekday-only opening blocks do not cover.
+    - The tests encode the agent's **proposal**: each opening block has a `months` set. In
+      August, Monday to Friday is 9:00–14:00 only, and Saturday keeps 10:00–14:00.
+    - **Accepted by the human on 2026-11-22** (clarifications Q15). The Saturday reading is an
+      interpretation of example data, to confirm with the clinic (DEP-03). Spec G4 and the plan
+      are updated.
+  - The `reapplying` tests are excluded from E2's red run, so that run creates nothing.
   - Write `tests/infra/test_agenda_sql.py`, covering every acceptance criterion of the spec,
     including NFR-07, the per-subject limit, daylight saving time and HOR-001, and the check that the
     public `agenda_free_slots` and `agenda_book` have no `p_now` parameter (the tests use the

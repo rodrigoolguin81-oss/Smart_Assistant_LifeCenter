@@ -28,7 +28,7 @@ Neon (eu-central-1) — app/infra/sql/003_agenda.sql (idempotent, applied by app
 
   configuration (seeded, every row marked ejemplo)
     agenda_settings      one row: slot grid 15 min, lead 2 h, horizon 30 days, 1 future per subject
-    agenda_hours         weekday (ISO 1–7), start, end            — must equal HOR-001 (G4)
+    agenda_hours         weekday (ISO 1–7), start, end, months    — must equal HOR-001 (G4, Q15)
     agenda_closures      date, reason                             — empty
     agenda_professionals code, name, role (dentist | hygienist)
     agenda_rooms         code, name
@@ -119,6 +119,8 @@ Nothing is created or changed in this step.
   - a `limpieza` booked at 9:00 local on each of those days ends at 9:45 local;
   - the UTC offset is `+01` before and `+02` after in March, and the other way round in
     October;
+- **session time zone (found in E0):** the same free slots and the same booked times result
+  with the session `TimeZone` set to `GMT` and to `America/New_York`;
 - **public signatures (human, 2026-11-22):**
   - `agenda_free_slots` and `agenda_book` have **no** `p_now` parameter, which the test checks
     in `pg_proc`/`pg_get_function_arguments`;
@@ -141,7 +143,11 @@ Nothing is created or changed in this step.
 
 **Configuration tables:**
 
-- `agenda_hours`: primary key (weekday, start time), with `start < end`;
+- `agenda_hours`: primary key (weekday, start time), with `start < end`, and `months smallint[]
+  NOT NULL`, each value between 1 and 12 (Q15). The seed:
+  - Monday–Friday 9:00–14:00, months 1–12;
+  - Monday–Friday 16:00–20:00, months 1–7 and 9–12 (no August afternoons);
+  - Saturday 10:00–14:00, months 1–12 (the Q15 interpretation);
 - `agenda_closures (day date PRIMARY KEY, reason text)`;
 - `agenda_professionals (code PRIMARY KEY, name, role CHECK IN ('dentist', 'hygienist'),
   ejemplo)`;
@@ -178,7 +184,7 @@ has changed. Values, all marked as example:
   - It runs at the start of `agenda_free_slots` and `agenda_book`.
 - **`agenda_slot_problem(type, start, now)`:** returns `NULL` when valid, otherwise the first
   reason found, in this order: `unknown_type`, `request_only`, `not_on_grid`, `too_soon`,
-  `too_far`, `closed` (closure date, or no block that day), `outside_hours` (the start, or the
+  `too_far`, `closed` (closure date, or no block that weekday in that month), `outside_hours` (the start, or the
   start plus the duration, falls outside one single block).
   - The check is done in Madrid local time:
     `local = start AT TIME ZONE 'Europe/Madrid'`; on the grid when the local minute is a
@@ -197,7 +203,8 @@ has changed. Values, all marked as example:
   - An unknown type raises an exception (G8). `request_only` returns one row with that result
     and no times (G7).
   - Otherwise it generates candidates: the days from `greatest(p_from, p_now + lead)` to
-    `p_now + horizon`, joined to `agenda_hours` by ISO weekday. Each block becomes
+    `p_now + horizon`, joined to `agenda_hours` by ISO weekday **and by month** (`extract(month
+    from local date) = ANY(months)`). Each block becomes
     `generate_series(block start, block end − duration, 15 min)` in local time, converted with
     `(date + time) AT TIME ZONE 'Europe/Madrid'`, which is how daylight saving time is handled.
   - It keeps the candidates where `agenda_slot_problem` is `NULL` and a professional of the
@@ -232,7 +239,7 @@ the same check after. The check prints only counts, existence and digests:
 - `consent_key`: still 1 row. The key is never printed: the check compares
   `consent_subject('900101')` before and after, inside the script;
 - the `agenda_*` tables and their row counts: 2 + 1 professionals, 3 rooms, 5 types, 5 + 5 + 1
-  hour blocks, 0 closures, 0 appointments, 1 settings row;
+  hour blocks (the afternoon ones without August), 0 closures, 0 appointments, 1 settings row;
 - the 7 functions and `btree_gist`.
 
 ## Step 4: Docs (G23)
@@ -252,7 +259,7 @@ the same check after. The check prints only counts, existence and digests:
 | Requirement | Component |
 |---|---|
 | G1–G3 | configuration tables, seed, role check (Step 2) |
-| G4 | HOR-001 consistency test (Step 1) |
+| G4 | `agenda_hours.months` (Q15); HOR-001 consistency test, month by month, and the August test (Step 1) |
 | G5–G8 | `agenda_free_slots` → `agenda_free_slots_at`, `agenda_slot_problem` |
 | G9–G11, G10b | `agenda_book` → `agenda_book_at`, advisory lock per subject |
 | G12, G13 | exclusion constraints; NFR-07 concurrency test |
