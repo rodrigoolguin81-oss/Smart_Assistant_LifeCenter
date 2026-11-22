@@ -140,7 +140,23 @@ Same pattern as SPEC-006 and SPEC-004. **Nothing is touched before the plan is a
   - First `tests/infra/test_booking_sql.py`, then the SQL.
   - **Before running anything,** show the SQL, the exact commands and the host.
   - Run: red (nothing created), the schema, green, then all of `tests/infra`.
-- [ ] R3 **[confirmación]**: `main` (plan Step 3; BK24).
+- [x] R3 **[confirmación]**: `main` (plan Step 3; BK24).
+  - Done 2026-11-22, after the human confirmed. Beforehand the human was shown the command, the
+    host (`ep-steep-resonance-…`, guarded by the script) and the read-only check.
+  - **Read-only check, before and after.** It printed only counts, existence and comparisons.
+    The fingerprints of `consent`, the key and the agenda configuration were computed in the
+    database and compared inside the script. The state file was deleted afterwards.
+
+    | | Before | After |
+    |---|---|---|
+    | `kb_fragments` | 9 rows, md5 `73ef6b7e…cdf5d` | same |
+    | `consent` / `consent_key` | 1 / 1 | **unchanged** (fingerprints equal) |
+    | Agenda | 3/3/5/11/1, 0 closures, 0 appointments | **unchanged** (fingerprint equal) |
+    | SPEC-004 functions | 7 of 7 | 7 of 7 |
+    | `agenda_my_next`, `agenda_my_next_at` | 0 of 2 | **2 of 2** |
+
+  - **Applied:** `python -m app.infra.schema --database-url-env DIRECT_URL` → "Esquema aplicado en
+    ep-steep-resonance-….neon.tech (DIRECT_URL)." No «PARA».
   - Show the command, the host and the read-only check, and wait.
   - Run: the check before, the schema on `DIRECT_URL`, the check after.
   - **Stop if** `kb_fragments`, `consent`, `consent_key` or the agenda changed.
