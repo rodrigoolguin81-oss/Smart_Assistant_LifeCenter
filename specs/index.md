@@ -119,6 +119,22 @@ stale_after: null
   - Code: [`app/infra/sql/003_agenda.sql`](../app/infra/sql/003_agenda.sql) · tests
     `tests/infra/test_agenda_sql.py` (test branch only) · README, "Agenda (SPEC-004)"
 
-Pending (not yet scaffolded): booking from Telegram, moving and cancelling, and reminders, which
-are follow-ups of SPEC-004 (proposed SPEC-007 to SPEC-009); and
+- **008-booking**: booking an appointment from Telegram on the SPEC-004 agenda. PRD `US-004`,
+  `RF-005` (create), `NFR-07`, `R-05`, `CONF-001` (a), and SPEC-001 R14 (`offer_booking`);
+  traceability row **SPEC-007**, a follow-up of SPEC-004.
+  - **Ways in:** `/cita`, a «Pedir cita» button after price or treatment answers, and strict
+    booking phrases.
+  - **Flow:** type menu, up to 3 slot buttons, an explicit confirmation, a message for every
+    result, and `/micita`.
+  - **Where it runs:** in flow A and Neon only, never through B or Gemini, with consent required.
+    B only gains `offer_booking`.
+  - **Status: specified** (2026-11-22; clarifications and spec verified by human; plan and tasks
+    awaiting review).
+  - [clarifications](./008-booking/clarifications.md), Q1–Q15
+  - [spec](./008-booking/spec.md), BK1–BK27
+  - [plan](./008-booking/plan.md) — Steps 0–7
+  - [tasks](./008-booking/tasks.md) — R0–R7
+
+Pending (not yet scaffolded): moving and cancelling, and reminders, which are follow-ups of
+SPEC-004 (proposed SPEC-008 and SPEC-009); and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

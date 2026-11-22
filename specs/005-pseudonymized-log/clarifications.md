@@ -116,6 +116,13 @@ period is set. **This spec supersedes CHG-001 D11.**
       published, and is read back;
     - the human deletes those executions of A, and the B executions they create, from the
       editor.
+  - **Extension for SPEC-007 (approved by the human, 2026-11-22):** the same conditions apply to
+    the pinned runs of A and B in SPEC-007 (booking):
+    - fake ids `9000xx`;
+    - one run per scenario;
+    - `saveManualExecutions` disabled at the end;
+    - all pinned data removed and checked;
+    - the human deletes the executions.
 
 ## Known limitations
 
