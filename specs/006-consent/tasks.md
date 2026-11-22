@@ -95,7 +95,27 @@ unless the human asks.
     skipped for now.
   - Check: both tests green; A's sync checks reported as skipped.
   - Covers: C1–C16 (logic), C22–C25.
-- [ ] K2 **[confirmación]**: Neon schema on the test branch (plan Step 2).
+- [x] K2 **[confirmación]**: Neon schema on the test branch (plan Step 2).
+  - Done 2026-11-22, after the human saw the full SQL and the exact commands and confirmed. Run
+    only against `TEST_DATABASE_URL` (host `ep-blue-firefly-…eu-central-1`, checked from `.env` to
+    differ from `DIRECT_URL` and `DATABASE_URL`). **Main was not touched.**
+  - **Files:**
+    - `tests/infra/test_consent_sql.py`: 26 tests, fake ids `900001…` only, rows cleaned before
+      and after each test, the key never selected (only its length);
+    - `app/infra/sql/002_consent.sql`: `pgcrypto`, `consent_key`, `consent`, and the functions
+      `consent_subject`, `consent_purge`, `consent_get`, `consent_accept` and `consent_revoke`;
+    - `app/infra/schema.py`: a `__main__` with a required `--database-url-env` that prints only
+      the host.
+  - **Red first** (the tests that apply the schema were excluded, so nothing was created): 22
+    failed and 2 passed (the CLI tests that need no database). Every failure was
+    `UndefinedFunction` or `UndefinedTable` for the consent objects, plus one assertion on the
+    missing columns.
+  - **Schema applied:** `python -m app.infra.schema --database-url-env TEST_DATABASE_URL` →
+    "Esquema aplicado en ep-blue-firefly-….neon.tech (TEST_DATABASE_URL)."
+  - **Green:** `test_consent_sql.py` passed 26/26, and all of `tests/infra` passed 59/59, so the
+    `kb_fragments` schema is unaffected.
+  - **Afterwards** (read-only): `consent` has 0 rows on the test branch, so the cleanup worked,
+    and `consent_key` has 1 row.
   - First `tests/infra/test_consent_sql.py` (red: no functions yet).
   - Then `app/infra/sql/002_consent.sql` and the `__main__` of `app/infra/schema.py`.
   - **Before running anything against the test branch, the agent asks for confirmation:** it
