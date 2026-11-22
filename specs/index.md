@@ -81,5 +81,17 @@ stale_after: null
     [`n8n/workflows/lifecenter-demo-core.json`](../n8n/workflows/lifecenter-demo-core.json) (B,
     core, executions kept 30 days) · retention: `n8n-start.ps1 -ExecutionsMaxAgeHours`
 
+- **006-consent** — explicit consent in the bot's first message in the n8n demo: notice with
+  «Acepto» / «No acepto», `/privacidad` and withdrawal, urgencies always answered (detected in A),
+  no call to B before consent, and a minimal consent record in Neon keyed by an HMAC of the
+  Telegram `from.id` (PRD `CONF-005`, `R-06`, `DEP-04`, `RES-02`, `RF-004`; new traceability row
+  **SPEC-006**; RF-006 reminders will reuse it) — **specified** (clarifications and spec verified
+  by human 2026-11-21; plan and tasks verified 2026-11-22; K0–K6 pending. Accepted limitation:
+  the HMAC key is in the same database as the consent records):
+  - [clarifications](./006-consent/clarifications.md)
+  - [spec](./006-consent/spec.md) — C1–C27
+  - [plan](./006-consent/plan.md) — Steps 0–6
+  - [tasks](./006-consent/tasks.md) — K0–K6
+
 Pending (not yet scaffolded): SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

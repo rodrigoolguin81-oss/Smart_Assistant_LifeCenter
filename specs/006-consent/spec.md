@@ -4,10 +4,10 @@ spec_id: SPEC-006
 title: consent — Functional Spec
 description: Requirements for explicit consent in the bot's first message in the n8n demo (notice, accept and reject buttons, /privacidad and withdrawal), with urgencies always answered, no processing before consent and a minimal HMAC-keyed consent record in Neon (CONF-005, R-06, DEP-04, RES-02, RF-004), in EARS notation.
 tags: [spec, consent, SPEC-006, CONF-005, R-06, DEP-04, RES-02, NFR-08, RF-004]
-status: draft
+status: verified
 sources: [./clarifications.md, ../../docs/03-prd.md, ../003-n8n-migration/spec.md, ../004-urgencies/spec.md, ../005-pseudonymized-log/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-21T00:00:00Z }
-verified: { by: human, at: null }
+verified: { by: human, at: 2026-11-21T00:00:00Z }
 stale_after: null
 ---
 
@@ -54,7 +54,7 @@ siempre, con o sin consentimiento.
 - `ACCEPTED_TEXT` (approved, 2026-11-21): «Gracias. Ya puedes escribirme tu consulta.»
 - `REJECTED_TEXT` (approved, 2026-11-21): «De acuerdo, no procesaré tus consultas. Puedes llamar a
   recepción. Si cambias de opinión, escribe /privacidad.»
-- **Proposed by the agent, pending the human's approval:**
+- **Proposed by the agent and approved by the human, 2026-11-21:**
   - `REVOKED_TEXT`: «He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias
     de opinión, escribe /privacidad.»
   - `STATUS_ACCEPTED`, appended to the notice in `/privacidad`: «Estado: aceptaste este aviso el
@@ -110,7 +110,8 @@ siempre, con o sin consentimiento.
 
 - C14. WHEN `/start` arrives AND there is no consent in force, A SHALL reply with
   `CONSENT_NOTICE` and its buttons.
-- C15. WHEN `/privacidad` arrives, or `/start` arrives with consent in force, A SHALL reply with
+- C15. WHEN `/privacidad` arrives, or `/start` arrives with consent in force (approved by the
+  human, 2026-11-21), A SHALL reply with
   `CONSENT_NOTICE` followed by `STATUS_ACCEPTED` and «Retirar consentimiento» if there is consent in
   force, or by `STATUS_NONE` and «Acepto» / «No acepto» otherwise.
 - C16. Commands SHALL NOT be pseudonymized, run through the urgency detector or sent to B.
@@ -181,6 +182,14 @@ Tested from Telegram with a team account that has no consent record (clarificati
   with the sync checks against the exports.
 - [ ] A is re-exported with no secret or personal data and still shows its "save no executions"
   settings. B is unchanged.
+
+## Known limitations
+
+- **The HMAC key is in the same database as the consent records** (accepted by the human for the
+  demo, 2026-11-22). Anyone with full access to the Neon database can compute the subject of a
+  known Telegram id. In production the key would live outside the database (DEP-04).
+- The other limitations are listed in the [clarifications](./clarifications.md), "Known
+  limitations".
 
 ## Out of scope
 

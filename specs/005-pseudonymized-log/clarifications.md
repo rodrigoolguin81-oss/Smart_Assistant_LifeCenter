@@ -107,6 +107,15 @@ period is set. **This spec supersedes CHG-001 D11.**
   for **one** test run with **synthetic** pinned data only. The run is reviewed, and the setting
   goes back to "not saved" **before anything is published**. That execution contains no personal
   data and is deleted with the old history (task L5).
+  - **Extension for SPEC-006 (approved by the human, 2026-11-22; SPEC-006 plan Step 4, task
+    K4):**
+    - `saveManualExecutions` may be on in A while the SPEC-006 pinned runs are made;
+    - the runs use **synthetic** updates only, with fake ids `900001…`;
+    - there is **one run per scenario**;
+    - the setting goes back to "not saved" right after those runs, before anything is
+      published, and is read back;
+    - the human deletes those executions of A, and the B executions they create, from the
+      editor.
 
 ## Known limitations
 

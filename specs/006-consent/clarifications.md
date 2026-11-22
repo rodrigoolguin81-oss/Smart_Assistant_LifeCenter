@@ -4,10 +4,10 @@ spec_id: SPEC-006
 title: consent — Clarifications
 description: Questions resolved with the human before writing SPEC-006 (explicit consent in the bot's first message, with urgencies always answered and a minimal consent record), plus the facts found, assumptions, known limitations and dependencies.
 tags: [clarify, consent, SPEC-006, CONF-005, R-06, DEP-04, RES-02, NFR-08, RF-004]
-status: draft
+status: verified
 sources: [../../docs/03-prd.md, ../003-n8n-migration/spec.md, ../004-urgencies/spec.md, ../005-pseudonymized-log/spec.md, ../005-pseudonymized-log/clarifications.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-21T00:00:00Z }
-verified: { by: human, at: null }
+verified: { by: human, at: 2026-11-21T00:00:00Z }
 stale_after: null
 ---
 
@@ -113,7 +113,7 @@ takes **SPEC-006**.
   about 15 minutes also applies **before** consent. It is the same accepted limitation.
 - **A4:** everything here is **provisional until DEP-04** (Rossana Riquelme) and does **not**
   unblock real patients.
-- **A5 (agent, to be confirmed at review):** pseudonymization (SPEC-001 R4), the urgency rules and
+- **A5 (agent; confirmed by the human, 2026-11-21):** pseudonymization (SPEC-001 R4), the urgency rules and
   texts (SPEC-003) and B's behaviour do not change. B gains no consent logic: A only calls it for
   users with consent in force.
 
