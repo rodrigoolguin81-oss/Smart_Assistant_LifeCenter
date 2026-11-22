@@ -124,7 +124,25 @@ Same pattern as SPEC-006 K0–K3. **Nothing is touched before the plan is approv
   - Check: every test is green, the key is never printed, and the test branch is left with no
     synthetic appointment or closure.
   - Covers: G1–G18.
-- [ ] E3 **[confirmación]**: `main` (plan Step 3; G20).
+- [x] E3 **[confirmación]**: `main` (plan Step 3; G20).
+  - Done 2026-11-22, after the human confirmed. Beforehand the human was shown the command, the
+    host (`ep-steep-resonance-…`, guarded by the check script) and the read-only check.
+  - **Read-only check, before and after.** It prints counts, existence and comparisons only.
+    The `consent` and `consent_key` fingerprints were digests computed in the database and
+    compared inside the script; neither the key nor the subject was printed.
+
+    | | Before | After |
+    |---|---|---|
+    | `kb_fragments` | 9 rows, md5 `73ef6b7e…cdf5d` | 9 rows, same md5 |
+    | `consent` | 1 row (the human's acceptance) | 1 row, **unchanged** |
+    | `consent_key` | 1 row | 1 row, **unchanged** |
+    | `agenda_*` | do not exist | 3 professionals, 3 rooms, 5 types, 11 hour blocks, 1 settings row, 0 closures, 0 appointments |
+    | functions | 0 of 7 | 7 of 7 |
+    | `btree_gist` | not installed | installed |
+
+  - **Applied:** `python -m app.infra.schema --database-url-env DIRECT_URL` → "Esquema aplicado en
+    ep-steep-resonance-….neon.tech (DIRECT_URL)."
+  - The script reported no change to `kb_fragments`, `consent` or `consent_key` (no «PARA»).
   - Show the command, the host and the read-only check, and wait.
   - Run, in order: the check before, the schema on `DIRECT_URL`, the check after.
   - Check:
