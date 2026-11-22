@@ -4,7 +4,7 @@ spec_id: SPEC-004
 title: agenda — Functional Spec
 description: Requirements for the project's own appointment agenda in Neon (RES-01) — opening hours, professionals with roles, rooms, appointment types, the free-slot lookup, a booking primitive with no double booking (NFR-07, R-05), a pseudonymous subject and 30-day retention — in EARS notation, with no patient-facing flow and no n8n change.
 tags: [spec, agenda, SPEC-004, RES-01, RF-005, NFR-07, R-05, CONF-001, DEP-03]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../../docs/01-charter.md, ../../kb/horario-clinica.md, ../../kb/tarifas-generales.md, ../006-consent/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }
@@ -160,20 +160,20 @@ All times are Europe/Madrid wall-clock times, stored as `timestamptz` (clarifica
 
 ## Acceptance criteria
 
-- [ ] On the test branch, `agenda_free_slots('limpieza', …)` returns at most 3 slots, earliest
+- [x] On the test branch, `agenda_free_slots('limpieza', …)` returns at most 3 slots, earliest
   first, one per opening block, all on the grid, within opening hours and the booking window,
   and taken by the hygienist.
-- [ ] With synthetic appointments filling the hygienist's morning, the next slot offered for
+- [x] With synthetic appointments filling the hygienist's morning, the next slot offered for
   `limpieza` is in a later block, while `revision` still finds a dentist that morning.
-- [ ] A 45-minute `limpieza` is never offered at 13:30, nor on a Sunday, nor on a closure date.
+- [x] A 45-minute `limpieza` is never offered at 13:30, nor on a Sunday, nor on a closure date.
   A slot less than 2 hours ahead, or more than 30 days ahead, is never offered.
-- [ ] `agenda_free_slots('blanqueamiento', …)` returns no slots and `request_only`.
-- [ ] NFR-07: 10 concurrent `agenda_book('limpieza', same start, different fake ids)` give
+- [x] `agenda_free_slots('blanqueamiento', …)` returns no slots and `request_only`.
+- [x] NFR-07: 10 concurrent `agenda_book('limpieza', same start, different fake ids)` give
   exactly 1 `booked` and 9 `taken`. A direct `INSERT` of an overlapping appointment for the
   same professional or room is rejected by the database.
-- [ ] With 2 dentists, 2 concurrent bookings of the same `revision` slot both succeed with
+- [x] With 2 dentists, 2 concurrent bookings of the same `revision` slot both succeed with
   different dentists and rooms, and a third gets `taken`.
-- [ ] `agenda_book` returns `invalid`, with the matching reason and no row created, for a start:
+- [x] `agenda_book` returns `invalid`, with the matching reason and no row created, for a start:
   - outside the opening hours (8:45, 20:00, a Sunday);
   - crossing the break or the end of a block (a 45-minute `limpieza` at 13:30, or at 19:30);
   - on a closure date;
@@ -182,11 +182,11 @@ All times are Europe/Madrid wall-clock times, stored as `timestamptz` (clarifica
   - more than 30 days ahead.
 
   It returns `invalid` with `request_only` for `blanqueamiento`.
-- [ ] A subject with one future appointment booked by the bot gets `limit`, and nothing is
+- [x] A subject with one future appointment booked by the bot gets `limit`, and nothing is
   created, on a second booking, whatever the type or slot. Two concurrent bookings for the same
   subject at different free slots give 1 `booked` and 1 `limit`. Once the first appointment is
   in the past, the subject can book again.
-- [ ] **Daylight saving time** (Europe/Madrid changes on the last Sunday of March and of
+- [x] **Daylight saving time** (Europe/Madrid changes on the last Sunday of March and of
   October; in 2026, 29 March and 25 October): in both weeks, the slots offered and the
   appointments booked keep Madrid local time.
   - The first slot on the Friday before and on the Monday after is 9:00 local.
@@ -194,15 +194,19 @@ All times are Europe/Madrid wall-clock times, stored as `timestamptz` (clarifica
     local.
   - The stored UTC offset changes from `+01` to `+02` in March, and from `+02` to `+01` in
     October.
-- [ ] An appointment row holds no `from_id`, chat id or name. Its subject is 64 hex characters
+- [x] An appointment row holds no `from_id`, chat id or name. Its subject is 64 hex characters
   and differs from the SPEC-006 consent subject of the same id.
-- [ ] An appointment that ended 31 days ago is removed by the next agenda call; one that ended 29
+- [x] An appointment that ended 31 days ago is removed by the next agenda call; one that ended 29
   days ago remains.
-- [ ] The opening blocks equal HOR-001 (the consistency test passes).
-- [ ] Re-applying the schema changes neither `kb_fragments`, nor `consent`, nor the key in
+- [x] The opening blocks equal HOR-001 (the consistency test passes).
+- [x] Re-applying the schema changes neither `kb_fragments`, nor `consent`, nor the key in
   `consent_key`.
-- [ ] On `main`, after the human confirms: the configuration rows are there, there are 0
+- [x] On `main`, after the human confirms: the configuration rows are there, there are 0
   appointments, and `kb_fragments` and `consent` are unchanged (row counts and md5).
+
+Checked 2026-11-22. Every criterion except the last was checked by `tests/infra/test_agenda_sql.py`
+on the Neon test branch: 58 passed in E2, and all of `tests/infra` (117) passed. The last one was
+checked on `main` by the before-and-after check of E3. See [tasks](./tasks.md).
 
 ## Known limitations
 

@@ -284,6 +284,93 @@ them and run the test.
   - Detection works on word lists: a symptom described in other words or with heavy typos may
     not be detected. When in doubt, it derives, so some harmless messages get the urgency reply.
 
+### Agenda (SPEC-004)
+
+The project's own appointment agenda lives in Neon. It does not touch LifeCenter's clinical
+software (RES-01). See [specs/007-agenda](specs/007-agenda/spec.md).
+
+**No patient can use it yet.** No n8n workflow calls it. Booking from Telegram, moving and
+cancelling, and reminders will come in later specs.
+
+**What it holds:**
+- **Opening hours** (`agenda_hours`), the same as HOR-001. Each block has the months in which it
+  applies: Monday to Friday 9:00–14:00 all year and 16:00–20:00 except August, and Saturday
+  10:00–14:00.
+- **Holidays** (`agenda_closures`), empty.
+- **Professionals with a role** (`agenda_professionals`): 2 dentists and 1 hygienist.
+- **Rooms** (`agenda_rooms`): 3.
+- **Appointment types** (`agenda_types`):
+  - bookable by the bot: revisión 30 min, limpieza 45 min, primera visita 30 min;
+  - request only (CONF-001 option a): blanqueamiento and long treatments.
+- **Rules** (`agenda_settings`): a 15-minute grid, from 2 hours to 30 days ahead, and at most 1
+  future appointment per patient.
+- **Appointments** (`agenda_appointments`). About the patient they keep only a pseudonymous
+  subject: an HMAC of the Telegram id under the SPEC-006 key, with the `agenda:` prefix. No name,
+  phone or chat id. They are deleted 30 days after they end.
+
+Every value is **example data** until LifeCenter confirms it (DEP-01, DEP-03).
+
+**Functions** (n8n will call the public ones):
+
+| Function | Returns |
+|---|---|
+| `agenda_free_slots(type, from, limit = 3)` | up to 3 free slots, earliest first and one per opening block (`free`), or `request_only` |
+| `agenda_book(type, start, from_id)` | `booked` (with professional and room), `taken`, `limit`, or `invalid` with the reason (`outside_hours`, `closed`, `not_on_grid`, `too_soon`, `too_far`, `request_only`, `unknown_type`) |
+
+The tests use the `_at` versions, which take a fixed time instead of `now()`. Double bookings are
+impossible: the database rejects two `booked` appointments that overlap for the same professional
+or the same room (NFR-07).
+
+**Apply the schema** (`app/infra/sql/*.sql`, safe to re-run; it does not touch `kb_fragments` and
+keeps the consent key):
+
+```bash
+python -m app.infra.schema --database-url-env TEST_DATABASE_URL   # test branch first
+python -m pytest tests/infra/test_agenda_sql.py                   # test branch only
+python -m app.infra.schema --database-url-env DIRECT_URL          # then main
+```
+
+**Change an example value** directly in the tables, for example:
+
+```sql
+UPDATE agenda_settings SET horizon = interval '45 days';
+INSERT INTO agenda_closures (day, reason) VALUES (DATE '2026-12-08', 'Festivo');
+UPDATE agenda_types SET duration = interval '40 minutes' WHERE code = 'limpieza';
+```
+
+Re-applying the schema does not overwrite them. If the opening hours change, update `agenda_hours`
+**and** HOR-001 (`kb/horario-clinica.md`) together: `tests/infra/test_agenda_sql.py` fails when
+they differ, or when HOR-001's wording can no longer be read.
+
+**Reception's read-only view of a day** (it shows no subject):
+
+```sql
+SELECT to_char(a.starts_at AT TIME ZONE 'Europe/Madrid', 'HH24:MI') AS hora,
+       to_char(a.ends_at   AT TIME ZONE 'Europe/Madrid', 'HH24:MI') AS fin,
+       t.name AS tipo, p.name AS profesional, r.name AS gabinete
+FROM agenda_appointments a
+JOIN agenda_types t         ON t.code = a.type_code
+JOIN agenda_professionals p ON p.code = a.professional
+JOIN agenda_rooms r         ON r.code = a.room
+WHERE a.status = 'booked'
+  AND (a.starts_at AT TIME ZONE 'Europe/Madrid')::date = DATE '2026-12-07'
+ORDER BY a.starts_at, p.name;
+```
+
+Always convert with `AT TIME ZONE 'Europe/Madrid'`: Neon sessions run in GMT.
+
+**Limitations:**
+- **Reception cannot tell who is coming.** There is no name or phone. The reception panel spec
+  will decide how patients are identified (RF-007).
+- **No chat id**, so no reminders yet. The reminders spec will add a separate table with its own
+  consent (CONF-005).
+- **The appointment type is health data.** It is needed for the service, pseudonymized and kept
+  30 days, and pending DEP-04.
+- **The Saturday hours in August** (10:00–14:00) are an interpretation of HOR-001, to confirm
+  with the clinic (DEP-03).
+- Same as SPEC-006: the HMAC key is in the same database, and **must never be regenerated or
+  deleted**.
+
 ### Export after changing the workflow
 
 ```bash

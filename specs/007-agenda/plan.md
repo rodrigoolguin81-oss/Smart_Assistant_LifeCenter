@@ -4,7 +4,7 @@ spec_id: SPEC-004
 title: agenda — Technical Plan
 description: How to build the project's own agenda in Neon — preflight host check, the SQL tests first, the tables, exclusion constraints, seed and functions in 003_agenda.sql on the test branch, then main after confirmation, and the README.
 tags: [plan, agenda, SPEC-004, neon]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md, ../006-consent/plan.md, ../../app/infra/sql/002_consent.sql]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }

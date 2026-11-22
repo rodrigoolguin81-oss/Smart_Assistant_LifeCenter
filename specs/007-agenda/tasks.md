@@ -4,7 +4,7 @@ spec_id: SPEC-004
 title: agenda — Task Breakdown
 description: Ordered, test-first tasks to build the project's own agenda in Neon — read-only host preflight, SQL tests, 003_agenda.sql on the test branch, main after confirmation, and docs.
 tags: [tasks, agenda, SPEC-004]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }
@@ -152,7 +152,19 @@ Same pattern as SPEC-006 K0–K3. **Nothing is touched before the plan is approv
     - the configuration rows are present;
     - there are 0 appointments.
   - Covers: G2, G20.
-- [ ] E4: Docs (plan Step 4; G23).
+- [x] E4: Docs (plan Step 4; G23).
+  - Done 2026-11-22.
+  - **README**, new "Agenda (SPEC-004)" subsection:
+    - what the agenda holds, and that no patient can use it yet;
+    - the public functions and their results;
+    - how to apply the schema;
+    - how to change an example value, keeping `agenda_hours` and HOR-001 together;
+    - **reception's read-only query** for a day, which shows no subject. It was run read-only on
+      `main`: 5 columns, 0 rows;
+    - the limitations.
+  - **`specs/index.md`:** SPEC-004 implemented, with no patient-facing flow yet.
+  - **spec, plan and tasks:** `implemented`. The 14 acceptance criteria are ticked: 13 by
+    `test_agenda_sql.py` in E2, and the `main` one by E3.
   - Add the README "Agenda" subsection: what it is, where to change the example values, how to
     apply the schema, reception's read-only query, and the limitations.
   - Update `specs/index.md`, and mark spec, plan and tasks implemented.

@@ -107,13 +107,17 @@ stale_after: null
   appointment per patient, and a pseudonymous subject (SPEC-006 key, `agenda:` prefix) kept 30
   days. There is no patient-facing flow and no n8n change. PRD `RF-005` (agenda base), `NFR-07`,
   `R-05`, `CONF-001` (option a), `DEP-03`; traceability row **SPEC-004**. Status:
-  **specified** (2026-11-22; clarifications, spec, plan and tasks verified by human; E0–E4
-  pending). Example data until DEP-01 and DEP-03:
+  **implemented** (2026-11-22; E0–E4 done; all 14 acceptance criteria met, with 58 SQL tests on
+  the test branch including NFR-07, then applied to `main` with `kb_fragments`, `consent` and the
+  key unchanged). **Nothing patient-facing yet**: no n8n workflow calls it; booking, moving and
+  cancelling, and reminders are later specs. Example data until DEP-01 and DEP-03:
   - [clarifications](./007-agenda/clarifications.md) — Q1–Q14
   - [spec](./007-agenda/spec.md) — G1–G23
   - [plan](./007-agenda/plan.md) — Steps 0–4 (public functions use `now()`; internal `_at`
     versions for the tests)
   - [tasks](./007-agenda/tasks.md) — E0–E4
+  - Code: [`app/infra/sql/003_agenda.sql`](../app/infra/sql/003_agenda.sql) · tests
+    `tests/infra/test_agenda_sql.py` (test branch only) · README, "Agenda (SPEC-004)"
 
 Pending (not yet scaffolded): booking from Telegram, moving and cancelling, and reminders, which
 are follow-ups of SPEC-004 (proposed SPEC-007 to SPEC-009); and
