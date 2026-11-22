@@ -160,7 +160,39 @@ Same pattern as SPEC-006 and SPEC-004. **Nothing is touched before the plan is a
   - Show the command, the host and the read-only check, and wait.
   - Run: the check before, the schema on `DIRECT_URL`, the check after.
   - **Stop if** `kb_fragments`, `consent`, `consent_key` or the agenda changed.
-- [ ] R4: B, `offer_booking` (plan Step 4; BK6, BK7).
+- [x] R4: B, `offer_booking` (plan Step 4; BK6, BK7).
+  - Done 2026-11-22 on B's **draft** (`0b3cb06d…`); nothing published. Published: `711b573c…`.
+    - In production, A calls B's **published** version. Only manual runs use the draft
+      (n8n 2.48.4 `executeWorkflow`: `useDraftVersion` only for manual and chat). So the live
+      bot is not affected.
+  - **Two nodes changed through the MCP.** A script built the code from the committed export, and
+    a CLI export of the draft showed both nodes **identical** to it. The other 9 nodes, the
+    connections and the settings are unchanged.
+    - «Validar y componer»: only the `answered` return gains `offer_booking = result.cited.some(f
+      => f.tipo is 'tarifa' or 'tratamiento')`.
+    - «Resultado»: `offer_booking` is added to `KEEP` and always set as a boolean (`=== true`).
+  - **8 pinned runs** (trigger, «Buscar en kb» and «Gemini» pinned: **0 real Gemini or Neon
+    calls**):
+
+    | Exec. | Scenario | `reason` | `offer_booking` |
+    |---|---|---|---|
+    | 137 | price answer citing TAR-001 | answered | true |
+    | 138 | aftercare answer citing TRA-001 | answered | true |
+    | 139 | hours answer citing HOR-001 | answered | false |
+    | 140 | HOR-001 and TAR-001 retrieved, only HOR-001 cited | answered | false |
+    | 141 | no fragments | below_threshold | false |
+    | 142 | Gemini `answerable: false` | model_abstained | false |
+    | 143 | Gemini cites a document not retrieved (the injection) | validation_failed / unknown_citation | false |
+    | 144 | «me sangra mucho la encia desde ayer» | urgency / urgent | false |
+
+    The Gemini **error** path cannot be pinned (SPEC-005). It is covered by «Resultado» forcing a
+    boolean, and by its unchanged wiring.
+  - **Afterwards:**
+    - **no pinned data** in B's draft: no `pinData` in `get_workflow_details`, and `pinData: {}`
+      in a CLI export;
+    - no test text in the draft;
+    - the settings are unchanged (save everything, caller policy limited to A).
+  - **B executions for the human to delete:** **137–144** (8, 2026-11-22 21:16:04–21:16:08 UTC).
   - Change the draft through the MCP, and make one pinned run per case.
   - Check:
     - `true` only for TAR or TRA answers;
