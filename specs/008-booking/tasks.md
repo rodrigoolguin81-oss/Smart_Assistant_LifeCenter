@@ -200,7 +200,60 @@ Same pattern as SPEC-006 and SPEC-004. **Nothing is touched before the plan is a
     - "Resultado" returns it;
     - B's draft has no pinned data left;
     - its settings are unchanged.
-- [ ] R5: A, the booking branch (plan Step 5; BK1–BK22).
+- [x] R5: A, the booking branch (plan Step 5; BK1–BK22).
+  - Done 2026-11-22 on A's **draft** (`a3d0afba…`); nothing published. A is still published at
+    `5b41b4ee…`, and B's draft (`0b3cb06d…`) is unpublished.
+  - **SQL first, on the test branch (human, 2026-11-22).** The host was shown and guarded first
+    (`ep-blue-firefly-…`). Both queries ran with fake ids `900391/900392` and were cleaned up,
+    leaving 0 appointments. Each always returned 1 row, for every result:
+    - agenda: no appointment with 3 slots, and no type → `slots: null`;
+    - book: booked; taken + next slots; limit + the existing appointment; invalid `too_soon` +
+      slots; invalid `request_only` with no slots.
+
+    No subject was printed.
+  - **Built through the MCP.** A script generated the operations from the repo files, and they
+    were applied in 4 updates. A CLI export showed:
+    - the 5 code nodes **identical** to the generated code (`consentimiento.js`, and `citas.js` 3
+      times, each with its wiring);
+    - every connection as planned;
+    - 30 nodes.
+
+    Two details:
+    - the switches were updated with `updateNodeParameters`, because JSON Pointer could not
+      append to `rules.values`;
+    - the validator warns that «Responder reserva»'s `inlineKeyboard` is a string. That is the
+      planned single expression, and it is confirmed in R6.
+  - **31 pinned runs** (approved A4 extension; ids `900301`–`900331`; trigger, Telegram, consent,
+    agenda and booking nodes pinned). All match the plan:
+    - booking commands, buttons and phrases go to «Preparar reserva» → query → «Componer reserva»
+      → «Responder reserva». Every keyboard is as composed, with `callback_data` ≤ 19 bytes;
+    - menu, limit, `/micita` with and without an appointment, slots with «Ver más», no slots,
+      request-only (phrase, `bk:o`, `bk:t:blanqueamiento`), confirmation (no query), and booked,
+      taken + slots, invalid + slots, limit, invalid `request_only` → menu;
+    - a **tampered** button gives the menu, with no query;
+    - a **Neon failure** in «Consultar agenda» or «Reservar» gives D7 and the reception button;
+    - **urgency + booking** («quiero cita, me sangra mucho la encía», «necesito una cita urgente, se
+      me ha hinchado la cara») goes to **B → urgency**, never to booking. Without consent it gets
+      the urgency reply;
+    - **without consent**, `/cita`, `/micita`, `bk:menu`, a phrase and **scenario 31** (an old
+      `bk:c` after withdrawing) get the notice. **«Reservar» did not run.**
+    - **B was called only** in scenarios 7, 8, 9 and 25, with `question` only.
+  - **Scenario 25 («¿Cuánto cuesta una limpieza?» → «Pedir cita») could not be checked.** The real
+    Gemini call returned **503 "high demand"** (free tier), so B gave `llm_error` and A sent D7
+    with the reception button. That checked the real Gemini error path, which pinned data cannot
+    reach. **The human chose to check the «Pedir cita» button in R6 (2026-11-22).**
+  - **Real Gemini calls:** 2 (scenario 7, `model_abstained`; scenario 25, the 503). The urgencies
+    did not reach Gemini.
+  - **Afterwards:**
+    - `saveManualExecutions: false`, read back with `get_workflow_details`;
+    - **no pinned data** in A (`pinData: null`) or B (`{}`), in the CLI exports and in
+      `workflow_entity`;
+    - no test id or text in either draft;
+    - the settings are as before (A saves nothing; B saves everything, caller policy limited to
+      A).
+  - **Executions for the human to delete** (2026-11-22, 21:36:24–21:39:12 UTC):
+    - **A (31):** 145–151, 153, 155, 157–172, 174–179;
+    - **B (4):** 152, 154, 156, 173.
   - Before changing anything, list the nodes to add, change and remove, and wait.
   - Change the draft through the MCP.
   - Make the pinned runs under the A4 extension: fake ids `900301…`, one run per scenario.
