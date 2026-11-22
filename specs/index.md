@@ -109,8 +109,8 @@ stale_after: null
   `R-05`, `CONF-001` (option a), `DEP-03`; traceability row **SPEC-004**. Status:
   **implemented** (2026-11-22; E0–E4 done; all 14 acceptance criteria met, with 58 SQL tests on
   the test branch including NFR-07, then applied to `main` with `kb_fragments`, `consent` and the
-  key unchanged). **Nothing patient-facing yet**: no n8n workflow calls it; booking, moving and
-  cancelling, and reminders are later specs. Example data until DEP-01 and DEP-03:
+  key unchanged). Patients book on it through SPEC-007 (008-booking). Moving and cancelling, and
+  reminders, are later specs. Example data until DEP-01 and DEP-03:
   - [clarifications](./007-agenda/clarifications.md) — Q1–Q14
   - [spec](./007-agenda/spec.md) — G1–G23
   - [plan](./007-agenda/plan.md) — Steps 0–4 (public functions use `now()`; internal `_at`
@@ -128,12 +128,21 @@ stale_after: null
     result, and `/micita`.
   - **Where it runs:** in flow A and Neon only, never through B or Gemini, with consent required.
     B only gains `offer_booking`.
-  - **Status: specified** (2026-11-22; clarifications, spec, plan and tasks verified by human; R0–R7
-    pending).
+  - **Status: implemented for the demo** (2026-11-22; R0–R7 done; every acceptance criterion met
+    by Node and SQL tests, 31 + 8 pinned runs and the Telegram test). Found in R6 and fixed: n8n
+    drops a whole-keyboard expression in a Telegram node, so A has one node per number of
+    buttons (1–5) with one expression per button field (README, "Booking (SPEC-007)"); and «Ver
+    más» got its own text (`MORE_SLOTS_TEXT`, human). Example agenda data until DEP-01 and
+    DEP-03, and pending DEP-04 like SPEC-006, so real patients stay blocked.
   - [clarifications](./008-booking/clarifications.md), Q1–Q15
   - [spec](./008-booking/spec.md), BK1–BK27
   - [plan](./008-booking/plan.md) — Steps 0–7
   - [tasks](./008-booking/tasks.md) — R0–R7
+  - Code: [`n8n/code/citas.js`](../n8n/code/citas.js) · test `node n8n/code/citas.test.js` ·
+    phrases [`evals/booking_phrases.yaml`](../evals/booking_phrases.yaml) · SQL
+    [`app/infra/sql/004_booking.sql`](../app/infra/sql/004_booking.sql), tested by
+    `tests/infra/test_booking_sql.py` (test branch only)
+  - Workflows: A and B, in [`n8n/workflows/`](../n8n/workflows/)
 
 Pending (not yet scaffolded): moving and cancelling, and reminders, which are follow-ups of
 SPEC-004 (proposed SPEC-008 and SPEC-009); and

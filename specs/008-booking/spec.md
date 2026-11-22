@@ -4,7 +4,7 @@ spec_id: SPEC-007
 title: booking — Functional Spec
 description: Requirements for booking an appointment from Telegram on the SPEC-004 agenda (US-004, RF-005 create, NFR-07) — /cita, the «Pedir cita» button (offer_booking), strict free-text phrases, the type menu, slot buttons, an explicit confirmation, a message for every result, /micita — all in flow A and Neon, never through B or Gemini, with consent required. EARS notation.
 tags: [spec, booking, SPEC-007, US-004, RF-005, NFR-07, CONF-001, SPEC-004, SPEC-006, SPEC-001]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../007-agenda/spec.md, ../006-consent/spec.md, ../005-pseudonymized-log/spec.md, ../004-urgencies/spec.md, ../002-answer-generation/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }
@@ -73,6 +73,10 @@ los recordatorios y el panel de recepción vienen después.
   «Hablar con recepción».
 - `SLOTS_TEXT`: «Estos son los primeros huecos para {tipo}:», with the slot buttons, «Ver más» and
   «Hablar con recepción».
+- `MORE_SLOTS_TEXT`: «Estos son los siguientes huecos para {tipo}:», with the same buttons as
+  `SLOTS_TEXT`. It is the reply to «Ver más» (BK12). **Asked for by the human in R6
+  (2026-11-22)**, after the Telegram test showed `SLOTS_TEXT` («los primeros huecos») after «Ver
+  más».
 - `NO_SLOTS_TEXT`: «Ahora mismo no hay huecos libres para {tipo} en los próximos 30 días. Llama a
   recepción para buscar otra fecha.» Button «Hablar con recepción».
 - `CONFIRM_TEXT`: «Vas a reservar {tipo} el {fecha} a las {hora}. ¿Lo confirmo?» Buttons
@@ -168,7 +172,9 @@ los recordatorios y el panel de recepción vienen después.
 - BK11. WHEN a type is chosen, A SHALL call the public `agenda_free_slots(type, now, 3)`. It SHALL
   reply with `SLOTS_TEXT`, one button per slot (one per row, short Madrid label), «Ver más» and
   «Hablar con recepción». IF there are no slots, THEN it SHALL reply with `NO_SLOTS_TEXT`.
-- BK12. WHEN «Ver más» is tapped, A SHALL show the next slots that start after the last one shown.
+- BK12. WHEN «Ver más» is tapped, A SHALL show the next slots that start after the last one shown,
+  with `MORE_SLOTS_TEXT` (human, R6, 2026-11-22). IF there are none, THEN it SHALL reply with
+  `NO_SLOTS_TEXT`.
 - BK13. Every booking callback SHALL fit in 64 bytes and carry its whole state (type and slot
   code). A SHALL store no booking state.
 - BK14. A malformed `bk:` callback, or one with an unknown type, SHALL open the type menu. It
@@ -254,46 +260,73 @@ los recordatorios y el panel de recepción vienen después.
 
 ## Acceptance criteria
 
+All met on 2026-11-22 (R1–R7). Each criterion says how it was checked. Where the Telegram test
+could not reach a case, because the test account already had an appointment, the R5 pinned run
+for it is named instead.
+
 **Node, SQL and pinned runs:**
 
-- [ ] The `citas.js` test is green.
+- [x] The `citas.js` test is green (R1, R6): 14 `prepare` and 24 `compose` cases, including
+  «Ver más» with `MORE_SLOTS_TEXT`, and every keyboard has 1–5 rows of one button.
   - Every `bk:` callback is at most 64 bytes.
   - The commands are parsed in any case.
   - **Every positive booking phrase matches, and none of the negatives does**: «tengo una cita
     el lunes», «¿cuánto cuesta una cita?», «cancelar mi cita», «cambiar mi cita» and the others.
   - Labels and dates are correct in Madrid across both DST changes.
-- [ ] `agenda_my_next` on the test branch:
+- [x] `agenda_my_next` on the test branch (R2, 17 tests):
   - it returns the next future `booked` appointment of the subject only, with no professional,
     room or subject;
   - it returns nothing when there is none, or when the only one is past or cancelled;
   - the public function has no time parameter.
-- [ ] Pinned runs:
+- [x] Pinned runs (R5, 31 scenarios):
   - `taken` and `invalid` at «Confirmar» reply with the next slots;
   - `limit` replies with the existing appointment;
   - a Neon failure replies with D7;
   - a malformed `bk:` callback opens the menu.
-- [ ] B: an answer citing TAR-001 or TRA-001 has `offer_booking: true`. An abstention, an error,
-  an urgency or an answer citing only HOR-001 has `false`.
+- [x] B: an answer citing TAR-001 or TRA-001 has `offer_booking: true`. An abstention, an error,
+  an urgency or an answer citing only HOR-001 has `false` (R4, 8 pinned runs; in R6 the real
+  price answers had `true`, and the urgency and the abstention had `false`).
 
-**From Telegram, with a test account that has consent** (B published before A):
+**From Telegram, with a test account that has consent** (B published before A; human, R6,
+2026-11-22):
 
-- [ ] `/cita` → the type menu. «Limpieza» → up to 3 slots with short Madrid labels, «Ver más» and
-  «Hablar con recepción».
-- [ ] A slot → `CONFIRM_TEXT` with type, full date and time. «Confirmar» → `BOOKED_TEXT`, and
-  `main` has one `booked` row for the account (read-only check, subject not printed).
-- [ ] `/micita` → `MY_APPOINTMENT_TEXT` with that appointment. `/cita` again → `LIMIT_TEXT`. A
+- [x] `/cita` → the type menu with 5 buttons. «Limpieza» → the slots with «Ver más» and «Hablar
+  con recepción».
+- [x] A slot → `CONFIRM_TEXT` with type, full date and time. «Elegir otro hueco» works.
+  «Confirmar» → `BOOKED_TEXT`, and `main` has one `booked` row (read-only check, subject not
+  printed: «limpieza», 23/11/2026 9:00). The human keeps it for the demo.
+- [x] `/micita` → `MY_APPOINTMENT_TEXT` with that appointment. `/cita` again → `LIMIT_TEXT`. A
   second tap on the old «Confirmar» → `LIMIT_TEXT`.
-- [ ] «¿Cuánto cuesta una limpieza?» → the usual 60 € answer with a «Pedir cita» button, which
-  opens the type menu.
-- [ ] «quiero pedir cita para una limpieza» → the slots directly. «Otro tratamiento» →
-  `REQUEST_ONLY_TEXT`; its «Primera visita» → the slots for `primera_visita`.
-- [ ] «tengo una cita el lunes», «¿cuánto cuesta una cita?» and «cancelar mi cita» → not the
-  booking flow (they go to B as today). «me duele una muela, quiero cita» → the urgency reply.
-- [ ] Without consent, `/cita`, `/micita` and a booking phrase → the consent notice.
-- [ ] No B execution exists for any booking step, and no Gemini call is made for one. The B
-  executions of the other messages contain only `question`.
-- [ ] A and B are re-exported with no secret or personal data. A still saves no executions, and
+- [x] «¿Cuánto cuesta una limpieza?» → the usual 60 € answer with a «Pedir cita» button, which
+  opens the type menu (checked again after the last publish of A).
+- [x] «quiero pedir cita para una limpieza» → the slots directly. «Otro tratamiento» →
+  `REQUEST_ONLY_TEXT`; its «Primera visita» → the slots for `primera_visita`. From Telegram, the
+  account already had an appointment, so these gave `LIMIT_TEXT`, which is right (BK1, BK16). The
+  slots and the request text are covered by the R5 pinned runs 5, 6, 12 and 13.
+- [x] «tengo una cita el lunes» → B with no booking menu. An urgency with a booking phrase → the
+  urgency reply. «¿cuánto cuesta una cita?» and «cancelar mi cita» are negatives of the phrase
+  test.
+- [x] Without consent, `/cita`, `/micita`, `bk:menu`, a booking phrase and an old «Confirmar» →
+  the consent notice, and «Reservar» does not run (R5 pinned runs 26–31; not repeated from
+  Telegram).
+- [x] No B execution exists for any booking step, and no Gemini call is made for one. B's 4
+  executions from the R6 test (181, 196, 198 and 201) received only `question`.
+- [x] A and B are re-exported with no secret or personal data, and without the `shared` and
+  `pinData` blocks (R7). A still saves no executions (settings none / none / false / false), and
   no pinned data remains in either workflow.
+
+**Found in R6 and fixed:**
+
+- **The whole-keyboard expression does not work.** In «Responder reserva»,
+  `inlineKeyboard = {{ $json.inlineKeyboard }}` sent the message with no buttons. n8n normalizes
+  a `fixedCollection` parameter against its schema and drops a string expression in place of
+  the whole collection, so the keyboard reached Telegram empty. The Step 0 reading of the
+  Telegram node's code was right, but the parameter never got that far.
+  - **Fix, approved by the human:** the Switch «¿Cuántos botones?» and five Telegram nodes
+    «Responder reserva (1)» to «(5)». Each has fixed rows, with one expression per button field
+    (text and `callback_data`). A Node test checks that every composed keyboard has 1–5 rows of
+    exactly one button.
+- **«Ver más» repeated «los primeros huecos».** It now uses `MORE_SLOTS_TEXT`, test first.
 
 ## Known limitations
 
@@ -304,6 +337,9 @@ los recordatorios y el panel de recepción vienen después.
 - The free-text detector is a strict phrase list, so unusual wordings get an ordinary answer.
   `/cita` and «Pedir cita» always work.
 - A failure at «Confirmar» cannot tell whether the booking was saved. `/micita` resolves it.
+- A booking keyboard has at most 5 rows, one per «Responder reserva (n)» node. Today the largest
+  one, the type menu, has 5. A longer keyboard needs another node and another rule in «¿Cuántos
+  botones?», and the Node test fails until it has them.
 - All agenda data is example data (DEP-01, DEP-03). The appointment type is health data
   (DEP-04).
 

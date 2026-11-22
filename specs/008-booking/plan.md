@@ -4,7 +4,7 @@ spec_id: SPEC-007
 title: booking — Technical Plan
 description: How to build booking from Telegram — preflight (credential hosts), citas.js and the consent module extension test-first, agenda_my_next in 004_booking.sql, offer_booking in B, the booking branch of A with a dynamic inline keyboard, pinned runs, the Telegram test (B before A), and exports and docs.
 tags: [plan, booking, SPEC-007, n8n, neon]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md, ../007-agenda/plan.md, ../006-consent/plan.md, ../005-pseudonymized-log/plan.md]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }
@@ -50,7 +50,10 @@ A  lifecenter-telegram-demo (saves NO executions)
               │                                                                ▼
               │                            Componer reserva (citas.js: text + keyboard rows)
               ├─ accept / withdraw / reply  (unchanged)
-          → ¿Qué teclado? (+ 'booking' → Responder reserva: inline keyboard from an expression)
+          → ¿Qué teclado? (+ 'offer' → Responder con pedir cita;
+                           + 'booking' → ¿Cuántos botones? → Responder reserva (1)…(5))
+            (R6: one Telegram node per number of buttons, each with fixed rows and one
+             expression per button field; the whole-keyboard expression was dropped by n8n)
 
 B  lifecenter-demo-core: "Validar y componer" + offer_booking; "Resultado" whitelist + offer_booking.
 Neon: 004_booking.sql → agenda_my_next(from_id) / agenda_my_next_at(from_id, now)
@@ -86,7 +89,8 @@ as a parameter (BK21).
 - **n8n:**
   - check in the Telegram node's code that its inline keyboard is read with `getNodeParameter`
     and built from `rows[].row.buttons[]`, so a single expression can return the whole
-    keyboard. This is already seen in n8n 2.48.4, `GenericFunctions.js`;
+    keyboard. This is already seen in n8n 2.48.4, `GenericFunctions.js`. **R6 showed this is not
+    enough:** the parameter is normalized before that code reads it (see Step 5);
   - check that the B and A exports in git are the published versions.
 
 ## Step 1: The JavaScript modules, test-first (BK23)
@@ -208,7 +212,13 @@ The same read-only before-and-after check as SPEC-004 E3:
   - «Componer reserva» (Code, citas.js);
   - «Responder reserva» (Telegram). Its `inlineKeyboard` is a **single expression** that builds
     `{ rows: [{ row: { buttons: [{ text, additionalFields: { callback_data } }] } }] }` from
-    «Componer reserva»'s rows (Step 0);
+    «Componer reserva»'s rows (Step 0).
+    - **Replaced in R6 (human, 2026-11-22).** n8n drops a string expression in place of a whole
+      `fixedCollection`, so the message went out with no buttons. «Componer reserva» still
+      outputs `inlineKeyboard` (`toTelegramKeyboard`). The Switch **«¿Cuántos botones?»** (rules
+      `rows.length === 1…5`) sends it to **«Responder reserva (1)» … «(5)»**. Each of these has
+      N fixed rows, and each button reads its `text` and `callback_data` with its own
+      expression, such as `{{ $json.inlineKeyboard.rows[0].row.buttons[0].text }}`.
   - «Responder con pedir cita» (Telegram), with the «Pedir cita» button (`bk:menu`);
 - **changed:**
   - «Clasificar» and «Decidir» carry the extended consentimiento.js;
@@ -259,6 +269,8 @@ The agent checks:
 - B's executions: none for booking steps, and only `question` in the others;
 - that «Responder reserva» sent the dynamic keyboard. If not, the fallback is one Telegram node
   per keyboard shape (menu, 1–3 slots, confirmation, request-only).
+  - **It did not.** The human chose a generic version of the fallback: one node per **number of
+    buttons** (1–5), not per shape, so no new shape needs a new node. See Step 5.
 
 ## Step 7: Exports and docs (BK27)
 
@@ -276,7 +288,7 @@ The agent checks:
 | BK1, BK8, BK18 | consentimiento.js (`cita`, `micita`, `booking`), «Preparar reserva», «Mi próxima cita» |
 | BK2–BK4 | «Detectar urgencia» → «Decidir» → «¿Es una reserva?» (`detectBookingPhrase`) |
 | BK5–BK7 | B "Validar y componer" + "Resultado"; «Componer respuesta» → «Responder con pedir cita» |
-| BK9–BK14 | `prepare` / `compose`, «Buscar huecos», «Responder reserva», the codec |
+| BK9–BK14 | `prepare` / `compose`, «Consultar agenda», «¿Cuántos botones?» → «Responder reserva (1)…(5)», the codec |
 | BK15–BK17 | «Reservar» → `agenda_book` (SPEC-004 constraints), `compose` |
 | BK19 | `004_booking.sql`, `test_booking_sql.py` |
 | BK20 | the error outputs of the three queries → D7 |

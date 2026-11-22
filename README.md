@@ -239,6 +239,22 @@ With consent:
 | se me ha hinchado la cara y me cuesta tragar | The severe reply (call the 112), the notice and the button; `urgency_level: severe` |
 | ¿la limpieza duele? · me duele pensar en el precio · tengo una cita el lunes | Not an urgency: the normal path (answer or abstention) |
 
+Booking, with consent (SPEC-007; see [Booking](#booking-spec-007)):
+
+| Message | Expected reply |
+|---|---|
+| `/cita` | «¿Qué tipo de cita quieres?» with «Revisión», «Limpieza», «Primera visita», «Otro tratamiento» and «Hablar con recepción» |
+| «Limpieza» | «Estos son los primeros huecos para una limpieza:», up to 3 slot buttons («lun 7 dic · 9:00»), «Ver más» and «Hablar con recepción» |
+| «Ver más» | «Estos son los siguientes huecos para una limpieza:» with the next slots |
+| A slot | «Vas a reservar una limpieza el lunes 7 de diciembre a las 9:00. ¿Lo confirmo?» with «Confirmar» and «Elegir otro hueco» |
+| «Confirmar» | «Hecho: tienes una limpieza el …». Tapping it again gives «Ya tienes una limpieza el …» |
+| `/micita` | «Tu próxima cita: una limpieza el …», or «No tienes ninguna cita reservada…» with «Pedir cita» |
+| ¿Cuánto cuesta una limpieza? | The usual 60 € answer, now with a «Pedir cita» button |
+| quiero pedir cita para una limpieza | The slots directly |
+| quiero una cita para un blanqueamiento · «Otro tratamiento» | «Ese tratamiento necesita una valoración previa…» with «Primera visita» |
+| quiero cita, me sangra mucho la encía | The urgency reply: an urgency always wins over booking |
+| tengo una cita el lunes · cancelar mi cita | Not a booking: the normal path through B |
+
 To set the clinic's real urgency phone, change `URGENCY_PHONE` (and set `URGENCY_PHONE_IS_EXAMPLE`
 to `false`) at the top of `n8n/code/urgencias.js`. Then paste the file into the "Detectar
 urgencia" node of **both** workflows (`lifecenter-demo-core` and, since SPEC-006,
@@ -289,8 +305,8 @@ them and run the test.
 The project's own appointment agenda lives in Neon. It does not touch LifeCenter's clinical
 software (RES-01). See [specs/007-agenda](specs/007-agenda/spec.md).
 
-**No patient can use it yet.** No n8n workflow calls it. Booking from Telegram, moving and
-cancelling, and reminders will come in later specs.
+Since SPEC-007, flow A books on it from Telegram (see [Booking](#booking-spec-007)). Moving
+and cancelling, and reminders, will come in later specs.
 
 **What it holds:**
 - **Opening hours** (`agenda_hours`), the same as HOR-001. Each block has the months in which it
@@ -316,6 +332,7 @@ Every value is **example data** until LifeCenter confirms it (DEP-01, DEP-03).
 |---|---|
 | `agenda_free_slots(type, from, limit = 3)` | up to 3 free slots, earliest first and one per opening block (`free`), or `request_only` |
 | `agenda_book(type, start, from_id)` | `booked` (with professional and room), `taken`, `limit`, or `invalid` with the reason (`outside_hours`, `closed`, `not_on_grid`, `too_soon`, `too_far`, `request_only`, `unknown_type`) |
+| `agenda_my_next(from_id)` (SPEC-007, `004_booking.sql`) | the type code, start and end of the patient's next `booked` appointment, or no row; never the professional, room or subject |
 
 The tests use the `_at` versions, which take a fixed time instead of `now()`. Double bookings are
 impossible: the database rejects two `booked` appointments that overlap for the same professional
@@ -371,25 +388,81 @@ Always convert with `AT TIME ZONE 'Europe/Madrid'`: Neon sessions run in GMT.
 - Same as SPEC-006: the HMAC key is in the same database, and **must never be regenerated or
   deleted**.
 
+### Booking (SPEC-007)
+
+Patients with consent can book one appointment from Telegram, on the SPEC-004 agenda. See
+[specs/008-booking](specs/008-booking/spec.md) and the [Try it](#try-it) rows.
+
+**Ways in:**
+- `/cita`, in any letter case;
+- the «Pedir cita» button, under an answer that cites a price or a treatment (B's
+  `offer_booking`);
+- a clear booking phrase such as «quiero pedir cita» or «dame cita para una revisión». The list
+  is strict on purpose: «tengo una cita el lunes», «¿cuánto cuesta una cita?» or «cancelar mi
+  cita» still go to B. An urgency always wins.
+
+**Flow:** the type → up to 3 slots («Ver más» for the next ones) → an explicit confirmation →
+`agenda_book`, which re-checks every rule. `/micita` shows the next appointment. Each button
+carries its whole state in its `callback_data`, at most 64 bytes, so A keeps no booking state.
+
+**Where it runs:** everything happens in flow A and Neon. No booking step calls B or Gemini, and
+A still saves no executions. The only record is the appointment row, with a pseudonymous
+subject.
+
+**Code:**
+- [`n8n/code/citas.js`](n8n/code/citas.js) holds the texts, the callback codec, the phrase
+  detector, the Madrid dates and the decisions (`prepare`, `compose`).
+- A's Code nodes «¿Es una reserva?», «Preparar reserva» and «Componer reserva» carry it, plus
+  their wiring.
+- It is tested by `node n8n/code/citas.test.js`, which uses the phrase dataset
+  [`evals/booking_phrases.yaml`](evals/booking_phrases.yaml) and checks sync with A's export.
+
+**Telegram keyboards from n8n: never put the whole keyboard in one expression.**
+- A Telegram node whose `inlineKeyboard` is `{{ $json.inlineKeyboard }}` sends the message
+  **with no buttons**. n8n normalizes a `fixedCollection` parameter against its schema and drops
+  a string expression in place of the collection, so Telegram gets an empty `inline_keyboard`.
+  Reading the Telegram node's code does not show this.
+- Keep the rows fixed in the node, and put one expression in each button field instead, such as
+  `{{ $json.inlineKeyboard.rows[0].row.buttons[0].text }}` for the text, and the same path
+  ending in `.additionalFields.callback_data` for the callback.
+- A has the Switch «¿Cuántos botones?» and one node per number of buttons, «Responder reserva
+  (1)» to «(5)». `citas.test.js` checks that every booking keyboard has 1 to 5 rows of one
+  button. A sixth row needs a sixth node and a sixth rule.
+
+**Limitations:**
+- One future appointment per patient, and no moving or cancelling from Telegram yet. The texts
+  send the patient to reception.
+- Reception cannot see who booked (SPEC-004).
+- If Neon fails at «Confirmar», the reply cannot tell whether the appointment was saved.
+  `/micita` tells.
+- Unusual wordings are not detected as booking phrases. `/cita` and «Pedir cita» always work.
+- A's transient window (SPEC-005) also applies to booking messages.
+- Agenda data is example data (DEP-01, DEP-03).
+
 ### Export after changing the workflow
 
 ```bash
 n8n export:workflow --id=<A id> --output=n8n/workflows/lifecenter-telegram-demo.json --pretty
 n8n export:workflow --id=<B id> --output=n8n/workflows/lifecenter-demo-core.json --pretty
-# Drop the owner block ("shared": project name and e-mail) from both before committing:
+# Drop the owner block ("shared": project name and e-mail) and "pinData" from both before committing:
 for f in n8n/workflows/lifecenter-telegram-demo.json n8n/workflows/lifecenter-demo-core.json; do
-  python -c "import json,sys;p=sys.argv[1];d=json.load(open(p,encoding='utf-8'));[w.pop('shared',None) for w in d];open(p,'w',encoding='utf-8',newline='\n').write(json.dumps(d,ensure_ascii=False,indent=2)+'\n')" "$f"
+  python -c "import json,sys;p=sys.argv[1];d=json.load(open(p,encoding='utf-8'));[(w.pop('shared',None),w.pop('pinData',None)) for w in d];open(p,'w',encoding='utf-8',newline='\n').write(json.dumps(d,ensure_ascii=False,indent=2)+'\n')" "$f"
 done
 # Must print nothing:
 grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/*.json
 # The urgency test checks that "Detectar urgencia" in B and in A carries n8n/code/urgencias.js,
-# and the consent test that A's "Clasificar" and "Decidir" carry n8n/code/consentimiento.js:
+# the consent test that A's "Clasificar" and "Decidir" carry n8n/code/consentimiento.js, and the
+# booking test that A's three booking Code nodes carry n8n/code/citas.js:
 node n8n/code/urgencias.test.js
 node n8n/code/consentimiento.test.js
+node n8n/code/citas.test.js
 ```
 
-The consent SQL is tested against the Neon test branch only:
-`python -m pytest tests/infra/test_consent_sql.py`.
+Export only after **publishing**, and check that the draft is the published version: the
+exports in git are the rollback copy.
+
+The consent and booking SQL is tested against the Neon test branch only:
+`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py`.
 
 ## Git rule
 

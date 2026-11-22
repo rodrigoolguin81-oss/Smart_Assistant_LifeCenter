@@ -15,6 +15,7 @@ const T = {
   TYPE_MENU: '¿Qué tipo de cita quieres?',
   REQUEST_ONLY: 'Ese tratamiento necesita una valoración previa en la clínica. Puedo reservarte una primera visita, o puedes hablar con recepción.',
   SLOTS: 'Estos son los primeros huecos para {tipo}:',
+  MORE_SLOTS: 'Estos son los siguientes huecos para {tipo}:', // human, R6 (2026-11-22)
   NO_SLOTS: 'Ahora mismo no hay huecos libres para {tipo} en los próximos 30 días. Llama a recepción para buscar otra fecha.',
   CONFIRM: 'Vas a reservar {tipo} el {fecha} a las {hora}. ¿Lo confirmo?',
   BOOKED: 'Hecho: tienes {tipo} el {fecha} a las {hora}. Para cambiarla o anularla, de momento llama a recepción.',
@@ -249,7 +250,7 @@ const PREPARE_CASES = [
   ['«Otro tratamiento»', bk('bk:o'), null, P('request_only', 'none')],
   ['slot → confirmation, no query', bk(`bk:s:limpieza:${code(S1)}`), null, P('confirm', 'none', { type: 'limpieza', start: S1 })],
   ['confirm → book', bk(`bk:c:limpieza:${code(S1)}`), null, P('book', 'book', { type: 'limpieza', start: S1 })],
-  ['«Ver más» → after the last slot', bk(`bk:m:limpieza:${code(S3)}`), null, P('slots', 'agenda', { type: 'limpieza', from: end(S3, 1) })],
+  ['«Ver más» → after the last slot', bk(`bk:m:limpieza:${code(S3)}`), null, P('more', 'agenda', { type: 'limpieza', from: end(S3, 1) })],
   ['«Elegir otro hueco» → from now', bk('bk:r:revision'), null, P('slots', 'agenda', { type: 'revision', from: NOW })],
   ['malformed → menu, no query', bk('bk:zz'), null, P('menu', 'none')],
 ];
@@ -291,6 +292,12 @@ const COMPOSE_CASES = [
     C(T.NO_APPOINTMENT, [[btn(LABELS.pedir, 'bk:menu')], RECEPCION])],
   ['type → 3 slots, «Ver más», reception (BK11)', P('slots', 'agenda', { type: 'limpieza' }), { agenda: { my_next: null, slots: THREE.map((s) => slot(s.iso)) } },
     slotsView('limpieza', 'una limpieza', THREE)],
+  ['«Ver más» → the next slots, with its own text (R6)', P('more', 'agenda', { type: 'limpieza' }), { agenda: { my_next: null, slots: [slot(S2), slot(S3)] } },
+    C(fill(T.MORE_SLOTS, { tipo: 'una limpieza' }), SLOT_ROWS('limpieza', [THREE[1], THREE[2]]))],
+  ['«Ver más», nothing left → no slots', P('more', 'agenda', { type: 'limpieza' }), { agenda: { my_next: null, slots: [] } },
+    C(fill(T.NO_SLOTS, { tipo: 'una limpieza' }), [RECEPCION])],
+  ['«Ver más», but already has one → limit', P('more', 'agenda', { type: 'limpieza' }), { agenda: { my_next: MY, slots: [slot(S2)] } },
+    C(fill(T.LIMIT, { tipo: 'una limpieza', ...FECHA }), [RECEPCION])],
   ['type → 1 slot', P('slots', 'agenda', { type: 'revision' }), { agenda: { my_next: null, slots: [slot(S2, 30)] } },
     slotsView('revision', 'una revisión', [THREE[1]])],
   ['type → no slots', P('slots', 'agenda', { type: 'primera_visita' }), { agenda: { my_next: null, slots: [] } },
@@ -334,6 +341,22 @@ check('every composed callback fits in 64 bytes', () => {
       if (Buffer.byteLength(b.data, 'utf8') > 64) throw new Error(`"${b.data}" too long`);
     }
   }
+});
+
+// === Keyboard shape for A's five fixed send nodes (R6 fix, human 2026-11-22) ===
+// n8n drops a whole-keyboard expression (fixedCollection), so A sends with «Responder reserva (1)»…«(5)»:
+// every booking keyboard must have 1 to 5 rows of exactly one button each.
+check('every composed keyboard has 1–5 rows of exactly one button', () => {
+  const compose = requireFn('compose');
+  const k = requireFn('toTelegramKeyboard');
+  const wrong = [];
+  for (const [name, prep, db] of COMPOSE_CASES) {
+    const rows = compose(prep, db, NOW).rows;
+    if (rows.length < 1 || rows.length > 5) wrong.push(`${name}: ${rows.length} rows`);
+    rows.forEach((row, i) => { if (row.length !== 1) wrong.push(`${name}: row ${i} has ${row.length} buttons`); });
+    if (k(rows).rows.length !== rows.length) wrong.push(`${name}: toTelegramKeyboard changed the row count`);
+  }
+  if (wrong.length) throw new Error(wrong.join('; '));
 });
 
 // === The Telegram keyboard parameter (plan Step 5: one expression for the whole keyboard) ===

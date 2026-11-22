@@ -8,6 +8,8 @@ const TEXTS = {
   TYPE_MENU: '¿Qué tipo de cita quieres?',
   REQUEST_ONLY: 'Ese tratamiento necesita una valoración previa en la clínica. Puedo reservarte una primera visita, o puedes hablar con recepción.',
   SLOTS: 'Estos son los primeros huecos para {tipo}:',
+  // Added by the human at R6 (2026-11-22): the slots after «Ver más».
+  MORE_SLOTS: 'Estos son los siguientes huecos para {tipo}:',
   NO_SLOTS: 'Ahora mismo no hay huecos libres para {tipo} en los próximos 30 días. Llama a recepción para buscar otra fecha.',
   CONFIRM: 'Vas a reservar {tipo} el {fecha} a las {hora}. ¿Lo confirmo?',
   BOOKED: 'Hecho: tienes {tipo} el {fecha} a las {hora}. Para cambiarla o anularla, de momento llama a recepción.',
@@ -183,7 +185,7 @@ function prepare(route, phrase, now) {
         return REQUEST_ONLY_TYPES.includes(c.type) ? P('request_only', 'none') : P('slots', 'agenda', { type: c.type, from: nowIso });
       case 'slot': return P('confirm', 'none', { type: c.type, start: c.start });
       case 'confirm': return P('book', 'book', { type: c.type, start: c.start });
-      case 'more': return P('slots', 'agenda', { type: c.type, from: new Date(Date.parse(c.start) + 60000).toISOString() });
+      case 'more': return P('more', 'agenda', { type: c.type, from: new Date(Date.parse(c.start) + 60000).toISOString() });
       case 'retry': return P('slots', 'agenda', { type: c.type, from: nowIso });
       default: return P('menu', 'none');
     }
@@ -228,8 +230,9 @@ function compose(prep, db, now) {
       if (prep.type) return slotList(TEXTS.SLOTS, prep.type, agenda.slots);
       return menu();
     case 'slots':
+    case 'more':
       if (agenda.my_next) return appointment(TEXTS.LIMIT, agenda.my_next);
-      return slotList(TEXTS.SLOTS, prep.type, agenda.slots);
+      return slotList(prep.step === 'more' ? TEXTS.MORE_SLOTS : TEXTS.SLOTS, prep.type, agenda.slots);
     case 'request_only':
       return requestOnly();
     case 'menu':

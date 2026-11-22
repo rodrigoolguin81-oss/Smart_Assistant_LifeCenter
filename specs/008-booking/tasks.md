@@ -4,7 +4,7 @@ spec_id: SPEC-007
 title: booking — Task Breakdown
 description: Ordered, test-first tasks for booking from Telegram — read-only preflight with the Neon main credential host, the JS modules, agenda_my_next on the test branch and main, offer_booking in B, A's booking branch with pinned data, the Telegram test, and exports and docs.
 tags: [tasks, booking, SPEC-007]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }
@@ -262,11 +262,77 @@ Same pattern as SPEC-006 and SPEC-004. **Nothing is touched before the plan is a
     - **no pinned data** in A or B, checked with `get_workflow_details` and a CLI export;
     - the list of executions for the human to delete.
   - Check: every scenario of plan Step 5 behaves as expected, and B is called only where planned.
-- [ ] R6 **[humano]**: Publish **B, then A**, and test from Telegram (plan Step 6).
-  - The agent checks `main`'s appointments (read-only, no subject), B's executions, and the
-    dynamic keyboard. If the keyboard fails, apply the fallback.
-  - Covers: the Telegram acceptance criteria.
-- [ ] R7: Exports and docs (plan Step 7; BK27).
-  - Export A and B with the `shared` block removed, and run the scan.
-  - Run every Node and SQL test.
-  - Update the README, `specs/index.md`, and mark spec, plan and tasks implemented.
+- [x] R6 **[humano]**: Publish **B, then A**, and test from Telegram (plan Step 6).
+  - Done 2026-11-22. The human published B (`0b3cb06d…`), then A, three times: `a3d0afba…`,
+    then the keyboard fix `e402220f…`, then the «Ver más» text `6a033c75…`.
+  - **First test: the dynamic keyboard did not work.** «Responder reserva» sent the text with no
+    buttons.
+    - **Diagnosis, read-only:** n8n normalizes a `fixedCollection` parameter against its schema
+      (`n8n-workflow` `node-helpers.js`). A string expression in place of the whole collection is
+      dropped, so `inline_keyboard` arrived empty. An expression inside each button field does
+      work.
+    - **Option (b), an HTTP Request to the Bot API, was ruled out:** the `telegramApi` credential
+      has no `authenticate` block, because the token goes in the URL path, so HTTP Request
+      cannot use it without exposing the token.
+    - **Option (a), chosen by the human:** one Telegram node per **number of buttons**, generic
+      rather than per shape. Test first: a Node check that every composed keyboard has 1–5 rows
+      of exactly one button, in every `compose` case.
+    - Through the MCP: «Responder reserva» was removed. The Switch «¿Cuántos botones?» was added
+      (rules `$json.inlineKeyboard.rows.length === 1…5`), with «Responder reserva (1)» to «(5)».
+      Each node has N fixed rows, and each button reads `rows[i].row.buttons[0].text` and
+      `.additionalFields.callback_data` with its own expression.
+    - **Agreed change to the plan:** the nodes read «Componer reserva»'s existing
+      `inlineKeyboard`, so «Componer reserva» did not change. `toTelegramKeyboard` and its test
+      stay (human, 2026-11-22).
+    - A CLI export showed every other node, connection and setting identical to the published
+      version, and no pinned data.
+  - **Second test, all as expected (human):**
+    - «Pedir cita» after the price answer;
+    - the menu with 5 buttons;
+    - slots with «Ver más» and «Hablar con recepción»;
+    - the confirmation and «Elegir otro hueco»;
+    - «Confirmar» → booked, and a second «Confirmar» → limit;
+    - `/micita`;
+    - `/cita` → limit, and blanqueamiento with an appointment → limit, which is right (BK1);
+    - an urgency with a booking phrase → the urgency reply;
+    - «tengo una cita el lunes» → B, with no menu.
+  - **One fault:** after «Ver más», the text said «Estos son los primeros huecos…».
+    - The human asked for `MORE_SLOTS_TEXT`, «Estos son los siguientes huecos para {tipo}:».
+    - Test first, red with 5 failures. Then `prepare` returns the step `more` for `bk:m:…`, and
+      `compose` answers it like `slots` but with the new text. If there are no slots left, it
+      gives `NO_SLOTS_TEXT`, and if there is an appointment, `LIMIT_TEXT`.
+    - The three booking Code nodes got the new `citas.js` with their wiring unchanged. They all
+      carry the module, and `prepare` runs in «Preparar reserva». A CLI export showed the other
+      32 nodes, the connections and the settings unchanged.
+    - **Third test (human):** `/micita`, and the price question with «Pedir cita», work. The
+      «Ver más» text could not be seen from Telegram, because the account has an appointment. It
+      is covered by the Node test.
+  - **The agent's checks:**
+    - **`main`, read-only, with no subject printed:** 1 `booked` appointment, «limpieza»
+      23/11/2026 9:00, created by the test. The human keeps it for the demo. The test branch has
+      0.
+    - **B's executions from the test** were 181, 196, 198 and 201: two answers with
+      `offer_booking: true`, one urgency and one abstention. All received only `question`, and
+      none was a booking step.
+    - **A's transient records** (SPEC-005 known limitation): n8n's database briefly held 4 of
+      A's runs with the raw update. They had no node data and were gone 15 minutes later. They
+      were never shown in the editor.
+- [x] R7: Exports and docs (plan Step 7; BK27).
+  - Done 2026-11-22.
+  - **Exports from the published versions.** For both A (`6a033c75…`, 35 nodes) and B
+    (`0b3cb06d…`, 11 nodes), draft = published, checked against `workflow_history`. Both were
+    exported with the CLI, with `shared` and `pinData` removed (human, 2026-11-22).
+  - **Scan:**
+    - the README `grep` printed nothing;
+    - the push scan compared the added lines with the real values (from `.env` and git config,
+      and the two HMAC keys held in memory only) and with the secret patterns. Its only hit is a
+      node UUID that starts with 8 digits;
+    - no `shared` or `pinData` block remains.
+  - **Tests:**
+    - `citas.test.js`, `consentimiento.test.js` and `urgencias.test.js` are green, with **every
+      sync check run** against the new exports;
+    - `pytest` reports **357 passed**, including `tests/infra` on the test branch.
+  - **Docs:**
+    - README, «Booking (SPEC-007)»: the dynamic keyboard finding and the rule;
+    - `specs/index.md`;
+    - spec, plan and tasks marked `implemented`.
