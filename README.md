@@ -87,11 +87,17 @@ Documents link to each other with relative Markdown links (e.g. `[plan](./plan.m
 
 The demo runs on two n8n workflows (CHG-001,
 [specs/003-n8n-migration](specs/003-n8n-migration/plan.md), split by SPEC-005,
-[specs/005-pseudonymized-log](specs/005-pseudonymized-log/plan.md)):
+[specs/005-pseudonymized-log](specs/005-pseudonymized-log/plan.md), with the consent step of
+SPEC-006, [specs/006-consent](specs/006-consent/plan.md)):
 
-- **`lifecenter-telegram-demo` (A, channel).** It receives from Telegram, pseudonymizes, calls B
-  with the pseudonymized text only, and replies. It handles stickers, photos and the "Hablar con
-  recepción" button on its own. It **saves no executions**.
+- **`lifecenter-telegram-demo` (A, channel).** It receives from Telegram and pseudonymizes. Then:
+  - it runs the urgency detector and **always** answers an urgency;
+  - it checks consent in Neon. Until the person accepts, it shows the consent notice with
+    «Acepto» / «No acepto» and **does not call B**;
+  - with consent, it calls B with the pseudonymized text only, and replies.
+
+  It handles `/start`, `/privacidad` (status and «Retirar consentimiento»), the buttons,
+  stickers and photos on its own. It **saves no executions**.
 - **`lifecenter-demo-core` (B, core).** It runs the SPEC-003 urgency detector
   ([specs/004-urgencies](specs/004-urgencies/plan.md)), the SPEC-002 retrieval and the SPEC-001
   answer rules. It receives **only** the pseudonymized `question`, with no chat id and no Telegram
@@ -99,11 +105,17 @@ The demo runs on two n8n workflows (CHG-001,
   the Executions of `lifecenter-demo-core`**.
 
 ```text
-A  Telegram → ¿Qué ha llegado? ─ button  → D8 handoff text
-                               ─ other   → "Solo puedo leer mensajes de texto…"
-                               ─ text    → Seudonimizar → Llamar al núcleo ──question──▶ B
-                                            ◀── reply fields ── Componer respuesta (+ A's chat id)
-                                            → Telegram reply (+ "Hablar con recepción" button)
+A  Telegram → Clasificar → ¿Qué ha llegado? ─ handoff button → D8 handoff text
+                             ─ consent button / command / other ───────────────┐
+                             ─ text → Seudonimizar → Detectar urgencia ────────┤
+                                                                               ▼
+              Consultar consentimiento (Neon: consent_get) → Decidir → ¿Qué hacer?
+                ├─ core     → Llamar al núcleo ──question──▶ B ── reply fields ── Componer respuesta
+                ├─ accept   → Guardar aceptación ┐
+                ├─ withdraw → Guardar retirada  ─┴→ Tras guardar
+                └─ reply (notice, status, urgency without consent, D7, D12)
+              → ¿Qué teclado? → Telegram reply (none · "Hablar con recepción" · Acepto/No acepto ·
+                                                Retirar consentimiento)
 
 B  Recibir pregunta → Detectar urgencia → ¿Es urgencia?
      ├─ yes → fixed urgency reply (clinic phone / 112) ──────────────────────┐
@@ -131,6 +143,12 @@ hold no keys: they only reference three n8n credentials by name.
   (@BotFather), a Gemini API key (free tier: development and example data only) and Neon.
 - `kb/` loaded into Neon `main`. Run `python -m app.infra.kb_ingest` only after editing `kb/`:
   it replaces `kb_fragments`.
+- The consent schema in Neon `main` (SPEC-006): `python -m app.infra.schema --database-url-env
+  DIRECT_URL`, run once before publishing A. It creates `pgcrypto`, the `consent` and
+  `consent_key` tables and the `consent_*` functions. It is safe to re-run: it does not touch
+  `kb_fragments` and keeps the existing key.
+  - **Never regenerate or delete the key in `consent_key`.** Every consent record is an HMAC
+    under it, so a new key would make every stored consent unrecognizable.
 
 ### Start
 
@@ -165,7 +183,16 @@ hold no keys: they only reference three n8n credentials by name.
    |---|---|---|
    | `Telegram LifeCenter Bot` | Telegram API | BotFather token |
    | `Gemini API` | Header Auth, name `x-goog-api-key` | Gemini API key |
-   | `Neon main` | Postgres, SSL `require` | host, database, user and password of the direct connection |
+   | `Neon main` | Postgres, SSL `require` | host, database, user and password of the direct connection (`DIRECT_URL`) |
+
+   **`Neon main` must point to Neon `main`, never to the test branch** (SPEC-006 K5, 2026-11-22):
+   - **Host:** use the one in `DIRECT_URL`, not the one in `TEST_DATABASE_URL`. The user and the
+     database are the same on both branches, so only the host tells them apart. On the test
+     branch, the bot would read and write data that `pytest tests/infra` deletes and rewrites.
+   - **Certificate fields:** leave CA Certificate, Client Private Key and Client Certificate
+     **empty**. The browser may autofill them; clear them before saving.
+   - **Check:** after a «Acepto» from Telegram, the `consent` table in `main` (not in the test
+     branch) must have the new row.
 
    Then import **B first, then A**:
    - `n8n import:workflow --input=n8n/workflows/lifecenter-demo-core.json`;
@@ -183,8 +210,22 @@ hold no keys: they only reference three n8n credentials by name.
 
 Send these messages to the bot, then open the **Executions of `lifecenter-demo-core`** in n8n to
 see each one's path. The reply's fields, including `reason`, are in its last node, "Resultado".
-A shows no executions by design. Stickers, photos and the button do not reach B, so they leave no
-execution.
+A shows no executions by design. Stickers, photos, commands, the buttons and anything sent
+before consent do not reach B, so they leave no execution.
+
+**Consent first (SPEC-006).** The first message from an account with no consent gets the notice
+instead of an answer:
+
+| Message | Expected reply |
+|---|---|
+| Any question, `/start` or a sticker, without consent | The consent notice («… Esto es una demostración: no escribas datos reales. ¿Aceptas?») with «Acepto» and «No acepto»; the message is discarded |
+| «No acepto» | «De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.» Nothing is stored |
+| me sangra mucho la encía desde ayer, without consent | The urgency reply with the clinic phone and the button, without the notice. B is not called |
+| `/privacidad` (any letter case) | The notice and «Estado: no has aceptado este aviso.», or «Estado: aceptaste este aviso el dd/mm/aaaa.» with «Retirar consentimiento» |
+| «Acepto» | «Gracias. Ya puedes escribirme tu consulta.» Then the messages below work |
+| «Retirar consentimiento» | «He retirado tu consentimiento. …»; the next message gets the notice again |
+
+With consent:
 
 | Message | Expected reply |
 |---|---|
@@ -200,8 +241,9 @@ execution.
 
 To set the clinic's real urgency phone, change `URGENCY_PHONE` (and set `URGENCY_PHONE_IS_EXAMPLE`
 to `false`) at the top of `n8n/code/urgencias.js`. Then paste the file into the "Detectar
-urgencia" node of `lifecenter-demo-core`, keeping its last lines (the wiring), publish,
-re-export and run the test.
+urgencia" node of **both** workflows (`lifecenter-demo-core` and, since SPEC-006,
+`lifecenter-telegram-demo`), keeping their last lines (the wiring). Publish both, re-export
+them and run the test.
 
 ### Known limitations of the demo
 
@@ -222,6 +264,18 @@ re-export and run the test.
   - Use team test messages only. Real patients are still blocked. See
     [SPEC-005 clarifications](specs/005-pseudonymized-log/clarifications.md), "Known
     limitations" and "Dependencies and conditions".
+- **Consent (SPEC-006):**
+  - The consent record in Neon (`consent`) holds only an HMAC of the Telegram user id, the status
+    (`accepted`/`revoked`), the notice version and the date. Rejections are not stored, and a
+    withdrawn record is deleted after 30 days.
+  - The HMAC key is in the same database as the records: whoever has full access to Neon can
+    compute the HMAC of a known id. In production the key would live outside the database.
+  - After a withdrawal, the executions already stored in B cannot be deleted per user, because
+    B holds no identifier. They expire at 30 days.
+  - Urgencies of people without consent are answered but leave no record in B.
+  - The notice has no privacy-policy link yet. All of it is provisional until LifeCenter's
+    management validates it (DEP-04).
+  - See [SPEC-006 clarifications](specs/006-consent/clarifications.md), "Known limitations".
 - **Names:** a name is only detected after "me llamo", "mi nombre es" or "a nombre de".
 - **Urgencies:**
   - The phone is an example (`000 000 000`) until LifeCenter provides the real one (DEP-01).
@@ -241,9 +295,14 @@ for f in n8n/workflows/lifecenter-telegram-demo.json n8n/workflows/lifecenter-de
 done
 # Must print nothing:
 grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/*.json
-# The urgency test also checks that B's "Detectar urgencia" carries n8n/code/urgencias.js:
+# The urgency test checks that "Detectar urgencia" in B and in A carries n8n/code/urgencias.js,
+# and the consent test that A's "Clasificar" and "Decidir" carry n8n/code/consentimiento.js:
 node n8n/code/urgencias.test.js
+node n8n/code/consentimiento.test.js
 ```
+
+The consent SQL is tested against the Neon test branch only:
+`python -m pytest tests/infra/test_consent_sql.py`.
 
 ## Git rule
 

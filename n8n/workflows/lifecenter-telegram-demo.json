@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-19T19:28:30.919Z",
+    "updatedAt": "2026-11-22T15:38:05.157Z",
     "createdAt": "2026-11-18T18:28:42.757Z",
     "id": "q3f5dVrl8OUsXJrG",
     "name": "lifecenter-telegram-demo",
@@ -38,8 +38,8 @@
         "type": "n8n-nodes-base.switch",
         "typeVersion": 3.5,
         "position": [
-          224,
-          80
+          448,
+          96
         ],
         "parameters": {
           "mode": "rules",
@@ -47,7 +47,7 @@
             "values": [
               {
                 "renameOutput": true,
-                "outputKey": "Botón",
+                "outputKey": "Recepción",
                 "conditions": {
                   "options": {
                     "caseSensitive": true,
@@ -56,7 +56,51 @@
                   },
                   "conditions": [
                     {
-                      "leftValue": "={{ !!$json.callback_query }}",
+                      "leftValue": "={{ $json.route.kind === 'handoff' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "Consentimiento",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ ['accept', 'reject', 'withdraw', 'unknown_button'].includes($json.route.kind) }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "Comando",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ ['start', 'privacidad'].includes($json.route.kind) }}",
                       "operator": {
                         "type": "boolean",
                         "operation": "true",
@@ -78,7 +122,7 @@
                   },
                   "conditions": [
                     {
-                      "leftValue": "={{ !!($json.message && $json.message.text) }}",
+                      "leftValue": "={{ $json.route.kind === 'text' }}",
                       "operator": {
                         "type": "boolean",
                         "operation": "true",
@@ -103,8 +147,8 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          448,
-          0
+          672,
+          240
         ],
         "parameters": {
           "mode": "runOnceForEachItem",
@@ -118,8 +162,8 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "position": [
-          1344,
-          96
+          2464,
+          -96
         ],
         "parameters": {
           "resource": "message",
@@ -140,72 +184,13 @@
         "webhookId": "2f3367a8-39be-41ed-a68c-ab699a9cda3f"
       },
       {
-        "id": "c3f6c655-47de-47d3-b298-8d350545e663",
-        "name": "Pedir texto",
-        "type": "n8n-nodes-base.telegram",
-        "typeVersion": 1.2,
-        "position": [
-          448,
-          192
-        ],
-        "parameters": {
-          "resource": "message",
-          "operation": "sendMessage",
-          "chatId": "={{ $json.message.chat.id }}",
-          "text": "Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?",
-          "additionalFields": {
-            "appendAttribution": false
-          }
-        },
-        "credentials": {
-          "telegramApi": {
-            "id": "VzY1vvAFNqi3JSKT",
-            "name": "Telegram LifeCenter Bot"
-          }
-        },
-        "webhookId": "ff6f6c28-6b65-48ec-af7a-8e9127035456"
-      },
-      {
-        "id": "e8cfbb7a-3a13-4703-b0fa-4dd05d054bb2",
-        "name": "¿Ofrecer recepción?",
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 2.4,
-        "position": [
-          1120,
-          0
-        ],
-        "parameters": {
-          "conditions": {
-            "options": {
-              "caseSensitive": true,
-              "leftValue": "",
-              "typeValidation": "strict",
-              "version": 2
-            },
-            "conditions": [
-              {
-                "leftValue": "={{ $json.handoff }}",
-                "rightValue": "",
-                "operator": {
-                  "type": "boolean",
-                  "operation": "true",
-                  "singleValue": true
-                }
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        }
-      },
-      {
         "id": "3ab65ba0-b6ec-4368-9ac4-3632534bc8bc",
         "name": "Responder con botón",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "position": [
-          1344,
-          -96
+          2464,
+          96
         ],
         "parameters": {
           "resource": "message",
@@ -248,8 +233,8 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "position": [
-          448,
-          -192
+          672,
+          -240
         ],
         "parameters": {
           "resource": "callback",
@@ -271,8 +256,8 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "position": [
-          672,
-          -192
+          896,
+          -240
         ],
         "parameters": {
           "resource": "message",
@@ -297,8 +282,8 @@
         "type": "n8n-nodes-base.executeWorkflow",
         "typeVersion": 1.4,
         "position": [
-          672,
-          0
+          1792,
+          -96
         ],
         "parameters": {
           "source": "database",
@@ -311,7 +296,7 @@
           "workflowInputs": {
             "mappingMode": "defineBelow",
             "value": {
-              "question": "={{ $json.question }}"
+              "question": "={{ $('Seudonimizar').item.json.question }}"
             },
             "matchingColumns": [],
             "schema": [
@@ -341,33 +326,497 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          896,
-          0
+          2016,
+          -96
         ],
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "// SPEC-005 P6: B returns no identifier; A attaches its own chat id to B's reply fields.\nreturn { json: { ...$json, chatId: $('Seudonimizar').item.json.chatId } };\n"
+          "jsCode": "// SPEC-005 P6: B returns no identifier; A attaches its own chat id to B's reply fields.\n// SPEC-006: also sets the keyboard for \"¿Qué teclado?\".\nreturn { json: { ...$json, chatId: $('Seudonimizar').item.json.chatId, keyboard: $json.handoff ? 'handoff' : 'none' } };\n"
         }
+      },
+      {
+        "id": "b46bb78f-6dd7-4e39-95b7-1ccfca733183",
+        "name": "Clasificar",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          96
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-006 consent module (specs/006-consent/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes \"Clasificar\" and \"Decidir\" of lifecenter-telegram-demo carry this\n// exact code followed only by their input/output wiring (C23). No require, no network, no state.\n\n// --- Configuration (C22). Change the version whenever CONSENT_NOTICE changes: everyone is asked again.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-21) ---\nconst CONSENT_NOTICE =\n  'Hola, soy el asistente de LifeCenter. Para responderte: quito tu nombre, teléfono, DNI y email ' +\n  'de los mensajes antes de procesarlos; envío la consulta a un modelo de IA externo (Gemini, de ' +\n  'Google), y guardo el recorrido de cada consulta, sin tus datos, durante 30 días. Si me cuentas un ' +\n  'síntoma te daré siempre el teléfono de la clínica. Esto es una demostración: no escribas datos ' +\n  'reales. ¿Aceptas?';\nconst ACCEPTED_TEXT = 'Gracias. Ya puedes escribirme tu consulta.';\nconst REJECTED_TEXT =\n  'De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.';\nconst REVOKED_TEXT =\n  'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';\nconst STATUS_ACCEPTED = 'Estado: aceptaste este aviso el {fecha}.';\nconst STATUS_NONE = 'Estado: no has aceptado este aviso.';\n// Copies of CHG-001 texts this module now composes: D7 (error) and D12 (no text).\nconst ERROR_TEXT = 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?';\nconst TEXT_ONLY_TEXT = 'Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?';\n\n// --- Buttons (C7): labels and callback_data, each at most 64 bytes ---\nconst BUTTON_LABELS = {\n  handoff: 'Hablar con recepción',\n  accept: 'Acepto',\n  reject: 'No acepto',\n  withdraw: 'Retirar consentimiento',\n};\nconst CALLBACK_HANDOFF = 'handoff';\nconst CALLBACK_WITHDRAW = 'consent:withdraw';\nconst callbackAccept = (version = CONSENT_TEXT_VERSION) => `consent:accept:${version}`;\nconst callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${version}`;\n\n// --- Commands (spec \"Command\"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,\n// in any letter case (phone keyboards capitalize the first letter) ---\nconst COMMAND = /^\\s*\\/(start|privacidad)(?:@[A-Za-z0-9_]+)?\\s*$/i;\nfunction parseCommand(text) {\n  const m = COMMAND.exec(typeof text === 'string' ? text : '');\n  return m ? m[1].toLowerCase() : null;\n}\n\n// --- Buttons: callback_data → { kind, version } ---\nconst CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;\nfunction parseCallback(data) {\n  if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null };\n  if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };\n  const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');\n  return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };\n}\n\n// --- A Telegram update → route. fromId is a string: it is only ever passed to Neon as $1 (C18). ---\nfunction classifyUpdate(update) {\n  const asId = (v) => (v === undefined || v === null ? null : String(v));\n  const cq = update && update.callback_query;\n  if (cq) {\n    const { kind, version } = parseCallback(cq.data);\n    return {\n      kind,\n      fromId: asId(cq.from && cq.from.id),\n      chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,\n      callbackQueryId: cq.id === undefined ? null : cq.id,\n      version,\n    };\n  }\n  const m = (update && update.message) || {};\n  const hasText = typeof m.text === 'string' && m.text !== '';\n  const command = hasText ? parseCommand(m.text) : null;\n  return {\n    kind: command || (hasText ? 'text' : 'other'),\n    fromId: asId(m.from && m.from.id),\n    chatId: m.chat ? m.chat.id : null,\n    callbackQueryId: null,\n    version: null,\n  };\n}\n\n// --- Consent in force (C22): accepted with the current version; anything else is no consent ---\nfunction isConsentInForce(row) {\n  return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;\n}\n\n// --- dd/mm/aaaa in Europe/Madrid ---\nfunction formatDate(decidedAt) {\n  const parts = new Intl.DateTimeFormat('es-ES', {\n    timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric',\n  }).formatToParts(new Date(decidedAt));\n  const get = (type) => parts.find((p) => p.type === type).value;\n  return `${get('day')}/${get('month')}/${get('year')}`;\n}\n\n// --- What to do with an update (plan Step 1, decision table; C2–C16) ---\n// urgency: the output of \"Detectar urgencia\" (B's wiring), or null if it did not run.\n// consent: the row from consent_get ({} when there is none); lookupFailed: the lookup errored.\nfunction decide({ route, urgency, consent, lookupFailed }) {\n  const reply = (text, keyboard) => ({ action: 'reply', text, keyboard });\n  const notice = reply(CONSENT_NOTICE, 'consent');\n  const inForce = !lookupFailed && isConsentInForce(consent);\n  const kind = route && route.kind;\n\n  if (kind === 'handoff') throw new Error('decide(): the handoff button has its own branch (C12)');\n  if (kind === 'text') {\n    if (inForce) return { action: 'core', text: null, keyboard: null };\n    if (urgency && urgency.urgency_level && urgency.urgency_level !== 'none') return reply(urgency.text, 'handoff');\n    return lookupFailed ? reply(ERROR_TEXT, 'handoff') : notice;\n  }\n  if (lookupFailed) return reply(ERROR_TEXT, 'handoff');\n\n  const withStatus = (status, keyboard) => reply(`${CONSENT_NOTICE}\\n\\n${status}`, keyboard);\n  switch (kind) {\n    case 'other':\n      return inForce ? reply(TEXT_ONLY_TEXT, 'none') : notice;\n    case 'start':\n    case 'privacidad':\n      if (inForce) return withStatus(STATUS_ACCEPTED.replace('{fecha}', formatDate(consent.decided_at)), 'withdraw');\n      return kind === 'start' ? notice : withStatus(STATUS_NONE, 'consent');\n    case 'accept':\n      return route.version === CONSENT_TEXT_VERSION ? { action: 'accept', text: ACCEPTED_TEXT, keyboard: 'none' } : notice;\n    case 'reject':\n      return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;\n    case 'withdraw':\n      return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };\n    case 'unknown_button':\n      return notice;\n    default:\n      throw new Error(`decide(): unknown route kind \"${kind}\"`);\n  }\n}\n\n// --- n8n wiring (\"Clasificar\", SPEC-006 C23): keep the update as it is and add the route ---\nreturn { json: { ...$json, route: classifyUpdate($json) } };\n"
+        }
+      },
+      {
+        "id": "81292d8a-9728-459d-9c16-090b84e684d2",
+        "name": "Confirmar botón de consentimiento",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          672,
+          -48
+        ],
+        "parameters": {
+          "resource": "callback",
+          "operation": "answerQuery",
+          "queryId": "={{ $json.callback_query.id }}",
+          "additionalFields": {}
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "a312d106-2e86-4d08-9a2f-ed1e817fd6ac"
+      },
+      {
+        "id": "eb90b5c9-bd35-4b1a-b19c-931a49e05a6f",
+        "name": "Detectar urgencia",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          240
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-003 urgency detector (specs/004-urgencies/plan.md). Deterministic: no LLM, no network.\n// Paste-ready for the n8n Code node \"Detectar urgencia\": no require/module/export here; the node\n// appends only its input/output wiring (U16). Tested by n8n/code/urgencias.test.js.\n\n// --- Configuration (U13) — the clinic's urgency phone. Example value until DEP-01. ---\nconst URGENCY_PHONE = '000 000 000';\nconst URGENCY_PHONE_IS_EXAMPLE = true;\n\n// --- Fixed texts (spec \"Fixed texts\"; approved by the human 2026-11-19; pending clinical review) ---\nconst URGENT_MESSAGE =\n  `No puedo valorar síntomas por aquí. Llama a la clínica al ${URGENCY_PHONE}. ` +\n  'Si es grave o tienes dificultad para respirar, llama al 112.';\nconst SEVERE_MESSAGE =\n  'Si tienes dificultad para respirar o tragar, una hemorragia que no para o te has dado un golpe ' +\n  'fuerte en la cara o la cabeza, llama ahora al 112. No puedo valorar síntomas por aquí. ' +\n  `Si no es una emergencia, llama a la clínica al ${URGENCY_PHONE}.`;\nconst EXAMPLE_PHONE_NOTICE =\n  '(Este teléfono es de ejemplo: todavía no tenemos el número real de la clínica.)';\n\n// --- Question flag and normalization (U10) ---\n// The flag is read on the raw (pseudonymized) text, before normalize() removes punctuation.\nfunction isQuestion(text) {\n  return /[¿?]/.test(String(text ?? ''));\n}\n\n// Lowercase, no accents, SPEC-001 placeholders removed, punctuation removed, single spaces.\nfunction normalize(text) {\n  return String(text ?? '')\n    .toLowerCase()\n    .normalize('NFD').replace(/\\p{M}+/gu, '')\n    .replace(/\\[(nombre|telefono|dni|email)\\]/g, ' ')\n    .replace(/[^\\p{L}\\p{N}\\s]+/gu, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\n// --- Rule tables (provisional clinical criteria, clarifications A1/A3; pending Prince Calderon).\n// Every pattern works on normalize()d text. A rule with several patterns needs all of them. ---\nconst SWELLING = /\\b(hinch\\w*|inflam\\w*)\\b/;\nconst BLEEDING = /\\bsangr\\w*/;\nconst BLOW = /\\b(golpe\\w*|caida|me cai|me he caido|se ha caido|accidente|traumatismo)\\b/;\n\n// Removed from the text before classifying (U8).\nconst FIGURATIVE = [\n  { id: 'fig_duele_que', re: /\\b(?:me |te |nos )?duele (?:pensar|pagar|gastar|tener que|que|ver|saber|el bolsillo|la cartera)\\b/g },\n  { id: 'fig_de_golpe', re: /\\bde golpe\\b/g },\n  { id: 'fig_me_muero_de', re: /\\bme muero de (?:ganas|risa)\\b/g },\n];\n\n// A1 — severe signs.\nconst SEVERE_RULES = [\n  { id: 'sev_breath_swallow', all: [/\\b(?:no puedo|me cuesta|le cuesta|dificultad para|no consigo|no puede)(?: \\w+)? (?:respirar|tragar)\\b/] },\n  { id: 'sev_swelling_neck_eye', all: [SWELLING, /\\b(?:cuello|ojo|ojos|no puedo abrir)\\b/] },\n  { id: 'sev_bleeding_nonstop', all: [BLEEDING, /\\b(?:no para|no se para|no deja de|sin parar|no se corta|a chorro)\\b/] },\n  { id: 'sev_blow_face_head', all: [BLOW, /\\b(?:cara|cabeza|mandibula)\\b/] },\n  { id: 'sev_blow_unconscious', all: [BLOW, /\\b(?:desmay\\w*|conocimiento|inconsciente)\\b/] },\n  { id: 'sev_blow_tooth_out', all: [BLOW, /\\b(?:se me ha caido|se le ha caido|arrancado)(?: \\w+)? (?:un |el )?(?:diente|muela)\\b/] },\n  { id: 'sev_fever_swelling', all: [/\\bfiebre\\b/, SWELLING] },\n];\n\n// A3 — symptom terms.\nconst SYMPTOM_TERMS = [\n  { id: 'sym_pain', all: [/\\b(?:dolor\\w*|duele|duelen|doler|dolera|doloros\\w*|molest\\w*|pinchazo\\w*)\\b/] },\n  { id: 'sym_bleeding', all: [BLEEDING] },\n  { id: 'sym_swelling', all: [SWELLING] },\n  { id: 'sym_fever', all: [/\\bfiebre\\b/] },\n  { id: 'sym_infection', all: [/\\b(?:pus|absces\\w*|flemon\\w*|infecc\\w*)\\b/] },\n  { id: 'sym_blow', all: [/\\b(?:golpe\\w*|traumatismo)\\b/] },\n  { id: 'sym_tooth_damage', all: [\n    /\\b(?:diente|dientes|muela|muelas|corona|empaste|funda|puente)\\b/,\n    /\\b(?:roto|rota|partido|partida|caido|caida|se mueve|se me mueve|suelto|suelta|flojo|floja|movido)\\b/,\n  ] },\n];\n\n// Hypothetical forms about a treatment: they take precedence over \"me\" (plan, step 4).\nconst HYPOTHETICAL = [\n  /\\b(?:me |te )?(?:va|van) a doler\\b/g,\n  /\\bdolera\\b/g,\n  /\\bes doloros[oa]\\b/g,\n  /\\bduele mucho (?:la|el)\\b/g,\n];\n\n// Signs that the patient reports an own, current or recent state.\nconst PERSONAL_MARKERS = [\n  /\\bme (?:duele\\w*|sangr\\w*|molest\\w*|hinch\\w*|ha|he|han|esta\\w*|noto|sale|cuesta|di|hicieron|pusieron)\\b/,\n  /\\bmis?\\b/,\n  /\\b(?:tengo|tiene|estoy|llevo|lleva|noto|sigue)\\b/,\n  /\\bse (?:me|le)\\b/,\n  /\\bdesde (?:ayer|hace|esta|el|que)\\b/,\n  /\\b(?:hoy|anoche|ahora)\\b/,\n];\n\nconst TREATMENT_WORDS =\n  /\\b(?:limpieza|blanqueamiento|ortodoncia|implantes?|endodoncia|extraccion|empastes?|tratamiento|anestesia|revision|radiografia|brackets)\\b/;\n\nfunction firing(rules, text) {\n  return rules.filter((r) => r.all.every((re) => re.test(text))).map((r) => r.id);\n}\n\n// --- Classification (U5–U9) ---\nfunction detectUrgency(text) {\n  const question = isQuestion(text);\n  let t = normalize(text);\n  const matched = [];\n\n  for (const f of FIGURATIVE) {\n    if (f.re.test(t)) {\n      matched.push(f.id);\n      f.re.lastIndex = 0;\n      t = t.replace(f.re, ' ').replace(/\\s+/g, ' ').trim();\n    }\n    f.re.lastIndex = 0;\n  }\n\n  const severe = firing(SEVERE_RULES, t);\n  if (severe.length) return { level: 'severe', matched: matched.concat(severe), question };\n\n  const symptoms = firing(SYMPTOM_TERMS, t);\n  if (!symptoms.length) return { level: 'none', matched, question };\n  matched.push(...symptoms);\n\n  let withoutHypothetical = t;\n  let hypothetical = false;\n  for (const re of HYPOTHETICAL) {\n    re.lastIndex = 0;\n    if (re.test(withoutHypothetical)) {\n      hypothetical = true;\n      re.lastIndex = 0;\n      withoutHypothetical = withoutHypothetical.replace(re, ' ');\n    }\n    re.lastIndex = 0;\n  }\n  const personal = PERSONAL_MARKERS.some((re) => re.test(withoutHypothetical));\n  if (!personal && TREATMENT_WORDS.test(t) && (question || hypothetical)) {\n    matched.push(hypothetical ? 'info_hypothetical' : 'info_question');\n    return { level: 'none', matched, question };\n  }\n\n  matched.push(personal ? 'reported_state' : 'doubt');\n  return { level: 'urgent', matched, question };\n}\n\n// --- Reply (U11–U13): fixed text only, built from the level, never from the message. ---\nfunction composeUrgencyReply(level) {\n  const base = level === 'severe' ? SEVERE_MESSAGE : URGENT_MESSAGE;\n  return URGENCY_PHONE_IS_EXAMPLE ? `${base}\\n\\n${EXAMPLE_PHONE_NOTICE}` : base;\n}\n\n// --- n8n wiring (U16; SPEC-005: no chat id in the core workflow) ---\nconst r = detectUrgency($json.question);\nif (r.level === 'none') return { json: { question: $json.question, urgency_level: 'none' } };\nreturn { json: {\n  text: composeUrgencyReply(r.level), handoff: true,\n  reason: 'urgency', urgency_level: r.level, matched: r.matched,\n} };\n"
+        }
+      },
+      {
+        "id": "5656baf9-099e-4734-9998-c084a9047fd5",
+        "name": "Consultar consentimiento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          1120,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT g.status, g.text_version, g.decided_at FROM (SELECT 1) AS one LEFT JOIN consent_get($1) AS g ON true",
+          "options": {
+            "queryReplacement": "={{ $('Clasificar').item.json.route.fromId }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "8541c122-82c1-4fab-973b-034b665ec676",
+        "name": "Decidir",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          96
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-006 consent module (specs/006-consent/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes \"Clasificar\" and \"Decidir\" of lifecenter-telegram-demo carry this\n// exact code followed only by their input/output wiring (C23). No require, no network, no state.\n\n// --- Configuration (C22). Change the version whenever CONSENT_NOTICE changes: everyone is asked again.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-21) ---\nconst CONSENT_NOTICE =\n  'Hola, soy el asistente de LifeCenter. Para responderte: quito tu nombre, teléfono, DNI y email ' +\n  'de los mensajes antes de procesarlos; envío la consulta a un modelo de IA externo (Gemini, de ' +\n  'Google), y guardo el recorrido de cada consulta, sin tus datos, durante 30 días. Si me cuentas un ' +\n  'síntoma te daré siempre el teléfono de la clínica. Esto es una demostración: no escribas datos ' +\n  'reales. ¿Aceptas?';\nconst ACCEPTED_TEXT = 'Gracias. Ya puedes escribirme tu consulta.';\nconst REJECTED_TEXT =\n  'De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.';\nconst REVOKED_TEXT =\n  'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';\nconst STATUS_ACCEPTED = 'Estado: aceptaste este aviso el {fecha}.';\nconst STATUS_NONE = 'Estado: no has aceptado este aviso.';\n// Copies of CHG-001 texts this module now composes: D7 (error) and D12 (no text).\nconst ERROR_TEXT = 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?';\nconst TEXT_ONLY_TEXT = 'Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?';\n\n// --- Buttons (C7): labels and callback_data, each at most 64 bytes ---\nconst BUTTON_LABELS = {\n  handoff: 'Hablar con recepción',\n  accept: 'Acepto',\n  reject: 'No acepto',\n  withdraw: 'Retirar consentimiento',\n};\nconst CALLBACK_HANDOFF = 'handoff';\nconst CALLBACK_WITHDRAW = 'consent:withdraw';\nconst callbackAccept = (version = CONSENT_TEXT_VERSION) => `consent:accept:${version}`;\nconst callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${version}`;\n\n// --- Commands (spec \"Command\"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,\n// in any letter case (phone keyboards capitalize the first letter) ---\nconst COMMAND = /^\\s*\\/(start|privacidad)(?:@[A-Za-z0-9_]+)?\\s*$/i;\nfunction parseCommand(text) {\n  const m = COMMAND.exec(typeof text === 'string' ? text : '');\n  return m ? m[1].toLowerCase() : null;\n}\n\n// --- Buttons: callback_data → { kind, version } ---\nconst CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;\nfunction parseCallback(data) {\n  if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null };\n  if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };\n  const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');\n  return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };\n}\n\n// --- A Telegram update → route. fromId is a string: it is only ever passed to Neon as $1 (C18). ---\nfunction classifyUpdate(update) {\n  const asId = (v) => (v === undefined || v === null ? null : String(v));\n  const cq = update && update.callback_query;\n  if (cq) {\n    const { kind, version } = parseCallback(cq.data);\n    return {\n      kind,\n      fromId: asId(cq.from && cq.from.id),\n      chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,\n      callbackQueryId: cq.id === undefined ? null : cq.id,\n      version,\n    };\n  }\n  const m = (update && update.message) || {};\n  const hasText = typeof m.text === 'string' && m.text !== '';\n  const command = hasText ? parseCommand(m.text) : null;\n  return {\n    kind: command || (hasText ? 'text' : 'other'),\n    fromId: asId(m.from && m.from.id),\n    chatId: m.chat ? m.chat.id : null,\n    callbackQueryId: null,\n    version: null,\n  };\n}\n\n// --- Consent in force (C22): accepted with the current version; anything else is no consent ---\nfunction isConsentInForce(row) {\n  return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;\n}\n\n// --- dd/mm/aaaa in Europe/Madrid ---\nfunction formatDate(decidedAt) {\n  const parts = new Intl.DateTimeFormat('es-ES', {\n    timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric',\n  }).formatToParts(new Date(decidedAt));\n  const get = (type) => parts.find((p) => p.type === type).value;\n  return `${get('day')}/${get('month')}/${get('year')}`;\n}\n\n// --- What to do with an update (plan Step 1, decision table; C2–C16) ---\n// urgency: the output of \"Detectar urgencia\" (B's wiring), or null if it did not run.\n// consent: the row from consent_get ({} when there is none); lookupFailed: the lookup errored.\nfunction decide({ route, urgency, consent, lookupFailed }) {\n  const reply = (text, keyboard) => ({ action: 'reply', text, keyboard });\n  const notice = reply(CONSENT_NOTICE, 'consent');\n  const inForce = !lookupFailed && isConsentInForce(consent);\n  const kind = route && route.kind;\n\n  if (kind === 'handoff') throw new Error('decide(): the handoff button has its own branch (C12)');\n  if (kind === 'text') {\n    if (inForce) return { action: 'core', text: null, keyboard: null };\n    if (urgency && urgency.urgency_level && urgency.urgency_level !== 'none') return reply(urgency.text, 'handoff');\n    return lookupFailed ? reply(ERROR_TEXT, 'handoff') : notice;\n  }\n  if (lookupFailed) return reply(ERROR_TEXT, 'handoff');\n\n  const withStatus = (status, keyboard) => reply(`${CONSENT_NOTICE}\\n\\n${status}`, keyboard);\n  switch (kind) {\n    case 'other':\n      return inForce ? reply(TEXT_ONLY_TEXT, 'none') : notice;\n    case 'start':\n    case 'privacidad':\n      if (inForce) return withStatus(STATUS_ACCEPTED.replace('{fecha}', formatDate(consent.decided_at)), 'withdraw');\n      return kind === 'start' ? notice : withStatus(STATUS_NONE, 'consent');\n    case 'accept':\n      return route.version === CONSENT_TEXT_VERSION ? { action: 'accept', text: ACCEPTED_TEXT, keyboard: 'none' } : notice;\n    case 'reject':\n      return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;\n    case 'withdraw':\n      return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };\n    case 'unknown_button':\n      return notice;\n    default:\n      throw new Error(`decide(): unknown route kind \"${kind}\"`);\n  }\n}\n\n// --- n8n wiring (\"Decidir\", SPEC-006 C23) ---\nconst route = $('Clasificar').item.json.route;\nconst urgency = $('Detectar urgencia').isExecuted ? $('Detectar urgencia').item.json : null;\nconst lookupFailed = !!$json.error; // error output of \"Consultar consentimiento\" (C6)\nconst d = decide({ route, urgency, consent: lookupFailed ? null : $json, lookupFailed });\nreturn { json: {\n  ...d, chatId: route.chatId,\n  callbackAccept: callbackAccept(), callbackReject: callbackReject(),\n  onWriteError: { action: 'reply', text: ERROR_TEXT, keyboard: 'handoff' },\n} };\n"
+        }
+      },
+      {
+        "id": "94f3dc4a-d244-42cd-ba0d-f4e843c229e9",
+        "name": "¿Qué hacer?",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.5,
+        "position": [
+          1568,
+          96
+        ],
+        "parameters": {
+          "mode": "rules",
+          "rules": {
+            "values": [
+              {
+                "renameOutput": true,
+                "outputKey": "core",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'core' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "accept",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'accept' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "withdraw",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'withdraw' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "reply",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'reply' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "19554279-ecaa-4e32-b2c9-d61ef1ac4933",
+        "name": "Guardar aceptación",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          1792,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT g.status, g.text_version, g.decided_at FROM (SELECT 1) AS one LEFT JOIN consent_accept($1, $2) AS g ON true",
+          "options": {
+            "queryReplacement": "={{ [ $('Clasificar').item.json.route.fromId, $('Clasificar').item.json.route.version ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "a92b6098-8020-48ca-817c-59e9b8e4161f",
+        "name": "Guardar retirada",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          1792,
+          288
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT g.status, g.text_version, g.decided_at FROM (SELECT 1) AS one LEFT JOIN consent_revoke($1) AS g ON true",
+          "options": {
+            "queryReplacement": "={{ $('Clasificar').item.json.route.fromId }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "0b409e6d-b256-46a3-91d6-9e1e893149d2",
+        "name": "Tras guardar",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2016,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-006 C8, C10: after \"Guardar aceptación\" or \"Guardar retirada\". If the write failed (error\n// output), reply with D7 and the handoff button prepared by \"Decidir\"; otherwise send its decision.\nconst d = $('Decidir').item.json;\nreturn { json: !!$json.error ? { ...d, ...d.onWriteError } : d };\n"
+        }
+      },
+      {
+        "id": "0be764f8-9d64-4e03-a037-3cfb847d61cc",
+        "name": "¿Qué teclado?",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.5,
+        "position": [
+          2240,
+          96
+        ],
+        "parameters": {
+          "mode": "rules",
+          "rules": {
+            "values": [
+              {
+                "renameOutput": true,
+                "outputKey": "none",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.keyboard === 'none' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "handoff",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.keyboard === 'handoff' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "consent",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.keyboard === 'consent' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "withdraw",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.keyboard === 'withdraw' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "eef72a7c-6870-4844-8bba-f6b134e42f0c",
+        "name": "Responder con aviso",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          2464,
+          288
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "sendMessage",
+          "chatId": "={{ $json.chatId }}",
+          "text": "={{ $json.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": {
+            "rows": [
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "Acepto",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.callbackAccept }}"
+                      }
+                    },
+                    {
+                      "text": "No acepto",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.callbackReject }}"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "additionalFields": {
+            "appendAttribution": false,
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "d3d0063a-d23b-4439-9702-887727053a1e"
+      },
+      {
+        "id": "56359627-2ee3-421a-81f0-2adbb9d13295",
+        "name": "Responder con retirar",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          2464,
+          480
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "sendMessage",
+          "chatId": "={{ $json.chatId }}",
+          "text": "={{ $json.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": {
+            "rows": [
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "Retirar consentimiento",
+                      "additionalFields": {
+                        "callback_data": "consent:withdraw"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "additionalFields": {
+            "appendAttribution": false,
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "082fc8ba-dd44-4a87-ab6d-4dd425bca40e"
       }
     ],
     "connections": {
-      "Telegram Trigger": {
-        "main": [
-          [
-            {
-              "node": "¿Qué ha llegado?",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "¿Qué ha llegado?": {
         "main": [
           [
             {
               "node": "Confirmar botón",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Confirmar botón de consentimiento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Consultar consentimiento",
               "type": "main",
               "index": 0
             }
@@ -381,25 +830,7 @@
           ],
           [
             {
-              "node": "Pedir texto",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "¿Ofrecer recepción?": {
-        "main": [
-          [
-            {
-              "node": "Responder con botón",
-              "type": "main",
-              "index": 0
-            }
-          ],
-          [
-            {
-              "node": "Responder",
+              "node": "Consultar consentimiento",
               "type": "main",
               "index": 0
             }
@@ -417,17 +848,6 @@
           ]
         ]
       },
-      "Seudonimizar": {
-        "main": [
-          [
-            {
-              "node": "Llamar al núcleo",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "Llamar al núcleo": {
         "main": [
           [
@@ -439,11 +859,206 @@
           ]
         ]
       },
+      "Telegram Trigger": {
+        "main": [
+          [
+            {
+              "node": "Clasificar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Clasificar": {
+        "main": [
+          [
+            {
+              "node": "¿Qué ha llegado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Confirmar botón de consentimiento": {
+        "main": [
+          [
+            {
+              "node": "Consultar consentimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Seudonimizar": {
+        "main": [
+          [
+            {
+              "node": "Detectar urgencia",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Detectar urgencia": {
+        "main": [
+          [
+            {
+              "node": "Consultar consentimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar consentimiento": {
+        "main": [
+          [
+            {
+              "node": "Decidir",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Decidir",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decidir": {
+        "main": [
+          [
+            {
+              "node": "¿Qué hacer?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Qué hacer?": {
+        "main": [
+          [
+            {
+              "node": "Llamar al núcleo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Guardar aceptación",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Guardar retirada",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "¿Qué teclado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
       "Componer respuesta": {
         "main": [
           [
             {
-              "node": "¿Ofrecer recepción?",
+              "node": "¿Qué teclado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar aceptación": {
+        "main": [
+          [
+            {
+              "node": "Tras guardar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Tras guardar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar retirada": {
+        "main": [
+          [
+            {
+              "node": "Tras guardar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Tras guardar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tras guardar": {
+        "main": [
+          [
+            {
+              "node": "¿Qué teclado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Qué teclado?": {
+        "main": [
+          [
+            {
+              "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder con botón",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder con aviso",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder con retirar",
               "type": "main",
               "index": 0
             }
@@ -466,15 +1081,15 @@
     },
     "nodeGroups": [],
     "pinData": null,
-    "versionId": "3a4054b9-f36e-424c-8a35-0c3815cfeab3",
-    "activeVersionId": "3a4054b9-f36e-424c-8a35-0c3815cfeab3",
-    "versionCounter": 13,
+    "versionId": "5b41b4ee-c7dc-488f-86bc-8bd5ba4e9958",
+    "activeVersionId": "5b41b4ee-c7dc-488f-86bc-8bd5ba4e9958",
+    "versionCounter": 18,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],
     "versionMetadata": {
-      "name": "SPEC-005 L2: canal A (sin guardar) + llamada a B",
-      "description": "A queda en Telegram, seudonimizar y responder. Los 9 nodos de lógica pasan a lifecenter-demo-core (B), que recibe solo question. A no guarda ejecuciones (manuales activadas temporalmente para una prueba sintética, L2)."
+      "name": "SPEC-006 K4: código de Detectar urgencia",
+      "description": "urgencias.js + el mismo cableado que en B (C1)."
     }
   }
 ]

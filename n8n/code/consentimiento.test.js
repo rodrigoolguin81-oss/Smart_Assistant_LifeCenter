@@ -266,6 +266,7 @@ check('n8n nodes of A carry this exact code', () => {
     const node = nodes.find((n) => n.name === name);
     if (!node) { console.log(`SKIP sync check: node "${name}" not in A's export yet`); continue; }
     if (!node.parameters.jsCode.startsWith(source)) throw new Error(`"${name}" jsCode does not start with consentimiento.js`);
+    console.log(`sync check run: "${name}" in lifecenter-telegram-demo.json`);
   }
 });
 

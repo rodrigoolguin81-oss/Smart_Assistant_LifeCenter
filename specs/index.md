@@ -85,13 +85,21 @@ stale_after: null
   «Acepto» / «No acepto», `/privacidad` and withdrawal, urgencies always answered (detected in A),
   no call to B before consent, and a minimal consent record in Neon keyed by an HMAC of the
   Telegram `from.id` (PRD `CONF-005`, `R-06`, `DEP-04`, `RES-02`, `RF-004`; new traceability row
-  **SPEC-006**; RF-006 reminders will reuse it) — **specified** (clarifications and spec verified
-  by human 2026-11-21; plan and tasks verified 2026-11-22; K0–K6 pending. Accepted limitation:
-  the HMAC key is in the same database as the consent records):
+  **SPEC-006**; RF-006 reminders will reuse it) — **implemented for the demo** (2026-11-22; K0–K6
+  done; every acceptance criterion met, by Node and SQL tests, 17 pinned runs and the Telegram
+  test). Found and fixed in K5: the `Neon main` credential pointed to the test branch; it now
+  points to `main`, and AGENTS.md requires checking each credential's host. Accepted
+  limitations: the HMAC key is in the same database as the records, and must never be
+  regenerated. Still provisional until DEP-04, so real patients stay blocked:
   - [clarifications](./006-consent/clarifications.md)
   - [spec](./006-consent/spec.md) — C1–C27
   - [plan](./006-consent/plan.md) — Steps 0–6
   - [tasks](./006-consent/tasks.md) — K0–K6
+  - Code: [`n8n/code/consentimiento.js`](../n8n/code/consentimiento.js) · test
+    `node n8n/code/consentimiento.test.js` · SQL
+    [`app/infra/sql/002_consent.sql`](../app/infra/sql/002_consent.sql), tested by
+    `tests/infra/test_consent_sql.py` (test branch only)
+  - Workflow: A, [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json)
 
 Pending (not yet scaffolded): SPEC-004 (citas), and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

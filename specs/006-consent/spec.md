@@ -4,7 +4,7 @@ spec_id: SPEC-006
 title: consent — Functional Spec
 description: Requirements for explicit consent in the bot's first message in the n8n demo (notice, accept and reject buttons, /privacidad and withdrawal), with urgencies always answered, no processing before consent and a minimal HMAC-keyed consent record in Neon (CONF-005, R-06, DEP-04, RES-02, RF-004), in EARS notation.
 tags: [spec, consent, SPEC-006, CONF-005, R-06, DEP-04, RES-02, NFR-08, RF-004]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../003-n8n-migration/spec.md, ../004-urgencies/spec.md, ../005-pseudonymized-log/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-21T00:00:00Z }
 verified: { by: human, at: 2026-11-21T00:00:00Z }
@@ -162,28 +162,36 @@ siempre, con o sin consentimiento.
 
 Tested from Telegram with a team account that has no consent record (clarifications A2).
 
-- [ ] "¿Cuánto cuesta una limpieza?" → `CONSENT_NOTICE` with «Acepto» and «No acepto»; no new B
+- [x] "¿Cuánto cuesta una limpieza?" → `CONSENT_NOTICE` with «Acepto» and «No acepto»; no new B
   execution.
-- [ ] «No acepto» → `REJECTED_TEXT`; the `consent` table has no record for the account.
-- [ ] "me sangra mucho la encía desde ayer" without consent → the SPEC-003 urgent reply with the
+- [x] «No acepto» → `REJECTED_TEXT`; the `consent` table has no record for the account.
+- [x] "me sangra mucho la encía desde ayer" without consent → the SPEC-003 urgent reply with the
   button and no notice; no new B execution. The next message → `CONSENT_NOTICE`.
-- [ ] A sticker without consent → `CONSENT_NOTICE`. «Hablar con recepción» without consent → the
+- [x] A sticker without consent → `CONSENT_NOTICE`. «Hablar con recepción» without consent → the
   D8 text.
-- [ ] «Acepto» → `ACCEPTED_TEXT`; the table has one `accepted` row with the current version.
+  - Checked in K4 (pinned runs 3 and 9); not repeated from Telegram in K5.
+- [x] «Acepto» → `ACCEPTED_TEXT`; the table has one `accepted` row with the current version.
   "¿Cuánto cuesta una limpieza?" again → 60 € with TAR-001 and both notices, and one new B
   execution containing only `question`.
-- [ ] With consent, the SPEC-003 urgent and severe messages → their replies, recorded in B with
+- [x] With consent, the SPEC-003 urgent and severe messages → their replies, recorded in B with
   `reason: urgency`.
-- [ ] `/privacidad` → the notice, `STATUS_ACCEPTED` and «Retirar consentimiento». Tapping it →
+  - Checked in K4 (run 11: severe, through the real B, `reason: urgency`) and in the Node
+    test; not repeated from Telegram in K5.
+- [x] `/privacidad` → the notice, `STATUS_ACCEPTED` and «Retirar consentimiento». Tapping it →
   `REVOKED_TEXT`, the row becomes `revoked`, and the next message → `CONSENT_NOTICE`.
-- [ ] A scan of the `consent` table and of A's export finds no `from.id`, chat id, profile name,
+- [x] A scan of the `consent` table and of A's export finds no `from.id`, chat id, profile name,
   username or key. The key is in no repo file.
-- [ ] A synthetic `revoked` row dated more than 30 days ago is gone after the next consent
+- [x] A synthetic `revoked` row dated more than 30 days ago is gone after the next consent
   lookup; a synthetic one dated less than 30 days ago remains.
-- [ ] `node n8n/code/consentimiento.test.js` and `node n8n/code/urgencias.test.js` are green,
+  - Checked on the Neon test branch by `tests/infra/test_consent_sql.py` (K2), for each of the
+    three functions. Not repeated in `main`, by the human's decision (K5).
+- [x] `node n8n/code/consentimiento.test.js` and `node n8n/code/urgencias.test.js` are green,
   with the sync checks against the exports.
-- [ ] A is re-exported with no secret or personal data and still shows its "save no executions"
+- [x] A is re-exported with no secret or personal data and still shows its "save no executions"
   settings. B is unchanged.
+
+Checked 2026-11-22: Node tests (K1), SQL tests on the test branch (K2), 17 pinned runs (K4) and
+the Telegram test (K5, after fixing `Neon main` to point to `main`). See [tasks](./tasks.md).
 
 ## Known limitations
 

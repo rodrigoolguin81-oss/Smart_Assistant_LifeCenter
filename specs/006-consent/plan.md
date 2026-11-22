@@ -4,7 +4,7 @@ spec_id: SPEC-006
 title: consent — Technical Plan
 description: How to build the consent step of the n8n demo — the consent module and its Node test, the Neon table, functions and key, the changes to the channel workflow A tested with pinned data, the Telegram test, and the exports and docs.
 tags: [plan, consent, SPEC-006, n8n, neon]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md, ../005-pseudonymized-log/plan.md, ../004-urgencies/plan.md]
 generated: { by: claude-code, at: 2026-11-21T00:00:00Z }
 verified: { by: human, at: 2026-11-22T00:00:00Z }
@@ -210,8 +210,14 @@ Check with a read-only query, printing no values:
     so "Seudonimizar" keeps reading `$json.message` unchanged;
   - "Confirmar botón de consentimiento": `answerQuery` (C13);
   - "Detectar urgencia": `urgencias.js` and B's wiring, byte for byte;
-  - "Consultar consentimiento": Postgres `SELECT * FROM consent_get($1)` with `Neon main`,
-    "Always output data" on, and an error output (C6);
+  - "Consultar consentimiento": Postgres on `Neon main` with an error output (C6). The query
+    is `SELECT g.status, g.text_version, g.decided_at FROM (SELECT 1) AS one LEFT JOIN
+    consent_get($1) AS g ON true`, which always returns exactly one row (nulls when there is no
+    record). "Guardar aceptación" and "Guardar retirada" use the same shape.
+    - **Changed in K4 (2026-11-22):** the plan had "Always output data" on. In n8n 2.48.4
+      (`ensureAlwaysOutputData` in `workflow-execute.js`) that setting adds an empty item to the
+      main output even when the item went to the error output. "Decidir" would then run twice
+      and send two replies, so the one-row query replaces it.
   - "Decidir": the module plus the wiring that reads `route`, the urgency (if
     `isExecuted`), the row or the error, and adds `chatId`;
   - "¿Qué hacer?";
