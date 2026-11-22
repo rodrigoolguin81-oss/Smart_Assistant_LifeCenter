@@ -121,7 +121,22 @@ Same pattern as SPEC-006 and SPEC-004. **Nothing is touched before the plan is a
     - every positive phrase matches and 0 negatives do;
     - every callback ≤ 64 bytes;
     - the A sync checks are skipped until R5.
-- [ ] R2 **[confirmación]**: `004_booking.sql` on the test branch (plan Step 2; BK19, BK24).
+- [x] R2 **[confirmación]**: `004_booking.sql` on the test branch (plan Step 2; BK19, BK24).
+  - Done 2026-11-22, after the human saw the full SQL, the exact commands and the host
+    (`ep-blue-firefly-…`, the test branch) and confirmed. **Main was not touched.**
+  - **`tests/infra/test_booking_sql.py`**, written first: 17 tests, fake ids `900401…`, dates
+    computed from today, and the key never selected.
+  - **`app/infra/sql/004_booking.sql`** holds only `agenda_my_next_at(from_id, now)` and the public
+    `agenda_my_next(from_id)`, which return `(type_code, starts_at, ends_at)`. There is no table
+    and no write statement.
+  - **Red first** (the `reapplying` and file-exists tests were excluded, so nothing was created):
+    15 failed. There were 14 `UndefinedFunction` on `agenda_my_next_at`, and 1 assertion that
+    found no public signature.
+  - **Schema applied:** "Esquema aplicado en ep-blue-firefly-….neon.tech (TEST_DATABASE_URL)."
+  - **Green:** `test_booking_sql.py` **17 passed**. All of `tests/infra`: **134 passed**, with
+    SPEC-002, SPEC-006 and SPEC-004 unaffected.
+  - **Afterwards** (read-only, test branch): 0 appointments and 0 closures (cleanup worked),
+    `consent` 0, `consent_key` 1, and 2 `agenda_my_next*` functions.
   - First `tests/infra/test_booking_sql.py`, then the SQL.
   - **Before running anything,** show the SQL, the exact commands and the host.
   - Run: red (nothing created), the schema, green, then all of `tests/infra`.
