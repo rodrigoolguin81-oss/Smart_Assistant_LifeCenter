@@ -82,12 +82,23 @@ los recordatorios y el panel de recepción vienen después.
 - `TAKEN_TEXT`: «Ese hueco se acaba de ocupar. Estos son los siguientes:», with the slot buttons.
 - `UNAVAILABLE_TEXT`: «Ese hueco ya no está disponible. Estos son los siguientes:», with the slot
   buttons.
-- `LIMIT_TEXT`: «Ya tienes una cita: {tipo} el {fecha} a las {hora}. Para cambiarla o anularla,
-  llama a recepción.»
+- `LIMIT_TEXT`: «Ya tienes {tipo} el {fecha} a las {hora}. Para cambiarla o anularla, llama a
+  recepción.» The human changed it at the R1 review (2026-11-22), so it reads «Ya tienes una
+  limpieza el lunes 7 de diciembre a las 9:00…».
 - `MY_APPOINTMENT_TEXT`: «Tu próxima cita: {tipo} el {fecha} a las {hora}. Para cambiarla o
   anularla, llama a recepción.»
 - `NO_APPOINTMENT_TEXT`: «No tienes ninguna cita reservada. Escribe /cita para pedir una.»
 - On a Neon failure, the CHG-001 D7 text with «Hablar con recepción».
+
+**{tipo} in every text** is the type with its article, taken from the type code («una limpieza»,
+«una revisión», «una primera visita»). This includes `LIMIT_TEXT` and `MY_APPOINTMENT_TEXT`
+(«Tu próxima cita: una limpieza el…»), as decided by the human at the R1 review (2026-11-22).
+
+**Extra buttons, approved by the human at the R1 review (2026-11-22):**
+
+- «Hablar con recepción» is on every booking message except the confirmation, which keeps only
+  «Confirmar» and «Elegir otro hueco».
+- `NO_APPOINTMENT_TEXT` also gets «Pedir cita».
 
 **Proposed by the agent and approved by the human (2026-11-22):**
 
@@ -109,6 +120,11 @@ los recordatorios y el panel de recepción vienen después.
   4. only then send it to B.
 
   An urgency SHALL always win: «me duele una muela, quiero cita» gets the urgency reply.
+  - With consent in force, the phrase check SHALL be skipped when «Detectar urgencia» found
+    `urgent` or `severe`. The message then goes to B, which answers and records the urgency
+    (SPEC-003 U15).
+  - This is checked by a Node test with mixed messages, such as «quiero cita, me sangra mucho la
+    encía» and «necesito una cita urgente, se me ha hinchado la cara» (human, 2026-11-22).
 - BK3. The booking phrase list SHALL be fixed and strict (clarifications, Decisions Q2).
   - Only clear requests SHALL match, such as «quiero pedir cita», «¿puedo reservar una
     limpieza?» or «dame cita para una revisión».
@@ -180,8 +196,9 @@ los recordatorios y el panel de recepción vienen después.
 
 - BK18. WHEN `/micita` arrives with consent in force, A SHALL reply with `MY_APPOINTMENT_TEXT`
   for the patient's next `booked` future appointment, or with `NO_APPOINTMENT_TEXT`.
-- BK19. A new SQL function `agenda_my_next(from_id)` SHALL return only the type's name and the
-  start and end of the subject's next `booked` appointment starting after now. It SHALL return
+- BK19. A new SQL function `agenda_my_next(from_id)` SHALL return only the **type code** and the
+  start and end of the subject's next `booked` appointment starting after now (the texts build
+  «una limpieza» from the code; human, 2026-11-22). It SHALL return
   no professional, room, subject or id.
   - It SHALL follow SPEC-004's pattern: the public function takes no time parameter, and an
     internal `agenda_my_next_at(from_id, now)` serves the tests.
@@ -190,6 +207,10 @@ los recordatorios y el panel de recepción vienen después.
 
 ### Errors (Q12)
 
+- BK19b. A SHALL make **two** Neon queries for booking (approved by the human at the R1 review,
+  2026-11-22):
+  - `agenda`: the patient's next appointment and, when a type is known, its free slots;
+  - `book`: the booking, plus the next slots or the existing appointment when needed.
 - BK20. IF any Neon call of a booking step fails, THEN A SHALL reply with the D7 text and
   «Hablar con recepción», and SHALL not retry. A failure at «Confirmar» SHALL be reported the
   same way: the patient can check with `/micita`.

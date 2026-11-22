@@ -128,8 +128,8 @@ stale_after: null
     result, and `/micita`.
   - **Where it runs:** in flow A and Neon only, never through B or Gemini, with consent required.
     B only gains `offer_booking`.
-  - **Status: specified** (2026-11-22; clarifications and spec verified by human; plan and tasks
-    awaiting review).
+  - **Status: specified** (2026-11-22; clarifications, spec, plan and tasks verified by human; R0–R7
+    pending).
   - [clarifications](./008-booking/clarifications.md), Q1–Q15
   - [spec](./008-booking/spec.md), BK1–BK27
   - [plan](./008-booking/plan.md) — Steps 0–7

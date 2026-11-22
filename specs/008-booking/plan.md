@@ -4,10 +4,10 @@ spec_id: SPEC-007
 title: booking — Technical Plan
 description: How to build booking from Telegram — preflight (credential hosts), citas.js and the consent module extension test-first, agenda_my_next in 004_booking.sql, offer_booking in B, the booking branch of A with a dynamic inline keyboard, pinned runs, the Telegram test (B before A), and exports and docs.
 tags: [plan, booking, SPEC-007, n8n, neon]
-status: draft
+status: verified
 sources: [./spec.md, ./clarifications.md, ../007-agenda/plan.md, ../006-consent/plan.md, ../005-pseudonymized-log/plan.md]
 generated: { by: claude-code, at: 2026-11-22T00:00:00Z }
-verified: { by: human, at: null }
+verified: { by: human, at: 2026-11-22T00:00:00Z }
 stale_after: null
 ---
 
@@ -191,9 +191,14 @@ The same read-only before-and-after check as SPEC-004 E3:
 **Nodes:**
 
 - **new:**
-  - «¿Es una reserva?» (Code, citas.js);
+  - «¿Es una reserva?» (Code, citas.js). It calls `bookingPhraseFor(question, urgency)` with
+    «Detectar urgencia»'s output, so an urgency always wins (spec BK2);
   - «Preparar reserva» (Code, citas.js);
   - «¿Qué consulta?» (Switch);
+  - **Changed in R1, approved by the human (2026-11-22): two queries instead of three.** `prepare()` asks for
+    `agenda` (the patient's next appointment **and**, when a type is known, its slots) or `book`.
+    So «Mi próxima cita» and «Buscar huecos» become one node, **«Consultar agenda»**. The
+    original plan, kept for reference:
   - «Mi próxima cita», «Buscar huecos» and «Reservar» (Postgres on `Neon main`, each with an
     error output). Each returns **exactly one row**:
     - «Mi próxima cita» and «Buscar huecos» use `json_agg` or a `LEFT JOIN` on one row, so 0

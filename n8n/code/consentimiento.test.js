@@ -220,6 +220,52 @@ check('decide: urgency reply never carries the notice (C2)', () => {
   if (String(r.text).includes(SPEC_NOTICE)) throw new Error('urgency reply contains the consent notice');
 });
 
+// --- SPEC-007 booking routes (plan Step 1; BK1, BK8, BK18) ---
+// /cita and /micita are booking commands; any bk:… button is a booking button. Non-booking routes
+// keep their SPEC-006 shape; booking routes add `data` (the command, or the raw callback_data).
+check('SPEC-007: parseCommand recognizes /cita and /micita in any case', () => {
+  const p = requireFn('parseCommand');
+  eq(p('/cita'), 'cita', '/cita');
+  eq(p('/Cita'), 'cita', '/Cita');
+  eq(p('  /MICITA@LifeCenterBot '), 'micita', '/MICITA@bot');
+  eq(p('/cita para mañana'), null, 'extra text');
+  eq(p('/citas'), null, 'other command');
+});
+check('SPEC-007: parseCallback classifies bk: buttons', () => {
+  const p = requireFn('parseCallback');
+  eq(p('bk:menu'), { kind: 'booking_button', version: null }, 'bk:menu');
+  eq(p('bk:c:limpieza:abcde'), { kind: 'booking_button', version: null }, 'bk:c');
+  eq(p('bk'), { kind: 'unknown_button', version: null }, 'no colon');
+});
+check('SPEC-007: classifyUpdate builds booking routes with data', () => {
+  const c = requireFn('classifyUpdate');
+  eq(c(msg('/cita')), { kind: 'booking_command', fromId: '900001', chatId: 900001, callbackQueryId: null, version: null, data: 'cita' }, '/cita');
+  eq(c(msg('/MiCita')), { kind: 'booking_command', fromId: '900001', chatId: 900001, callbackQueryId: null, version: null, data: 'micita' }, '/MiCita');
+  eq(c(cb('bk:t:limpieza')), { kind: 'booking_button', fromId: '900002', chatId: 900002, callbackQueryId: 'cbq-1', version: null, data: 'bk:t:limpieza' }, 'bk:t');
+  eq(c(msg('/start')).kind, 'start', '/start unchanged');
+  eq(c(cb('handoff')).kind, 'handoff', 'handoff unchanged');
+});
+const BOOKING_CASES = [
+  ['/cita, in force → booking', { route: { ...route('booking_command'), data: 'cita' }, urgency: null, consent: accepted() }, { action: 'booking', text: null, keyboard: null }],
+  ['/micita, in force → booking', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: accepted() }, { action: 'booking', text: null, keyboard: null }],
+  ['bk: button, in force → booking', { route: { ...route('booking_button'), data: 'bk:menu' }, urgency: null, consent: accepted() }, { action: 'booking', text: null, keyboard: null }],
+  ['/cita, no consent → notice (BK8)', { route: { ...route('booking_command'), data: 'cita' }, urgency: null, consent: {} }, NOTICE],
+  ['bk: button, revoked → notice (BK8)', { route: { ...route('booking_button'), data: 'bk:menu' }, urgency: null, consent: { status: 'revoked', text_version: V } }, NOTICE],
+  ['/micita, older version → notice (BK8)', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: accepted(OLD) }, NOTICE],
+  ['bk: button, lookup failed → D7', { route: { ...route('booking_button'), data: 'bk:menu' }, urgency: null, consent: null, lookupFailed: true }, ERROR],
+  ['text, in force → core (the phrase check comes after, in A)', { route: route('text'), urgency: NONE, consent: accepted() }, CORE],
+];
+check('SPEC-007: decide routes booking steps', () => {
+  const decide = requireFn('decide');
+  const wrong = [];
+  for (const [name, input, expected] of BOOKING_CASES) {
+    let got;
+    try { got = decide(input); } catch (e) { got = `throws: ${e.message}`; }
+    if (JSON.stringify(got) !== JSON.stringify(expected)) wrong.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(got)}`);
+  }
+  if (wrong.length) throw new Error(`${wrong.length}/${BOOKING_CASES.length} cases wrong:\n${wrong.join('\n')}`);
+});
+
 // --- Urgencies without consent, end to end with the real detector (C2; human, 2026-11-22) ---
 // Runs urgencias.js with B's node wiring on real messages, then decide(): a person who has not
 // accepted yet, or who withdrew, always gets the urgency reply (with the 112 when severe), never
@@ -262,6 +308,12 @@ check('n8n nodes of A carry this exact code', () => {
   if (!fs.existsSync(EXPORT_PATH)) { console.log('SKIP sync check: no export of A'); return; }
   const wf = JSON.parse(fs.readFileSync(EXPORT_PATH, 'utf8'));
   const nodes = (Array.isArray(wf) ? wf[0] : wf).nodes;
+  // SPEC-007: this module gained the booking routes in R1, and A's export gets them in R5. Until A
+  // has the booking nodes, the export still carries the SPEC-006 module, so the check waits.
+  if (!nodes.some((n) => n.name === 'Preparar reserva')) {
+    console.log("SKIP sync check: A's export has no booking nodes yet; consentimiento.js is checked against it from SPEC-007 R5 (hasta R5)");
+    return;
+  }
   for (const name of NODE_NAMES) {
     const node = nodes.find((n) => n.name === name);
     if (!node) { console.log(`SKIP sync check: node "${name}" not in A's export yet`); continue; }

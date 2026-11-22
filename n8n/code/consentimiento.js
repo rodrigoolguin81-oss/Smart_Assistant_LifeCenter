@@ -37,7 +37,9 @@ const callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${ver
 
 // --- Commands (spec "Command"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,
 // in any letter case (phone keyboards capitalize the first letter) ---
-const COMMAND = /^\s*\/(start|privacidad)(?:@[A-Za-z0-9_]+)?\s*$/i;
+// SPEC-007: /cita and /micita are booking commands (any letter case, like the others).
+const COMMAND = /^\s*\/(start|privacidad|cita|micita)(?:@[A-Za-z0-9_]+)?\s*$/i;
+const BOOKING_COMMANDS = ['cita', 'micita'];
 function parseCommand(text) {
   const m = COMMAND.exec(typeof text === 'string' ? text : '');
   return m ? m[1].toLowerCase() : null;
@@ -48,6 +50,7 @@ const CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;
 function parseCallback(data) {
   if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null };
   if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };
+  if (typeof data === 'string' && data.startsWith('bk:')) return { kind: 'booking_button', version: null }; // SPEC-007
   const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');
   return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };
 }
@@ -58,24 +61,27 @@ function classifyUpdate(update) {
   const cq = update && update.callback_query;
   if (cq) {
     const { kind, version } = parseCallback(cq.data);
-    return {
+    const route = {
       kind,
       fromId: asId(cq.from && cq.from.id),
       chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,
       callbackQueryId: cq.id === undefined ? null : cq.id,
       version,
     };
+    return kind === 'booking_button' ? { ...route, data: cq.data } : route; // SPEC-007
   }
   const m = (update && update.message) || {};
   const hasText = typeof m.text === 'string' && m.text !== '';
   const command = hasText ? parseCommand(m.text) : null;
-  return {
-    kind: command || (hasText ? 'text' : 'other'),
+  const booking = BOOKING_COMMANDS.includes(command);
+  const route = {
+    kind: booking ? 'booking_command' : command || (hasText ? 'text' : 'other'),
     fromId: asId(m.from && m.from.id),
     chatId: m.chat ? m.chat.id : null,
     callbackQueryId: null,
     version: null,
   };
+  return booking ? { ...route, data: command } : route; // SPEC-007: /cita, /micita
 }
 
 // --- Consent in force (C22): accepted with the current version; anything else is no consent ---
@@ -123,6 +129,9 @@ function decide({ route, urgency, consent, lookupFailed }) {
       return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;
     case 'withdraw':
       return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };
+    case 'booking_command': // SPEC-007 BK8: every booking step needs consent in force
+    case 'booking_button':
+      return inForce ? { action: 'booking', text: null, keyboard: null } : notice;
     case 'unknown_button':
       return notice;
     default:

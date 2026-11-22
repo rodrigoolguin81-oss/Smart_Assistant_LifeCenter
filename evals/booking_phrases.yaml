@@ -1,0 +1,121 @@
+# SPEC-007 (specs/008-booking) — booking phrases for n8n/code/citas.js detectBookingPhrase().
+# Texts are pseudonymized (SPEC-001 placeholders) as A sees them after "Seudonimizar".
+# expected: booking | none.  type (booking only): revision | limpieza | primera_visita | request_only
+# Every `booking` must match with its type, and NO `none` may match (BK3, Decisions Q2).
+
+# --- Positives: clear requests ---
+- text: "quiero pedir cita"
+  expected: booking
+- text: "quisiera pedir una cita"
+  expected: booking
+- text: "¿puedo reservar una limpieza?"
+  expected: booking
+  type: limpieza
+- text: "dame cita para una revisión"
+  expected: booking
+  type: revision
+- text: "me gustaría pedir hora para una revisión"
+  expected: booking
+  type: revision
+- text: "necesito una cita"
+  expected: booking
+- text: "¿me das cita para la semana que viene?"
+  expected: booking
+- text: "quiero reservar una primera visita"
+  expected: booking
+  type: primera_visita
+- text: "¿tenéis hueco para una limpieza?"
+  expected: booking
+  type: limpieza
+- text: "quiero coger cita con la higienista"
+  expected: booking
+- text: "pedir cita"
+  expected: booking
+- text: "reservar cita"
+  expected: booking
+- text: "¿cómo pido cita?"
+  expected: booking
+- text: "quiero hacerme una limpieza, ¿me dais cita?"
+  expected: booking
+  type: limpieza
+- text: "¿se puede pedir cita por aquí?"
+  expected: booking
+- text: "quiero una cita para un blanqueamiento"
+  expected: booking
+  type: request_only
+- text: "reservar un blanqueamiento"
+  expected: booking
+  type: request_only
+- text: "quiero pedir cita para ortodoncia"
+  expected: booking
+  type: request_only
+- text: "Hola, me llamo [NOMBRE] y quiero pedir cita"
+  expected: booking
+- text: "necesito pedir hora para una revisión"
+  expected: booking
+  type: revision
+- text: "¿hay citas libres esta semana?"
+  expected: booking
+- text: "quiero sacar cita para limpieza"
+  expected: booking
+  type: limpieza
+- text: "Buenas, ¿podría reservar una revisión?"
+  expected: booking
+  type: revision
+- text: "quisiera concertar una cita"
+  expected: booking
+- text: "me podéis dar cita para una primera visita"
+  expected: booking
+  type: primera_visita
+
+# --- Negatives: existing appointments, prices, moving and cancelling, other questions ---
+- text: "tengo una cita el lunes"
+  expected: none
+- text: "¿cuánto cuesta una cita?"
+  expected: none
+- text: "cancelar mi cita"
+  expected: none
+- text: "cambiar mi cita"
+  expected: none
+- text: "¿a qué hora es mi cita?"
+  expected: none
+- text: "la cita de mi madre es mañana"
+  expected: none
+- text: "quiero cancelar la cita"
+  expected: none
+- text: "necesito mover mi cita al jueves"
+  expected: none
+- text: "¿puedo anular la cita?"
+  expected: none
+- text: "¿cuánto cuesta una limpieza?"
+  expected: none
+- text: "¿a qué hora abrís los sábados?"
+  expected: none
+- text: "no quiero cita, solo una pregunta"
+  expected: none
+- text: "¿se puede aplazar mi cita?"
+  expected: none
+- text: "ya tengo cita para el martes"
+  expected: none
+- text: "¿qué tengo que llevar a la cita?"
+  expected: none
+- text: "olvidé mi cita de ayer"
+  expected: none
+- text: "¿mi cita es con la higienista?"
+  expected: none
+- text: "¿cuánto dura una revisión?"
+  expected: none
+- text: "¿la primera visita es gratis?"
+  expected: none
+- text: "me cambiaron la cita"
+  expected: none
+- text: "tenía una cita y no pude ir"
+  expected: none
+- text: "confirmo mi cita del lunes"
+  expected: none
+- text: "quiero saber el precio de pedir una cita"
+  expected: none
+- text: "¿qué es una limpieza dental?"
+  expected: none
+- text: "gracias por la cita"
+  expected: none
