@@ -131,6 +131,14 @@ period is set. **This spec supersedes CHG-001 D11.**
     - `saveManualExecutions` disabled at the end;
     - all pinned data removed and checked;
     - the human deletes the executions.
+  - **Extension for SPEC-009 (approved by the human, 2026-11-23; SPEC-009 clarifications Q11):**
+    the same conditions apply to the pinned runs of A and of the new reminders workflow C. C,
+    like A, saves no executions outside those runs.
+    - fake ids `9009xx`;
+    - one run per scenario;
+    - `saveManualExecutions` disabled at the end;
+    - all pinned data removed and checked;
+    - the human deletes the executions.
 
 ## Known limitations
 

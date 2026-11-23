@@ -178,8 +178,31 @@ stale_after: null
   - Workflow: A, [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json);
     B unchanged
 
-Pending (not yet scaffolded): reminders, a follow-up of SPEC-004 (proposed SPEC-009); and
-the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.
+- **010-reminders**: a Telegram reminder the day before each appointment. PRD `US-006`, `RF-006`,
+  `CONF-005`, `R-06`; traceability row **SPEC-009**, a follow-up of SPEC-004, SPEC-007 and
+  SPEC-008.
+  - **Consent:** a separate opt-in right after booking («¿Quieres que te recuerde la cita el día
+    antes?»), which can be removed from «Mi cita». Withdrawing the general consent deletes the
+    reminder.
+  - **Data:** the chat id is encrypted (pgcrypto) in its own table, and exists only while the
+    reminder is pending. The key is in the same database, a known limitation.
+  - **Sending:** a new scheduled workflow C sends each reminder exactly once:
+    - due 24 hours before;
+    - never in quiet hours (21:00–9:00) or with less than 2 hours left;
+    - a missed run is sent late only inside that window.
+
+    The text has no appointment type. Its buttons are «Iré», «Cambiar», «Anular» and «Hablar
+    con recepción».
+  - **Where it runs:** A and C with Neon only. No B, no Gemini, and C saves no executions.
+  - **Status: specified** (2026-11-23; clarifications and spec verified by the human; plan and
+    tasks in draft).
+  - [clarifications](./010-reminders/clarifications.md), Q1–Q15
+  - [spec](./010-reminders/spec.md), RM1–RM33
+  - [plan](./010-reminders/plan.md)
+  - [tasks](./010-reminders/tasks.md)
+
+Pending (not yet scaffolded): the remaining PRD stories (US-007 and US-008, and the reception
+panel, RF-007) per `docs/03-prd.md` §11.
 
 Future improvements (not specified yet):
 
