@@ -148,7 +148,28 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
   - First `tests/infra/test_reminders_sql.py`, then the SQL.
   - **Before running anything,** show the SQL, the exact commands and the host.
   - Run: red (nothing created), the schema, green, then all of `tests/infra`.
-- [ ] N3 **[confirmación]**: `main` (plan Step 3; RM29).
+- [x] N3 **[confirmación]**: `main` (plan Step 3; RM29).
+  - Done 2026-11-24, after the human saw the commands, the host (`ep-steep-resonance-…`,
+    `DIRECT_URL`) and the read-only check, and confirmed. The check was first tried on the test
+    branch, only to validate its queries.
+  - **Before** (read-only): `kb_fragments` 9, `consent` 1, `consent_key` 1; configuration
+    3/3/5/11/1/0; 4 appointments; 19 earlier public functions (the 14 agenda ones), and none of
+    the 006 objects.
+  - **Schema applied:** "Esquema aplicado en ep-steep-resonance-… (DIRECT_URL)."
+  - **After** (read-only), every check «sí»:
+    - unchanged: `kb_fragments`, `consent`, `consent_key`, the agenda configuration (except the
+      three new settings), the appointments' columns up to SPEC-008, and the definition of every
+      earlier function;
+    - the settings are 24 h / 21:00 / 9:00, and `attendance_confirmed_at` exists and is empty;
+    - `reminder_key` holds 1 row of 32 bytes (counted in the database, never read);
+      `agenda_reminders` is empty;
+    - the 17 new functions (13 `reminder_*`, 3 helpers, the trigger's) and the deferred
+      constraint trigger `agenda_reminder_follow`.
+
+    The digest file was deleted. No subject, key or md5 value was printed.
+  - Separately, `test_g13` (SPEC-004 NFR-07) was made robust to connection failures, with the
+    NFR-07 check first and never retried: 0 failures in 20 isolated runs, 2 full runs and a
+    50-round stress test before the fix; 10 of 10 and 209 passed after it.
   - Show the command, the host and the read-only check, and wait.
   - Run: the check before, the schema on `DIRECT_URL`, the check after.
   - **Stop if** `kb_fragments`, `consent`, `consent_key`, the agenda configuration or the
