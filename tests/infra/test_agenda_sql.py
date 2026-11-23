@@ -440,9 +440,10 @@ def test_g15_appointments_hold_only_the_planned_columns(db):
         "SELECT column_name FROM information_schema.columns"
         " WHERE table_schema = 'public' AND table_name = 'agenda_appointments' ORDER BY ordinal_position"
     )]
-    # SPEC-008 (005_move_cancel.sql) adds two operational columns, with no patient data (MC21).
+    # SPEC-008 (005_move_cancel.sql) adds two operational columns, and SPEC-009 (006_reminders.sql) one
+    # more, «Iré»; none holds patient data (MC21, RM19).
     assert cols == ["id", "subject", "type_code", "starts_at", "ends_at", "professional", "room", "status",
-                    "channel", "created_at", "during", "cancelled_at", "replaced_by"]
+                    "channel", "created_at", "during", "cancelled_at", "replaced_by", "attendance_confirmed_at"]
 
 
 def test_g15_no_stored_row_contains_the_telegram_id(db):
@@ -474,7 +475,9 @@ def test_g16_no_new_key_table(db):
         "SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' AND relname LIKE %s",
         ("%key%",),
     ).fetchall()
-    assert rows == [("consent_key",)]
+    # G16 is about the agenda subject: it reuses the SPEC-006 key, with no key of its own. SPEC-009
+    # adds reminder_key on purpose, to encrypt the reminder chat id (clarifications Q3, human 2026-11-23).
+    assert sorted(rows) == [("consent_key",), ("reminder_key",)]
 
 
 def test_g17_appointments_ended_more_than_30_days_ago_are_purged(db):

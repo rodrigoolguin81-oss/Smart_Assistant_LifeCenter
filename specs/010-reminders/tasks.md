@@ -99,8 +99,52 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
     gain their texts.
   - Then the functions, until green. `consentimiento.test.js` and `urgencias.test.js` stay green.
   - The sync checks of `citas.js` and `recordatorios.js` are skipped «hasta N4».
-- [ ] N2 **[confirmación]**: `006_reminders.sql` on the test branch (plan Step 2; RM7–RM17, RM19,
+- [x] N2 **[confirmación]**: `006_reminders.sql` on the test branch (plan Step 2; RM7–RM17, RM19,
   RM24–RM26, RM29).
+  - Done 2026-11-24, after the human saw the summarized SQL, the commands and the host
+    (`ep-blue-firefly-…`, the test branch, checked by a guard before running) and confirmed.
+    **Main was not touched.**
+  - **`tests/infra/test_reminders_sql.py`**, written first: 39 tests, fake ids `900901…`, and
+    dates computed from today. Their appointments, reminders and consent rows are removed before
+    and after each test, and the keys are never selected. It covers:
+    - the **deferred trigger with the real SPEC-008 functions**: a move takes the reminder to the
+      new appointment, a cancel deletes it, and a move into a taken slot leaves it unchanged;
+    - **two claims at the same time** returning each reminder once;
+    - the **consent check at sending** (revoked, or an older notice version → `skipped`);
+    - **the chat id wiped in every final case** (sent, blocked, failed, skipped, stale), and a
+      `CHECK` that rejects it on a final row.
+
+    `test_g15` of SPEC-004 now expects `attendance_confirmed_at`.
+  - **`app/infra/sql/006_reminders.sql`:**
+    - `reminder_key`, `agenda_reminders`, `attendance_confirmed_at` and the three settings;
+    - the encrypt and decrypt helpers;
+    - `reminder_set` / `clear` / `state` / `forget` / `confirm`;
+    - `reminder_claim_due` (one claim at a time, stale → `failed`, closed window or no consent →
+      `skipped`, quiet hours, `FOR UPDATE SKIP LOCKED`) and `reminder_mark`;
+    - the `DEFERRABLE INITIALLY DEFERRED` constraint trigger `agenda_reminder_follow`.
+
+    The claim takes the consent text version as a parameter, which C will pass in N4.
+  - **Red** (the reapply and file-exists tests excluded, so nothing was created): **38 failed**,
+    every one because a function, table or column did not exist yet. Nothing was left on the
+    test branch.
+  - **Schema applied:** "Esquema aplicado en ep-blue-firefly-… (TEST_DATABASE_URL)."
+  - **Two fixes in the tests, not in the SQL:**
+    - the `rset` helper selected a `result` column, but the function returns a scalar;
+    - with an empty chat id, the helper fell back to the patient id.
+
+    After them, `test_reminders_sql.py` reports **39 passed**.
+  - **SPEC-004 `test_g16_no_new_key_table`** failed in the full run: it allowed only
+    `consent_key`. G16 is about the agenda subject, which still reuses the SPEC-006 key.
+    `reminder_key` is the separate table approved in SPEC-009 Q3, so the test now expects exactly
+    `consent_key` and `reminder_key`. Pointed out to the human for review.
+  - **`tests/infra`:** **209 passed**.
+    - One full run had an **intermittent failure of `test_g13`** (SPEC-004 NFR-07, 10 concurrent
+      bookings). It passed 3 times out of 3 on its own and in the next full run. 006 does not touch
+      inserts: its trigger only fires on `UPDATE` of status or `replaced_by`.
+    - Its message was not captured.
+  - **Afterwards** (read-only, test branch): 0 appointments, 0 reminders, `consent` 0,
+    `consent_key` 1, `reminder_key` 1, 13 `reminder_*` functions, the trigger, and the settings
+    24 h / 21:00 / 9:00.
   - First `tests/infra/test_reminders_sql.py`, then the SQL.
   - **Before running anything,** show the SQL, the exact commands and the host.
   - Run: red (nothing created), the schema, green, then all of `tests/infra`.
