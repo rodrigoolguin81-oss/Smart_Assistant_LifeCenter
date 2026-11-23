@@ -133,27 +133,42 @@ def count_for(conn, from_id) -> int:
     ).fetchone()[0]
 
 
+CONNECTION_ERRORS = ("OperationalError", "BrokenBarrierError", "ConnectionTimeout", "sin_resultado")
+
+
 def run_concurrently(url, calls):
-    """Run agenda_book_at calls at the same moment, one connection per call, behind a barrier."""
+    """Run agenda_book_at calls at the same moment, one connection per call, behind a barrier.
+
+    Every slot of the result is a tuple, so an assertion can always print the whole list:
+    - a failed connection breaks the barrier (timeout), so the other threads record
+      BrokenBarrierError instead of waiting forever;
+    - a thread that did not finish is reported as ("sin_resultado", ...).
+    """
     barrier = threading.Barrier(len(calls))
     results = [None] * len(calls)
 
     def worker(i, args):
         try:
-            with psycopg.connect(url, autocommit=True) as conn:
-                barrier.wait()
+            with psycopg.connect(url, autocommit=True, connect_timeout=30) as conn:
+                barrier.wait(timeout=60)
                 results[i] = conn.execute(
                     "SELECT result, professional, room FROM agenda_book_at(%s, %s, %s, %s)", args
                 ).fetchone()
         except Exception as exc:  # recorded, so the test reports it instead of hanging
+            barrier.abort()
             results[i] = ("exception", type(exc).__name__, str(exc))
 
     threads = [threading.Thread(target=worker, args=(i, a)) for i, a in enumerate(calls)]
     for t in threads:
         t.start()
     for t in threads:
-        t.join(timeout=60)
-    return results
+        t.join(timeout=90)
+    return [r if r is not None else ("sin_resultado", "hilo sin terminar", "") for r in results]
+
+
+def connection_failed(results) -> bool:
+    """True when some call never reached the database because of the connection or the barrier."""
+    return any(r[0] == "sin_resultado" or (r[0] == "exception" and r[1] in CONNECTION_ERRORS) for r in results)
 
 
 # === G1–G3: configuration ===
@@ -413,14 +428,30 @@ def test_g12_back_to_back_and_cancelled_appointments_do_not_conflict(db):
 
 def test_g13_nfr07_ten_concurrent_bookings_of_one_hygienist_slot(db, test_database_url):
     start = at(MON, "09:00")
-    results = run_concurrently(test_database_url, [("limpieza", start, FAKE_IDS[i], NOW) for i in range(10)])
+    calls = [("limpieza", start, FAKE_IDS[i], NOW) for i in range(10)]
+
+    def booked_rows():
+        return db.execute(
+            "SELECT count(*) FROM agenda_appointments WHERE starts_at = %s AND status = 'booked'"
+            " AND subject IN (SELECT agenda_subject(x) FROM unnest(%s::text[]) x)",
+            (start, FAKE_IDS),
+        ).fetchone()[0]
+
+    results = run_concurrently(test_database_url, calls)
+    # NFR-07 first, and never retried: two booked rows in one slot fail at once, whatever else happened.
+    n = booked_rows()
+    assert n <= 1, f"NFR-07: {n} citas booked en el mismo hueco; resultados: {results}"
+    # A connection that failed is the environment, not the agenda: clean up and repeat the round once.
+    if connection_failed(results):
+        first = results
+        _cleanup(db)
+        results = run_concurrently(test_database_url, calls)
+        n = booked_rows()
+        assert n <= 1, f"NFR-07: {n} citas booked en el mismo hueco; resultados: {results}"
+        if connection_failed(results):
+            pytest.fail(f"Fallo de conexión en las dos rondas: {first} / {results}")
     assert sorted(r[0] for r in results) == ["booked"] + ["taken"] * 9, results
-    (n,) = db.execute(
-        "SELECT count(*) FROM agenda_appointments WHERE starts_at = %s AND status = 'booked'"
-        " AND subject IN (SELECT agenda_subject(x) FROM unnest(%s::text[]) x)",
-        (start, FAKE_IDS),
-    ).fetchone()
-    assert n == 1
+    assert n == 1, results
 
 
 def test_g13_two_dentists_take_two_concurrent_revisions_and_the_third_is_taken(db, test_database_url):
