@@ -4,7 +4,7 @@ spec_id: SPEC-008
 title: move and cancel — Task Breakdown
 description: Ordered, test-first tasks for moving and cancelling from Telegram — read-only preflight (hosts, the «Neon main» credential, the state of A and B), the JS modules, 005_move_cancel.sql on the test branch and main, A's change steps with pinned data, the Telegram test, and exports and docs.
 tags: [tasks, move, cancel, SPEC-008]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
 verified: { by: human, at: 2026-11-23T00:00:00Z }
@@ -254,12 +254,65 @@ Same pattern as SPEC-007. **Nothing is touched before the plan is approved.**
     - the list of executions for the human to delete.
   - Check: every scenario of plan Step 4 behaves as expected, and B is called only where
     planned.
-- [ ] M5 **[humano]**: Publish **A only**, and test from Telegram (plan Step 5).
+- [x] M5 **[humano]**: Publish **A only**, and test from Telegram (plan Step 5).
+  - Done 2026-11-23. The human published A (`7c3d4100…`); B was not published again (`0b3cb06d…`).
+  - **Telegram test (human), all as expected:**
+    - booking → «Hecho: tienes…» with «Cambiar» and «Anular»;
+    - «Cambiar» → the slots without the current one; «Ver más»; the confirmation with both
+      dates; «Confirmar cambio» → «Hecho: tu cita pasa al…»; a second tap → «Esa cita ya no está
+      activa.»;
+    - `/micita`; «Anular» → «Mantener mi cita»; «Anular» → «Sí, anular» → cancelled, with «Pedir
+      cita»;
+    - «cancelar mi cita» without an appointment;
+    - an urgency with a cancel phrase → the urgency reply;
+    - **withdrawal with an appointment** → «Sigues teniendo una limpieza el miércoles 25…» with
+      «Anular mi cita» → «Sí, anular» → cancelled, with only «Hablar con recepción»;
+    - then accepted again with `/privacidad`.
+  - **The agent's read-only checks on `main`, with no subject printed:**
+
+    | Appointment | Type and time (Madrid) | Status |
+    |---|---|---|
+    | 1 | limpieza, Mon 23/11 9:00 | `booked`, the demo one, past |
+    | 2 | limpieza, Wed 25/11 9:00 | `cancelled` 20:33, `replaced_by` → 3 (the move) |
+    | 3 | limpieza, Thu 26/11 9:00 | `cancelled` 20:34 («Sí, anular») |
+    | 4 | limpieza, Wed 25/11 9:00 | `cancelled` 20:41, without consent after the withdrawal |
+
+    - **`consent`:** the first check found 1 row `revoked` (20:41:11). A's transient records
+      showed that the last steps were the withdrawal, «Anular mi cita» and «Sí, anular»: the new
+      acceptance had not been sent yet (human). After `/privacidad` and «Acepto» there is 1 row
+      `accepted` (20:49:10).
+    - **B's executions since publishing:** 245 (`below_threshold`), 261 (urgency) and 263
+      (`model_abstained`). All received only `question`, and none was a change step.
+    - **A's transient records** (SPEC-005 window) held only the raw updates, and n8n removes them
+      on its own.
   - The agent checks `main`'s appointments (read-only, no subject), B's executions, and that A
     left no saved execution.
   - Covers: the Telegram acceptance criteria.
-- [ ] M6: Exports and docs (plan Step 6; MC33).
-  - Export A from its published version, without `shared` and `pinData`, and run the scan.
-    Check that B's export is still its published version.
-  - Run every Node and SQL test.
-  - Update the README and `specs/index.md`, and mark spec, plan and tasks implemented.
+- [x] M6: Exports and docs (plan Step 6; MC33).
+  - Done 2026-11-23.
+  - **Exports.**
+    - A was exported from its published version (`7c3d4100…`, 40 nodes; draft = published,
+      checked against `workflow_history`), with `shared` and `pinData` removed.
+    - **B was not re-exported.** Its CLI export equals the one in git (nodes, connections,
+      settings, version `0b3cb06d…`), so the file is unchanged.
+    - The structural check of M4 still holds on the published version.
+  - **Scan:**
+    - the README `grep` printed nothing;
+    - the push scan compared the added lines with the real values (from `.env` and git config,
+      and the two HMAC keys held in memory only) and with the secret patterns. Its only hit is a
+      node UUID that starts with 8 digits;
+    - **neither full Neon host** (`main` or the test branch) appears in the diff or anywhere in
+      the repo;
+    - no `shared` or `pinData` block remains.
+  - **Tests:**
+    - `citas.test.js`, `consentimiento.test.js` and `urgencias.test.js` are green, with **every
+      sync check run** against the new export, including «Componer retirada»;
+    - `pytest` reports **393 passed**, including `tests/infra` on the test branch.
+  - **Docs:**
+    - README: the «Try it» rows, the agenda functions and columns, how to change
+      `change_min_lead`, and a "Changing and cancelling (SPEC-008)" section with its limitations;
+      the keyboard rule now covers 1–6 rows;
+    - `specs/index.md`: SPEC-008 implemented for the demo, and, as a future improvement asked by
+      the human, replying to greetings and general questions with what the bot can do;
+    - spec (acceptance criteria ticked, each with how it was checked), plan and tasks marked
+      `implemented`.

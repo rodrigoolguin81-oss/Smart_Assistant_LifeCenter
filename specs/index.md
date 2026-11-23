@@ -156,12 +156,35 @@ stale_after: null
     its confirmation are the only steps allowed without consent (legal basis pending DEP-04).
   - **Where it runs:** flow A and Neon only. B and Gemini are not involved, and B does not
     change.
-  - **Status: specified** (2026-11-23; clarifications, spec, plan and tasks verified by the
-    human; M0–M6 pending).
+  - **Status: implemented for the demo** (2026-11-23; M0–M6 done). Every acceptance criterion is
+    met, through:
+    - the Node tests (change phrases 23/23 and 0/22);
+    - 36 SQL tests on the test branch, concurrency included;
+    - `main` checked before and after;
+    - 39 pinned runs;
+    - the Telegram test (move, cancel, old buttons, withdrawal with an appointment).
+
+    The minimum notice (2 hours) is example data until DEP-03. The appointment kept after a
+    withdrawal is pending DEP-04, so real patients stay blocked.
   - [clarifications](./009-move-cancel/clarifications.md), Q1–Q14
   - [spec](./009-move-cancel/spec.md), MC1–MC33
-  - [plan](./009-move-cancel/plan.md)
-  - [tasks](./009-move-cancel/tasks.md)
+  - [plan](./009-move-cancel/plan.md) — Steps 0–6
+  - [tasks](./009-move-cancel/tasks.md) — M0–M6
+  - Code: [`n8n/code/citas.js`](../n8n/code/citas.js) and
+    [`n8n/code/consentimiento.js`](../n8n/code/consentimiento.js) · phrases
+    [`evals/change_phrases.yaml`](../evals/change_phrases.yaml) · SQL
+    [`app/infra/sql/005_move_cancel.sql`](../app/infra/sql/005_move_cancel.sql), tested by
+    `tests/infra/test_move_cancel_sql.py` (test branch only)
+  - Workflow: A, [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json);
+    B unchanged
 
 Pending (not yet scaffolded): reminders, a follow-up of SPEC-004 (proposed SPEC-009); and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.
+
+Future improvements (not specified yet):
+
+- **Greetings and general questions** (human, 2026-11-23). Today «hola» or «¿qué haces?» go to
+  B, which abstains, because the knowledge base has no answer. The bot could reply with what it
+  can do: answer about prices, hours and treatments with sources; book, move and cancel an
+  appointment (`/cita`, `/micita`); and talk to reception. It would be a deterministic text,
+  with no Gemini, before B, in the same way as the booking phrases.

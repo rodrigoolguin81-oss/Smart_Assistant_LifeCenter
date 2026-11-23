@@ -4,7 +4,7 @@ spec_id: SPEC-008
 title: move and cancel — Functional Spec
 description: Requirements for moving and cancelling one's own appointment from Telegram on the SPEC-004 agenda (US-005, RF-005) — the «Mi cita» view with «Cambiar» and «Anular», strict free-text phrases, a confirmation before every write, a configurable minimum notice, a move done in one transaction that keeps the old appointment if the new slot fails, cancelled rows kept until the normal purge, safe old buttons, and the appointment kept (with a cancel button) when consent is withdrawn. All in flow A and Neon, never through B or Gemini. EARS notation.
 tags: [spec, move, cancel, SPEC-008, US-005, RF-005, NFR-07, SPEC-004, SPEC-006, SPEC-007]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../007-agenda/spec.md, ../008-booking/spec.md, ../006-consent/spec.md, ../005-pseudonymized-log/spec.md, ../004-urgencies/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
 verified: { by: human, at: 2026-11-23T00:00:00Z }
@@ -289,16 +289,21 @@ is the type with its article («una limpieza»), and dates are Madrid dates as i
 
 ## Acceptance criteria
 
+All met on 2026-11-23 (M0–M6). Each criterion says how it was checked. Where the Telegram test
+did not repeat a case, the M4 pinned run that covers it is named (execution numbers, deleted
+afterwards by the human).
+
 **Node, SQL and pinned runs:**
 
-- [ ] The `citas.js` test is green.
-  - Every change callback is at most 64 bytes.
-  - **Every positive change or cancel phrase matches, and no negative does.** The SPEC-007
-    booking dataset gives the same results as before.
+- [x] The `citas.js` test is green (M1).
+  - Every change callback is at most 64 bytes. The longest is 17.
+  - **Every positive change or cancel phrase matches, and no negative does:** 23/23 and 0/22.
+    The SPEC-007 booking dataset gives the same results as before, 25/25 and 0/25, and the two
+    detectors never overlap.
   - «quiero anular la cita, me sangra mucho la encía» → urgency. «quiero cambiar la cita que
     pedí» → the «Mi cita» view, not the booking menu.
   - Every keyboard has 1–6 rows of one button.
-- [ ] On the test branch:
+- [x] On the test branch (M2; `tests/infra/test_move_cancel_sql.py`, 36 tests):
   - `agenda_cancel` sets the row to `cancelled` with `cancelled_at`, and the slot is offered
     again;
   - it gives `not_found` for another subject's appointment, a past one, a cancelled one and a
@@ -316,8 +321,8 @@ is the type with its article («una limpieza»), and dates are Madrid dates as i
     - a double «Sí, anular» → 1 `cancelled` and 1 `not_found`;
   - the public functions have no time parameter;
   - re-applying the schema changes neither `kb_fragments`, `consent`, the key, nor the agenda
-    rows.
-- [ ] Pinned runs:
+    rows. On `main` (M3), the before-and-after check confirmed the same.
+- [x] Pinned runs (M4, 39 scenarios):
   - every result of cancel and move gives its text;
   - an old button gives `NOT_ACTIVE_TEXT`;
   - a Neon failure gives D7;
@@ -328,25 +333,35 @@ is the type with its article («una limpieza»), and dates are Madrid dates as i
   - **a failed appointment lookup at withdrawal** (pinned error) leaves the consent `revoked`, and
     gives `REVOKED_LOOKUP_FAILED_TEXT`: `REVOKED_TEXT` followed by «Si tenías una cita reservada, se
     mantiene; para anularla, llama a recepción.», with no button.
+  - A failure in «Guardar retirada» itself cannot be pinned: pinned data always leaves through
+    the normal output. Its error path did not change (→ «Tras guardar» → D7), and the export
+    shows it.
 
 **From Telegram, with a test account that has consent and a current appointment** (the
-appointment kept for the demo was on 23/11/2026 at 9:00, so the test books a new one first):
+appointment kept for the demo was on 23/11/2026 at 9:00, so the test booked a new one first;
+human, M5, 2026-11-23):
 
-- [ ] `/micita` → `MY_APPOINTMENT_TEXT` with «Cambiar», «Anular» and «Hablar con recepción».
-- [ ] «Cambiar» → the slots, without the current one. A slot → `MOVE_CONFIRM_TEXT` with both
-  dates. «Confirmar cambio» → `MOVED_TEXT`. `main` has the old row `cancelled` and one new
-  `booked` row (read-only check, no subject printed). A second «Confirmar cambio» →
-  `NOT_ACTIVE_TEXT` and the new appointment.
-- [ ] «cancelar mi cita» → the «Mi cita» view. «Anular» → `CANCEL_CONFIRM_TEXT`. «Mantener mi
-  cita» → `KEPT_TEXT`. «Anular» → «Sí, anular» → `CANCELLED_TEXT`. `/micita` →
-  `NO_APPOINTMENT_TEXT`, and an old «Anular» → `NOT_ACTIVE_TEXT`.
-- [ ] After booking again: «Retirar consentimiento» → `REVOKED_WITH_APPOINTMENT_TEXT`. «Anular mi
-  cita» works without consent, and `/micita` gets the consent notice.
-- [ ] «me cambiaron la cita» and «¿se puede cancelar sin coste?» → B, as today.
-- [ ] No B execution exists for any change step. The B executions of the other messages contain
-  only `question`.
-- [ ] A is re-exported with no secret or personal data. A still saves no executions, and no
-  pinned data remains.
+- [x] `/micita` → `MY_APPOINTMENT_TEXT` with «Cambiar», «Anular» and «Hablar con recepción».
+- [x] «Cambiar» → the slots, without the current one, and «Ver más». A slot → `MOVE_CONFIRM_TEXT`
+  with both dates. «Confirmar cambio» → `MOVED_TEXT`. `main` has the old row `cancelled` with
+  `replaced_by` pointing to the new `booked` row (read-only check, no subject printed). A second
+  «Confirmar cambio» → `NOT_ACTIVE_TEXT` and the new appointment.
+- [x] «Anular» → `CANCEL_CONFIRM_TEXT`. «Mantener mi cita» → `KEPT_TEXT`. «Anular» → «Sí, anular» →
+  `CANCELLED_TEXT` with «Pedir cita». «cancelar mi cita» without an appointment → the view with
+  `NO_APPOINTMENT_TEXT`. An old «Anular» → `NOT_ACTIVE_TEXT` is covered by the M4 pinned runs
+  (214, 217).
+- [x] After booking again: «Retirar consentimiento» → `REVOKED_WITH_APPOINTMENT_TEXT` («Sigues
+  teniendo una limpieza el miércoles 25…»). «Anular mi cita» → «Sí, anular» works without consent,
+  and cancels with only «Hablar con recepción». `/micita` without consent → the notice is covered
+  by SPEC-007's pinned run 27 and by `consentimiento.test.js`. The human then accepted again.
+- [x] An urgency with a cancel phrase → the urgency reply (B, 261). «me cambiaron la cita» → B is
+  covered by the M4 pinned run 209 (`model_abstained`). «¿se puede cancelar sin coste?» is a
+  negative of the phrase test.
+- [x] No B execution exists for any change step. B's executions since publishing (245, 261 and
+  263) contain only `question`.
+- [x] A is re-exported from its published version (`7c3d4100…`), without `shared` and `pinData`,
+  with no secret or personal data (M6). A still saves no executions (none / none / false / false),
+  and no pinned data remains. B did not change: its export equals the one in git.
 
 ## Known limitations
 

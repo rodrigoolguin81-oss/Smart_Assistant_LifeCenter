@@ -247,13 +247,27 @@ Booking, with consent (SPEC-007; see [Booking](#booking-spec-007)):
 | «Limpieza» | «Estos son los primeros huecos para una limpieza:», up to 3 slot buttons («lun 7 dic · 9:00»), «Ver más» and «Hablar con recepción» |
 | «Ver más» | «Estos son los siguientes huecos para una limpieza:» with the next slots |
 | A slot | «Vas a reservar una limpieza el lunes 7 de diciembre a las 9:00. ¿Lo confirmo?» with «Confirmar» and «Elegir otro hueco» |
-| «Confirmar» | «Hecho: tienes una limpieza el …». Tapping it again gives «Ya tienes una limpieza el …» |
-| `/micita` | «Tu próxima cita: una limpieza el …», or «No tienes ninguna cita reservada…» with «Pedir cita» |
+| «Confirmar» | «Hecho: tienes una limpieza el …» with «Cambiar», «Anular» and «Hablar con recepción». Tapping it again gives «Ya tienes una limpieza el …» |
+| `/micita` | «Tu próxima cita: una limpieza el …» with «Cambiar» and «Anular», or «No tienes ninguna cita reservada…» with «Pedir cita» |
 | ¿Cuánto cuesta una limpieza? | The usual 60 € answer, now with a «Pedir cita» button |
 | quiero pedir cita para una limpieza | The slots directly |
 | quiero una cita para un blanqueamiento · «Otro tratamiento» | «Ese tratamiento necesita una valoración previa…» with «Primera visita» |
 | quiero cita, me sangra mucho la encía | The urgency reply: an urgency always wins over booking |
-| tengo una cita el lunes · cancelar mi cita | Not a booking: the normal path through B |
+| tengo una cita el lunes · me cambiaron la cita | Not a booking or a change: the normal path through B |
+
+Changing and cancelling, with consent (SPEC-008; see [Changing and cancelling](#changing-and-cancelling-spec-008)):
+
+| Message | Expected reply |
+|---|---|
+| cancelar mi cita · necesito mover mi cita al jueves | The «Mi cita» view: «Tu próxima cita: …» with «Cambiar», «Anular» and «Hablar con recepción» |
+| «Anular» | «¿Seguro que quieres anular una limpieza del …?» with «Sí, anular» and «Mantener mi cita» |
+| «Sí, anular» | «Hecho: he anulado una limpieza del … Si quieres otra, escribe /cita.» Then `/micita` says there is none |
+| «Cambiar» | «¿A cuándo quieres cambiar una limpieza del …?», the slots without the current one, «Ver más», «Mantener mi cita» and «Hablar con recepción» |
+| A slot | «Vas a cambiar una limpieza del … al …. ¿Lo confirmo?» with «Confirmar cambio» |
+| «Confirmar cambio» | «Hecho: tu cita pasa al … La anterior queda anulada.» Tapping it again gives «Esa cita ya no está activa.» and the new appointment |
+| Less than 2 hours before the appointment | «Tu cita es en menos de 2 horas. Para cambiarla o anularla, llama a recepción.» |
+| «Retirar consentimiento» with an appointment | The withdrawal text, then «Sigues teniendo una limpieza el …», with «Anular mi cita», which works without consent |
+| quiero anular la cita, me sangra mucho la encía | The urgency reply: an urgency always wins |
 
 To set the clinic's real urgency phone, change `URGENCY_PHONE` (and set `URGENCY_PHONE_IS_EXAMPLE`
 to `false`) at the top of `n8n/code/urgencias.js`. Then paste the file into the "Detectar
@@ -305,8 +319,9 @@ them and run the test.
 The project's own appointment agenda lives in Neon. It does not touch LifeCenter's clinical
 software (RES-01). See [specs/007-agenda](specs/007-agenda/spec.md).
 
-Since SPEC-007, flow A books on it from Telegram (see [Booking](#booking-spec-007)). Moving
-and cancelling, and reminders, will come in later specs.
+Since SPEC-007, flow A books on it from Telegram (see [Booking](#booking-spec-007)), and since
+SPEC-008 patients can move and cancel (see [Changing and cancelling](#changing-and-cancelling-spec-008)).
+Reminders will come in a later spec.
 
 **What it holds:**
 - **Opening hours** (`agenda_hours`), the same as HOR-001. Each block has the months in which it
@@ -333,6 +348,12 @@ Every value is **example data** until LifeCenter confirms it (DEP-01, DEP-03).
 | `agenda_free_slots(type, from, limit = 3)` | up to 3 free slots, earliest first and one per opening block (`free`), or `request_only` |
 | `agenda_book(type, start, from_id)` | `booked` (with professional and room), `taken`, `limit`, or `invalid` with the reason (`outside_hours`, `closed`, `not_on_grid`, `too_soon`, `too_far`, `request_only`, `unknown_type`) |
 | `agenda_my_next(from_id)` (SPEC-007, `004_booking.sql`) | the type code, start and end of the patient's next `booked` appointment, or no row; never the professional, room or subject |
+| `agenda_cancel(from_id, start)` (SPEC-008, `005_move_cancel.sql`) | `cancelled`, `too_late` (inside `change_min_lead`) or `not_found` (past, cancelled, moved, or not this patient's), with the type and times |
+| `agenda_move(from_id, old_start, new_start)` (SPEC-008) | `moved`, `taken`, `invalid` with the reason (the booking rules, or `same_slot`), `too_late` or `not_found`. All or nothing: on any result but `moved`, the old appointment is unchanged |
+
+A cancelled appointment keeps its row with `status = 'cancelled'` and `cancelled_at`, and a moved
+one also `replaced_by` (the new appointment). Both are deleted 30 days after they end, like the
+others.
 
 The tests use the `_at` versions, which take a fixed time instead of `now()`. Double bookings are
 impossible: the database rejects two `booked` appointments that overlap for the same professional
@@ -353,6 +374,7 @@ python -m app.infra.schema --database-url-env DIRECT_URL          # then main
 UPDATE agenda_settings SET horizon = interval '45 days';
 INSERT INTO agenda_closures (day, reason) VALUES (DATE '2026-12-08', 'Festivo');
 UPDATE agenda_types SET duration = interval '40 minutes' WHERE code = 'limpieza';
+UPDATE agenda_settings SET change_min_lead = interval '24 hours';  -- SPEC-008 minimum notice
 ```
 
 Re-applying the schema does not overwrite them. If the opening hours change, update `agenda_hours`
@@ -412,8 +434,8 @@ subject.
 **Code:**
 - [`n8n/code/citas.js`](n8n/code/citas.js) holds the texts, the callback codec, the phrase
   detector, the Madrid dates and the decisions (`prepare`, `compose`).
-- A's Code nodes «¿Es una reserva?», «Preparar reserva» and «Componer reserva» carry it, plus
-  their wiring.
+- A's Code nodes «¿Es una reserva?», «Preparar reserva», «Componer reserva» and, since SPEC-008,
+  «Componer retirada» carry it, plus their wiring.
 - It is tested by `node n8n/code/citas.test.js`, which uses the phrase dataset
   [`evals/booking_phrases.yaml`](evals/booking_phrases.yaml) and checks sync with A's export.
 
@@ -426,18 +448,60 @@ subject.
   `{{ $json.inlineKeyboard.rows[0].row.buttons[0].text }}` for the text, and the same path
   ending in `.additionalFields.callback_data` for the callback.
 - A has the Switch «¿Cuántos botones?» and one node per number of buttons, «Responder reserva
-  (1)» to «(5)». `citas.test.js` checks that every booking keyboard has 1 to 5 rows of one
-  button. A sixth row needs a sixth node and a sixth rule.
+  (1)» to «(6)» (the sixth since SPEC-008). `citas.test.js` checks that every booking keyboard
+  has 1 to 6 rows of one button. A seventh row needs a seventh node and a seventh rule.
 
 **Limitations:**
-- One future appointment per patient, and no moving or cancelling from Telegram yet. The texts
-  send the patient to reception.
+- One future appointment per patient. Moving and cancelling: see below.
 - Reception cannot see who booked (SPEC-004).
 - If Neon fails at «Confirmar», the reply cannot tell whether the appointment was saved.
   `/micita` tells.
 - Unusual wordings are not detected as booking phrases. `/cita` and «Pedir cita» always work.
 - A's transient window (SPEC-005) also applies to booking messages.
 - Agenda data is example data (DEP-01, DEP-03).
+
+### Changing and cancelling (SPEC-008)
+
+Patients can move or cancel their own appointment from Telegram. See
+[specs/009-move-cancel](specs/009-move-cancel/spec.md) and the [Try it](#try-it) rows.
+
+**Ways in:**
+- the «Cambiar» and «Anular» buttons, under `/micita`, «Ya tienes…» and «Hecho: tienes…»;
+- a clear change or cancel phrase, such as «cancelar mi cita», «necesito mover mi cita al
+  jueves» or «no puedo ir a mi cita». It only opens the «Mi cita» view: it never acts, and no date
+  is read from it. The list is strict, in
+  [`evals/change_phrases.yaml`](evals/change_phrases.yaml): «me cambiaron la cita», «¿se puede
+  cancelar sin coste?» or «la cita de mi madre» still go to B. The order is urgency, consent,
+  change, booking, then B.
+
+**Flow:**
+- **Cancel:** «Anular» → a confirmation → «Sí, anular» → `agenda_cancel`. The row is kept as
+  `cancelled`, the slot is offered again, and `/cita` works again.
+- **Move:** «Cambiar» → the slots of the same type, without the current one → a slot → a
+  confirmation with both dates → «Confirmar cambio» → `agenda_move`. The move is one transaction:
+  if the new slot is taken, the old appointment stays as it was.
+- **Old buttons:** every button carries the start of its appointment, so an old «Anular» never
+  acts on another appointment. It gets «Esa cita ya no está activa.» and the current view.
+- **Minimum notice:** `change_min_lead` in `agenda_settings`, **2 hours** (example value; the
+  clinic decides its policy, DEP-03). Below it, the bot sends the patient to reception.
+- **Withdrawing consent keeps the appointment.** The withdrawal message mentions it, with «Anular
+  mi cita». That button, its confirmation and its «Mantener mi cita» are the only steps that work
+  without consent. If the lookup fails, the withdrawal stands and the message says to call
+  reception.
+
+**Where it runs:** flow A and Neon only, with the SQL in
+[`app/infra/sql/005_move_cancel.sql`](app/infra/sql/005_move_cancel.sql), tested by
+`tests/infra/test_move_cancel_sql.py` (test branch only). B and Gemini are not involved, and B
+did not change.
+
+**Limitations:**
+- Reception is not told about cancellations or moves until the reception panel (RF-007). It sees
+  them in its read-only SQL view.
+- The minimum notice is an example value. The appointment kept after a withdrawal has no legal
+  basis decided yet (DEP-04).
+- A move keeps the type. Another type is a cancel plus `/cita`.
+- If Neon fails at «Sí, anular» or «Confirmar cambio», the reply cannot tell whether it was saved.
+  `/micita` tells.
 
 ### Export after changing the workflow
 
@@ -452,7 +516,7 @@ done
 grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/*.json
 # The urgency test checks that "Detectar urgencia" in B and in A carries n8n/code/urgencias.js,
 # the consent test that A's "Clasificar" and "Decidir" carry n8n/code/consentimiento.js, and the
-# booking test that A's three booking Code nodes carry n8n/code/citas.js:
+# booking test that A's four booking Code nodes carry n8n/code/citas.js:
 node n8n/code/urgencias.test.js
 node n8n/code/consentimiento.test.js
 node n8n/code/citas.test.js
@@ -462,7 +526,7 @@ Export only after **publishing**, and check that the draft is the published vers
 exports in git are the rollback copy.
 
 The consent and booking SQL is tested against the Neon test branch only:
-`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py`.
+`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py tests/infra/test_move_cancel_sql.py`.
 
 ## Git rule
 
