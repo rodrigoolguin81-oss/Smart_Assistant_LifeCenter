@@ -185,7 +185,64 @@ Same pattern as SPEC-007. **Nothing is touched before the plan is approved.**
   - Run: the check before, the schema on `DIRECT_URL`, the check after.
   - **Stop if** `kb_fragments`, `consent`, `consent_key`, the agenda configuration or the
     appointments changed.
-- [ ] M4: A, the change steps (plan Step 4; MC1–MC20, MC24–MC29, MC31).
+- [x] M4: A, the change steps (plan Step 4; MC1–MC20, MC24–MC29, MC31).
+  - Done 2026-11-23 on A's **draft** (`7c3d4100…`); nothing published. A is still published at
+    `6a033c75…`. **B was not touched.**
+  - **SQL first, on the test branch.** The host was guarded first (`ep-blue-firefly-…`). The four
+    new or changed queries were run with fake ids `900891/900892` and cleaned up, leaving 0
+    appointments. Each always returned one row:
+    - «Consultar agenda» with `qMine`, with and without an appointment;
+    - «Anular cita»: `not_found` + current appointment, `cancelled`, double cancel, `too_late`;
+    - «Mover cita»: `moved`, an old button → `not_found` + the new appointment, `taken` + slots,
+      `invalid` + slots, `too_late`;
+    - «Cita tras retirar», with and without an appointment.
+  - **Built through the MCP**, from a script that generated the operations from the repo files, in
+    6 updates. A CLI export showed:
+    - 40 nodes (35 + 5 new, none removed);
+    - the 6 Code nodes **identical** to the generated code (`consentimiento.js` twice, `citas.js`
+      4 times, each with its wiring);
+    - the 4 queries exactly as tried, each with its error output and «Neon main»;
+    - every connection as planned. «Guardar retirada»'s error output still goes to «Tras
+      guardar»;
+    - the other 27 nodes, the other connections and the settings unchanged.
+  - **39 pinned runs** (approved A4 extension; ids `900851`–`900889`). The trigger, Telegram,
+    consent, agenda, cancel, move and withdrawal nodes were pinned. All match the plan:
+    - `/micita`, a change phrase, `/cita` with an appointment and `BOOKED_TEXT` show the view, with
+      «Cambiar» · «Anular» · «Hablar con recepción». Without an appointment, `NO_APPOINTMENT_TEXT`
+      with «Pedir cita»;
+    - **urgency + cancel phrase → B → urgency**, and «me cambiaron la cita» → B. **B was called
+      only in those two runs**, with `question` only (208 urgency, 210 `model_abstained`);
+    - «Anular» → confirmation; too late; an old button → «ya no está activa» + the new
+      appointment;
+    - «Sí, anular» → `cancelled` («Pedir cita»), `too_late`, `not_found`;
+    - `bk:v:<start>` and `bk:v` → «mantengo» + the view;
+    - «Cambiar» → **6 rows** without the current start, sent by «Responder reserva (6)»; no
+      other slot; too late; «Ver más»; a slot → `MOVE_CONFIRM_TEXT` with both dates;
+    - «Confirmar cambio» → `moved`, `taken` + slots, `invalid` + slots, an old button →
+      `not_found` + the view, `too_late`;
+    - a Neon failure in «Consultar agenda», «Anular cita» and «Mover cita» → D7;
+    - **without consent:** «Anular» → confirmation, «Sí, anular» → cancelled with only «Hablar con
+      recepción», `bk:v:<start>` → «mantengo» only, with no query. `bk:x`, `bk:xc`, `bk:v` and a
+      change phrase → the notice;
+    - **withdrawal:** with an appointment → «Sigues teniendo…» + «Anular mi cita»; without one →
+      `REVOKED_TEXT`; with a failed lookup → `REVOKED_TEXT` + «Si tenías una cita reservada…».
+    - Every `callback_data` is at most 17 bytes.
+  - **Not pinnable:** a failure in «Guardar retirada». Pinned data always leaves a node through
+    its normal output, never through its error output. That path did not change (error output →
+    «Tras guardar» → D7), and the export shows it.
+  - **Afterwards:**
+    - `saveManualExecutions: false`, read back with `get_workflow_details`;
+    - **no pinned data** in A (`pinData: null`) or B (`{}`), in the CLI exports and in
+      `workflow_entity`;
+    - A's settings equal to the git export; published version `6a033c75…`;
+    - **B intact:** its export equals the git export (nodes, connections, settings, version
+      `0b3cb06d…`, `updatedAt` 22/11).
+  - **Executions for the human to delete** (2026-11-23, 18:39:31–18:44:52 UTC), all executions
+    after 201, with no filter:
+    - **A (39, manual):** 203–207, 209, 211–243;
+    - **B (2, launched by A):** 208, 210.
+    - 202 does not exist; there are no others.
+    - **Deleted by the human (2026-11-23)**, checked: none of the 41 is left.
   - Before changing anything, list the nodes to add, change and rewire, and wait.
   - Change the draft through the MCP, from a script that builds the code from the repo files.
   - Check the draft with a CLI export: every Code node identical to its module plus its wiring,
