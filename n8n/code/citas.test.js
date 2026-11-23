@@ -45,6 +45,13 @@ const T = {
   KEPT: 'De acuerdo, mantengo tu cita.',
   REVOKED_APPOINTMENT: 'Sigues teniendo {tipo} el {fecha} a las {hora}. Si no vas a ir, puedes anularla aquí o llamar a recepción.', // human, M1 review
   REVOKED_LOOKUP_FAILED: 'Si tenías una cita reservada, se mantiene; para anularla, llama a recepción.', // human, spec review
+  // --- SPEC-009 (spec "Fixed texts", approved 2026-11-23) ---
+  REMINDER_OFFER: '¿Quieres que te recuerde la cita el día antes por aquí?',
+  REMINDER_SET: 'De acuerdo, te la recordaré el día antes.',
+  REMINDER_OFF: 'De acuerdo, no te enviaré recordatorio.',
+  REMINDER_ON_LINE: 'Te recordaré la cita el día antes.',
+  ATTENDANCE: 'Gracias, te esperamos.',
+  REMINDER_WITHDRAWN: 'No te enviaré recordatorios.',
 };
 const LABELS = {
   pedir: 'Pedir cita', mas: 'Ver más', confirmar: 'Confirmar', otroHueco: 'Elegir otro hueco',
@@ -52,6 +59,9 @@ const LABELS = {
   // SPEC-008
   cambiar: 'Cambiar', anular: 'Anular', siAnular: 'Sí, anular', mantener: 'Mantener mi cita',
   confirmarCambio: 'Confirmar cambio', anularMiCita: 'Anular mi cita',
+  // SPEC-009
+  siRecuerda: 'Sí, recuérdamela', noGracias: 'No, gracias', recordarme: 'Recordármela el día antes',
+  quitarRecordatorio: 'No quiero recordatorio',
 };
 
 // --- Load the paste-ready source the same way n8n runs it: as a plain script body. ---
@@ -336,8 +346,10 @@ const COMPOSE_CASES = [
   ['slot → confirmation (BK15)', P('confirm', 'none', { type: 'limpieza', start: S1 }), {},
     C(fill(T.CONFIRM, { tipo: 'una limpieza', ...FECHA }),
       [[btn(LABELS.confirmar, `bk:c:limpieza:${code(S1)}`)], [btn(LABELS.otroHueco, 'bk:r:limpieza')]])],
+  // SPEC-009 RM1: more than 3 hours ahead, so «Hecho: tienes…» also asks about the reminder (5 rows).
   ['booked', P('book', 'book', { type: 'limpieza', start: S1 }), { book: { result: 'booked', reason: null, starts_at: S1, ends_at: end(S1, 45), next_slots: null, my_next: null } },
-    C(fill(T.BOOKED, { tipo: 'una limpieza', ...FECHA }), CHANGE_ROWS(S1))],
+    C(`${fill(T.BOOKED, { tipo: 'una limpieza', ...FECHA })}\n\n${T.REMINDER_OFFER}`,
+      [[btn(LABELS.siRecuerda, `bk:ry:${code(S1)}`)], [btn(LABELS.noGracias, `bk:rn:${code(S1)}`)], ...CHANGE_ROWS(S1)])],
   ['taken → next slots', P('book', 'book', { type: 'limpieza', start: S1 }), { book: { result: 'taken', reason: null, next_slots: [slot(S2), slot(S3)], my_next: null } },
     C(T.TAKEN, SLOT_ROWS('limpieza', [THREE[1], THREE[2]]))],
   ['taken, nothing left → no slots', P('book', 'book', { type: 'limpieza', start: S1 }), { book: { result: 'taken', reason: null, next_slots: [], my_next: null } },
@@ -644,6 +656,129 @@ check('SPEC-008: revokedReply', () => {
   eq(r(REV, MY, true, NOW), { text: `${REV}\n\n${T.REVOKED_LOOKUP_FAILED}`, rows: [] }, 'lookup failed wins');
 });
 
+// =====================================================================================================
+// SPEC-009: reminders (specs/010-reminders/spec.md RM1–RM6, RM12, RM19, RM20, RM27, RM28)
+// =====================================================================================================
+
+const SOON3 = '2026-12-04T09:00:00.000Z'; // vie 4 dic 10:00 Madrid: exactly 3 hours after NOW (opt-in window)
+const SOON259 = '2026-12-04T08:59:00.000Z'; // 2 h 59 min after NOW: outside the opt-in window
+const FECHA_S3H = { fecha: 'viernes 4 de diciembre', hora: '10:00' };
+const VIEW_ROWS = (start, has) => [
+  [btn(LABELS.cambiar, `bk:x:${code(start)}`)], [btn(LABELS.anular, `bk:a:${code(start)}`)],
+  [has ? btn(LABELS.quitarRecordatorio, `bk:rq:${code(start)}`) : btn(LABELS.recordarme, `bk:ry:${code(start)}`)],
+  RECEPCION,
+];
+const VIEW_TEXT = (has) => `${fill(T.MY_APPOINTMENT, { tipo: 'una limpieza', ...FECHA })}${has ? `\n${T.REMINDER_ON_LINE}` : ''}`;
+const AGR = (my, has) => ({ agenda: { my_next: my, slots: null, change_min_minutes: 120, has_reminder: has } });
+const RR = (result, my, has) => ({ reminder: { result, my_next: my, has_reminder: has, change_min_minutes: 120 } });
+
+check('SPEC-009: reminder callbacks and the 64-byte limit', () => {
+  const c = requireFn('changeCb');
+  const far = '2099-12-31T23:45:00.000Z';
+  eq(c('reminder_on', S1), `bk:ry:${code(S1)}`, 'Sí, recuérdamela / Recordármela');
+  eq(c('reminder_off', S1), `bk:rn:${code(S1)}`, 'No, gracias');
+  eq(c('reminder_clear', S1), `bk:rq:${code(S1)}`, 'No quiero recordatorio');
+  eq(c('attend', S1), `bk:i:${code(S1)}`, 'Iré');
+  for (const k of ['reminder_on', 'reminder_off', 'reminder_clear', 'attend']) {
+    const n = Buffer.byteLength(c(k, far), 'utf8');
+    if (n > 64) throw new Error(`${k} is ${n} bytes`);
+  }
+});
+check('SPEC-009: parseBookingCallback reads the reminder callbacks', () => {
+  const p = requireFn('parseBookingCallback');
+  const R = (step) => ({ step, type: null, start: S1, target: null });
+  eq(p(`bk:ry:${code(S1)}`), R('reminder_on'), 'bk:ry');
+  eq(p(`bk:rn:${code(S1)}`), R('reminder_off'), 'bk:rn');
+  eq(p(`bk:rq:${code(S1)}`), R('reminder_clear'), 'bk:rq');
+  eq(p(`bk:i:${code(S1)}`), R('attend'), 'bk:i');
+  eq(p('bk:r:revision'), { step: 'retry', type: 'revision', start: null }, 'SPEC-007 «Elegir otro hueco» unchanged');
+  const bad = { step: 'malformed', type: null, start: null };
+  for (const d of ['bk:ry', 'bk:i', `bk:rn:${code(S1)}:${code(S3)}`, 'bk:rq:@@', 'bk:rz:abc', `bk:i:limpieza:${code(S1)}`]) eq(p(d), bad, `malformed ${d}`);
+});
+
+const REM_PREPARE_CASES = [
+  ['«Sí, recuérdamela»', bk(`bk:ry:${code(S1)}`), PC('reminder_on', 'reminder', { start: S1 })],
+  ['«No, gracias» → no write, the view', bk(`bk:rn:${code(S1)}`), PC('reminder_off', 'agenda', { start: S1, from: NOW })],
+  ['«No quiero recordatorio»', bk(`bk:rq:${code(S1)}`), PC('reminder_clear', 'reminder', { start: S1 })],
+  ['«Iré»', bk(`bk:i:${code(S1)}`), PC('attend', 'reminder', { start: S1 })],
+];
+check('SPEC-009: prepare, the reminder steps', () => {
+  const prepare = requireFn('prepare');
+  const wrong = [];
+  for (const [name, route, expected] of REM_PREPARE_CASES) {
+    let got;
+    try { got = prepare(route, null, NOW, true); } catch (e) { got = `throws: ${e.message}`; }
+    if (JSON.stringify(got) !== JSON.stringify(expected)) wrong.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(got)}`);
+  }
+  if (wrong.length) throw new Error(`${wrong.length}/${REM_PREPARE_CASES.length} cases wrong:\n${wrong.join('\n')}`);
+});
+check('SPEC-009: every reminder step needs consent (RM6)', () => {
+  const prepare = requireFn('prepare');
+  const leaked = [];
+  for (const d of [`bk:ry:${code(S1)}`, `bk:rn:${code(S1)}`, `bk:rq:${code(S1)}`, `bk:i:${code(S1)}`]) {
+    let threw = false;
+    try { prepare(bk(d), null, NOW, false); } catch (e) { threw = true; }
+    if (!threw) leaked.push(d);
+  }
+  if (leaked.length) throw new Error(`allowed without consent: ${leaked.join(', ')}`);
+});
+
+const OFFER_ROWS = (start) => [[btn(LABELS.siRecuerda, `bk:ry:${code(start)}`)], [btn(LABELS.noGracias, `bk:rn:${code(start)}`)], ...CHANGE_ROWS(start)];
+const REM_COMPOSE_CASES = [
+  // RM1: the offer after booking, only with at least 3 hours left
+  ['booked exactly 3 h ahead → the offer', P('book', 'book', { type: 'limpieza', start: SOON3 }),
+    { book: { result: 'booked', reason: null, starts_at: SOON3, ends_at: end(SOON3, 45), next_slots: null, my_next: null } },
+    C(`${fill(T.BOOKED, { tipo: 'una limpieza', ...FECHA_S3H })}\n\n${T.REMINDER_OFFER}`, OFFER_ROWS(SOON3))],
+  ['booked 2 h 59 min ahead → no offer', P('book', 'book', { type: 'limpieza', start: SOON259 }),
+    { book: { result: 'booked', reason: null, starts_at: SOON259, ends_at: end(SOON259, 45), next_slots: null, my_next: null } },
+    C(fill(T.BOOKED, { tipo: 'una limpieza', fecha: 'viernes 4 de diciembre', hora: '9:59' }), CHANGE_ROWS(SOON259))],
+  // RM5: the view, with and without a reminder; no line when the query does not say
+  ['view with a reminder', PC('view', 'agenda'), AGR(MY, true), C(VIEW_TEXT(true), VIEW_ROWS(S1, true))],
+  ['view without a reminder', PC('view', 'agenda'), AGR(MY, false), C(VIEW_TEXT(false), VIEW_ROWS(S1, false))],
+  ['/micita with a reminder', P('micita', 'agenda'), AGR(MY, true), C(VIEW_TEXT(true), VIEW_ROWS(S1, true))],
+  ['view, under 3 h → no reminder line or button', PC('view', 'agenda'), AGR(MY_S3H_LATE(), true),
+    C(fill(T.MY_APPOINTMENT, { tipo: 'una limpieza', fecha: 'viernes 4 de diciembre', hora: '9:59' }), CHANGE_ROWS(SOON259))],
+  // RM2–RM4
+  ['«Sí» → set + the view', PC('reminder_on', 'reminder', { start: S1 }), RR('set', MY, true),
+    C(`${T.REMINDER_SET}\n\n${VIEW_TEXT(true)}`, VIEW_ROWS(S1, true))],
+  ['«Sí» under 3 h → the view, no reminder button', PC('reminder_on', 'reminder', { start: SOON259 }), RR('too_late', MY_S3H_LATE(), false),
+    C(fill(T.MY_APPOINTMENT, { tipo: 'una limpieza', fecha: 'viernes 4 de diciembre', hora: '9:59' }), CHANGE_ROWS(SOON259))],
+  ['«Sí» on an appointment that is gone → not active', PC('reminder_on', 'reminder', { start: S1 }), RR('not_found', MY3, false),
+    C(`${T.NOT_ACTIVE}\n\n${fill(T.MY_APPOINTMENT, { tipo: 'una limpieza', ...FECHA3 })}`, VIEW_ROWS(S3, false))],
+  ['«No, gracias» → off + the view', PC('reminder_off', 'agenda', { start: S1 }), AGR(MY, false),
+    C(`${T.REMINDER_OFF}\n\n${VIEW_TEXT(false)}`, VIEW_ROWS(S1, false))],
+  ['«No quiero recordatorio» → cleared + the view', PC('reminder_clear', 'reminder', { start: S1 }), RR('cleared', MY, false),
+    C(`${T.REMINDER_OFF}\n\n${VIEW_TEXT(false)}`, VIEW_ROWS(S1, false))],
+  ['«No quiero recordatorio», gone → not active', PC('reminder_clear', 'reminder', { start: S1 }), RR('not_found', null, false),
+    C(`${T.NOT_ACTIVE}\n\n${T.NO_APPOINTMENT}`, [[btn(LABELS.pedir, 'bk:menu')], RECEPCION])],
+  // RM19: «Iré»
+  ['«Iré» → thanks', PC('attend', 'reminder', { start: S1 }), RR('confirmed', MY, true), C(T.ATTENDANCE, CHANGE_ROWS(S1))],
+  ['«Iré» twice → the same reply', PC('attend', 'reminder', { start: S1 }), RR('already', MY, true), C(T.ATTENDANCE, CHANGE_ROWS(S1))],
+  ['«Iré» on an appointment that is gone → not active', PC('attend', 'reminder', { start: S1 }), RR('not_found', null, false),
+    C(`${T.NOT_ACTIVE}\n\n${T.NO_APPOINTMENT}`, [[btn(LABELS.pedir, 'bk:menu')], RECEPCION])],
+  ['a Neon failure on a reminder step → D7', PC('reminder_on', 'reminder', { start: S1 }), { failed: true }, C(T.ERROR, [RECEPCION])],
+];
+function MY_S3H_LATE() { return { type_code: 'limpieza', starts_at: SOON259, ends_at: end(SOON259, 45) }; }
+check('SPEC-009: compose, the reminder steps', () => {
+  const compose = requireFn('compose');
+  const wrong = [];
+  for (const [name, prep, db, expected] of REM_COMPOSE_CASES) {
+    let got;
+    try { got = compose(prep, db, NOW); } catch (e) { got = `throws: ${e.message}`; }
+    if (JSON.stringify(got) !== JSON.stringify(expected)) wrong.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(got)}`);
+  }
+  if (wrong.length) throw new Error(`${wrong.length}/${REM_COMPOSE_CASES.length} cases wrong:\n${wrong.join('\n')}`);
+});
+check('SPEC-009: revokedReply mentions the deleted reminder (RM12)', () => {
+  const r = requireFn('revokedReply');
+  const REV = 'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';
+  eq(r(REV, MY, false, NOW, true), {
+    text: `${REV}\n\n${fill(T.REVOKED_APPOINTMENT, { tipo: 'una limpieza', ...FECHA })}\n\n${T.REMINDER_WITHDRAWN}`,
+    rows: [[btn(LABELS.anularMiCita, `bk:a:${code(S1)}`)]] }, 'with an appointment and a reminder');
+  eq(r(REV, MY, false, NOW, false).text, `${REV}\n\n${fill(T.REVOKED_APPOINTMENT, { tipo: 'una limpieza', ...FECHA })}`, 'no reminder');
+  eq(r(REV, null, true, NOW, true), { text: `${REV}\n\n${T.REVOKED_LOOKUP_FAILED}`, rows: [] }, 'lookup failed: nothing about the reminder');
+});
+
 // === Keyboard shape for A's fixed send nodes (R6 fix; SPEC-008 MC29 adds a sixth) ===
 // n8n drops a whole-keyboard expression (fixedCollection), so A sends with «Responder reserva (1)»…«(6)»:
 // every booking keyboard must have 1 to 6 rows of exactly one button each.
@@ -651,7 +786,7 @@ check('every composed keyboard has 1–6 rows of exactly one button', () => {
   const compose = requireFn('compose');
   const k = requireFn('toTelegramKeyboard');
   const wrong = [];
-  for (const [name, prep, db] of [...COMPOSE_CASES, ...CHANGE_COMPOSE_CASES]) {
+  for (const [name, prep, db] of [...COMPOSE_CASES, ...CHANGE_COMPOSE_CASES, ...REM_COMPOSE_CASES]) {
     let rows;
     try { rows = compose(prep, db, NOW).rows; } catch (e) { wrong.push(`${name}: ${e.message}`); continue; }
     if (rows.length < 1 || rows.length > 6) wrong.push(`${name}: ${rows.length} rows`);
@@ -677,10 +812,10 @@ check('toTelegramKeyboard', () => {
 check('n8n nodes of A carry this exact code', () => {
   if (!fs.existsSync(EXPORT_PATH)) { console.log('SKIP sync check: no export of A'); return; }
   const nodes = (JSON.parse(fs.readFileSync(EXPORT_PATH, 'utf8'))[0] || {}).nodes || [];
-  // SPEC-008: citas.js gained the change steps in M1, and A's export gets them in M4. Until A has
-  // «Componer retirada», its booking nodes still carry the SPEC-007 module, so the check waits.
-  if (!nodes.some((n) => n.name === 'Componer retirada')) {
-    console.log("SKIP sync check: A's export has no SPEC-008 nodes yet; citas.js is checked against it from SPEC-008 M4 (hasta M4)");
+  // SPEC-009: citas.js gained the reminder steps in N1, and A's export gets them in N4. Until A has
+  // «Recordatorio», its booking nodes still carry the SPEC-008 module, so the check waits.
+  if (!nodes.some((n) => n.name === 'Recordatorio')) {
+    console.log("SKIP sync check: A's export has no SPEC-009 nodes yet; citas.js is checked against it from SPEC-009 N4 (hasta N4)");
     return;
   }
   for (const name of NODE_NAMES) {

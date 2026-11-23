@@ -41,6 +41,13 @@ const TEXTS = {
   // Changed by the human at the M1 review (2026-11-23).
   REVOKED_APPOINTMENT: 'Sigues teniendo {tipo} el {fecha} a las {hora}. Si no vas a ir, puedes anularla aquí o llamar a recepción.',
   REVOKED_LOOKUP_FAILED: 'Si tenías una cita reservada, se mantiene; para anularla, llama a recepción.',
+  // --- SPEC-009, reminders (spec "Fixed texts", approved by the human 2026-11-23) ---
+  REMINDER_OFFER: '¿Quieres que te recuerde la cita el día antes por aquí?',
+  REMINDER_SET: 'De acuerdo, te la recordaré el día antes.',
+  REMINDER_OFF: 'De acuerdo, no te enviaré recordatorio.',
+  REMINDER_ON_LINE: 'Te recordaré la cita el día antes.',
+  ATTENDANCE: 'Gracias, te esperamos.',
+  REMINDER_WITHDRAWN: 'No te enviaré recordatorios.',
 };
 
 // --- Button labels (approved 2026-11-22) and the existing handoff callback (CHG-001 D8) ---
@@ -59,6 +66,11 @@ const LABELS = {
   mantener: 'Mantener mi cita',
   confirmarCambio: 'Confirmar cambio',
   anularMiCita: 'Anular mi cita',
+  // SPEC-009
+  siRecuerda: 'Sí, recuérdamela',
+  noGracias: 'No, gracias',
+  recordarme: 'Recordármela el día antes',
+  quitarRecordatorio: 'No quiero recordatorio',
 };
 const CALLBACK_HANDOFF = 'handoff';
 
@@ -94,18 +106,22 @@ function cb(kind, type, start) {
 }
 // SPEC-008 change callbacks (spec "Change callbacks"): no type, because the functions read it from
 // the appointment. <start> is always the start of the appointment the button refers to (MC17).
+// SPEC-009 adds the reminder callbacks: ry (Sí / Recordármela), rn (No, gracias), rq (No quiero
+// recordatorio) and i (Iré), each with the appointment's start.
 const CHANGE_PREFIX = {
   keep: 'v', cancel_ask: 'a', cancel: 'ac', move: 'x', move_more: 'xm', move_slot: 'xs', move_confirm: 'xc',
+  reminder_on: 'ry', reminder_off: 'rn', reminder_clear: 'rq', attend: 'i',
 };
 function changeCb(kind, start, other) {
   if (kind === 'view') return 'bk:v';
   const base = `bk:${CHANGE_PREFIX[kind]}:${encodeSlot(start)}`;
   return ['move_more', 'move_slot', 'move_confirm'].includes(kind) ? `${base}:${encodeSlot(other)}` : base;
 }
-const CHANGE_STEPS = { v: 'keep', a: 'cancel_ask', ac: 'cancel', x: 'move', xm: 'move_more', xs: 'move_slot', xc: 'move_confirm' };
+const CHANGE_STEPS = { v: 'keep', a: 'cancel_ask', ac: 'cancel', x: 'move', xm: 'move_more', xs: 'move_slot', xc: 'move_confirm',
+  ry: 'reminder_on', rn: 'reminder_off', rq: 'reminder_clear', i: 'attend' };
 function parseChangeCallback(data) {
   if (data === 'bk:v') return { step: 'view', type: null, start: null, target: null };
-  const m = /^bk:(v|a|ac|x|xm|xs|xc):([0-9a-z]+)(?::([0-9a-z]+))?$/.exec(data);
+  const m = /^bk:(v|a|ac|x|xm|xs|xc|ry|rn|rq|i):([0-9a-z]+)(?::([0-9a-z]+))?$/.exec(data);
   if (!m) return null;
   const [, p, startCode, otherCode] = m;
   const twoCodes = ['xm', 'xs', 'xc'].includes(p);
@@ -119,7 +135,7 @@ function parseBookingCallback(data) {
   const bad = { step: 'malformed', type: null, start: null };
   if (data === 'bk:menu') return { step: 'menu', type: null, start: null };
   if (data === 'bk:o') return { step: 'other', type: null, start: null };
-  if (typeof data === 'string' && /^bk:(v|a|ac|x|xm|xs|xc)(:|$)/.test(data)) return parseChangeCallback(data) || bad;
+  if (typeof data === 'string' && /^bk:(v|a|ac|x|xm|xs|xc|ry|rn|rq|i)(:|$)/.test(data)) return parseChangeCallback(data) || bad;
   const m = /^bk:([tscmr]):([a-z_]+)(?::([0-9a-z]+))?$/.exec(typeof data === 'string' ? data : '');
   if (!m) return bad;
   const [, p, type, slot] = m;
@@ -291,6 +307,11 @@ function prepare(route, phrase, now, consent = true) {
       case 'move_more': return PC('move_more', 'agenda', { start: c.start, from: after(c.target) });
       case 'move_slot': return PC('move_confirm', 'agenda', { start: c.start, target: c.target, from: nowIso });
       case 'move_confirm': return PC('move', 'move', { start: c.start, target: c.target });
+      // SPEC-009: the reminder steps (all need consent, RM6). «No, gracias» writes nothing.
+      case 'reminder_on': return PC('reminder_on', 'reminder', { start: c.start });
+      case 'reminder_off': return PC('reminder_off', 'agenda', { start: c.start, from: nowIso });
+      case 'reminder_clear': return PC('reminder_clear', 'reminder', { start: c.start });
+      case 'attend': return PC('attend', 'reminder', { start: c.start });
       default: return P('menu', 'none');
     }
   }
@@ -306,6 +327,8 @@ function plazoText(minutes) {
 }
 // The example value of change_min_lead (SPEC-008 MC19), used only if a query did not return it.
 const DEFAULT_CHANGE_MIN_MINUTES = 120;
+// SPEC-009 Q7, RM1: the reminder is offered only for an appointment at least 3 hours away.
+const REMINDER_OPT_IN_MINUTES = 180;
 
 // --- Text and keyboard rows for every result (BK9–BK20; SPEC-008 MC1–MC18, MC24) ---
 // db: { failed } | { agenda: { my_next, slots, change_min_minutes } }
@@ -313,6 +336,9 @@ const DEFAULT_CHANGE_MIN_MINUTES = 120;
 //   | { cancel: { result, type_code, starts_at, ends_at, my_next, change_min_minutes } }
 //   | { move: { result, reason, type_code, old_starts_at, old_ends_at, starts_at, ends_at, next_slots, my_next,
 //               change_min_minutes } }
+//   | { reminder: { result, my_next, has_reminder, change_min_minutes } }   (SPEC-009)
+// has_reminder: whether the current appointment has a reminder. When a query does not say (undefined),
+// the view shows no reminder line or button.
 function compose(prep, db, now) {
   const button = (text, data) => ({ text, data });
   const reception = [button(LABELS.recepcion, CALLBACK_HANDOFF)];
@@ -345,16 +371,29 @@ function compose(prep, db, now) {
   // --- SPEC-008 helpers ---
   const sameStart = (a, b) => !!a && !!b && Date.parse(a) === Date.parse(b);
   const minutesOf = (x) => (x && Number.isFinite(x.change_min_minutes) ? x.change_min_minutes : DEFAULT_CHANGE_MIN_MINUTES);
-  const myView = (my) => (my ? appointment(TEXTS.MY_APPOINTMENT, my)
-    : view(TEXTS.NO_APPOINTMENT, [[button(LABELS.pedir, cb('menu'))], reception]));
+  // SPEC-009 RM1, RM5: the opt-in window, and the view's reminder line and button.
+  const inOptIn = (start) => Date.parse(start) >= Date.parse(now) + REMINDER_OPT_IN_MINUTES * 60000;
+  const myView = (my, hasReminder) => {
+    if (!my) return view(TEXTS.NO_APPOINTMENT, [[button(LABELS.pedir, cb('menu'))], reception]);
+    const base = appointment(TEXTS.MY_APPOINTMENT, my);
+    if (typeof hasReminder !== 'boolean' || !inOptIn(my.starts_at)) return base;
+    return view(hasReminder ? `${base.text}
+${TEXTS.REMINDER_ON_LINE}` : base.text, [
+      [button(LABELS.cambiar, changeCb('move', my.starts_at))],
+      [button(LABELS.anular, changeCb('cancel_ask', my.starts_at))],
+      [hasReminder ? button(LABELS.quitarRecordatorio, changeCb('reminder_clear', my.starts_at))
+        : button(LABELS.recordarme, changeCb('reminder_on', my.starts_at))],
+      reception,
+    ]);
+  };
   const prefixed = (prefix, v) => view(`${prefix}\n\n${v.text}`, v.rows);
   // Without consent (MC10), a step shows only what concerns that appointment.
-  const notActive = (my) => (consent ? prefixed(TEXTS.NOT_ACTIVE, myView(my)) : view(TEXTS.NOT_ACTIVE, [reception]));
+  const notActive = (my, hasReminder) => (consent ? prefixed(TEXTS.NOT_ACTIVE, myView(my, hasReminder)) : view(TEXTS.NOT_ACTIVE, [reception]));
   const tooLate = (minutes) => view(fill(TEXTS.TOO_LATE, { plazo: plazoText(minutes) }), [reception]);
   // The appointment at the button's start must still be the current one, and not too close (MC17, MC18).
   const checkCurrent = (agenda) => {
     const my = agenda.my_next;
-    if (!my || !sameStart(my.starts_at, prep.start)) return { stop: notActive(my) };
+    if (!my || !sameStart(my.starts_at, prep.start)) return { stop: notActive(my, agenda.has_reminder) };
     if (Date.parse(my.starts_at) < Date.parse(now) + minutesOf(agenda) * 60000) return { stop: tooLate(minutesOf(agenda)) };
     return { my };
   };
@@ -374,7 +413,7 @@ function compose(prep, db, now) {
   const agenda = (db && db.agenda) || {};
   switch (prep.step) {
     case 'micita':
-      return myView(agenda.my_next);
+      return myView(agenda.my_next, agenda.has_reminder);
     case 'cita':
       if (agenda.my_next) return appointment(TEXTS.LIMIT, agenda.my_next);
       if (prep.requestOnly) return requestOnly();
@@ -395,7 +434,18 @@ function compose(prep, db, now) {
       ]);
     case 'book': {
       const b = (db && db.book) || {};
-      if (b.result === 'booked') return view(fill(TEXTS.BOOKED, { tipo: typePhrase(prep.type), ...when(b.starts_at) }), changeRows(b.starts_at));
+      if (b.result === 'booked') {
+        const booked = fill(TEXTS.BOOKED, { tipo: typePhrase(prep.type), ...when(b.starts_at) });
+        if (!inOptIn(b.starts_at)) return view(booked, changeRows(b.starts_at));
+        // SPEC-009 RM1: the reminder offer, in the same message (5 rows).
+        return view(`${booked}
+
+${TEXTS.REMINDER_OFFER}`, [
+          [button(LABELS.siRecuerda, changeCb('reminder_on', b.starts_at))],
+          [button(LABELS.noGracias, changeCb('reminder_off', b.starts_at))],
+          ...changeRows(b.starts_at),
+        ]);
+      }
       if (b.result === 'limit' && b.my_next) return appointment(TEXTS.LIMIT, b.my_next);
       if (b.result === 'taken') return slotList(TEXTS.TAKEN, prep.type, b.next_slots);
       if (b.result === 'invalid' && ['request_only', 'unknown_type'].includes(b.reason)) return menu();
@@ -404,9 +454,9 @@ function compose(prep, db, now) {
     }
     // --- SPEC-008 ---
     case 'view':
-      return myView(agenda.my_next);
+      return myView(agenda.my_next, agenda.has_reminder);
     case 'keep':
-      return consent ? prefixed(TEXTS.KEPT, myView(agenda.my_next)) : view(TEXTS.KEPT, [reception]);
+      return consent ? prefixed(TEXTS.KEPT, myView(agenda.my_next, agenda.has_reminder)) : view(TEXTS.KEPT, [reception]);
     case 'cancel_confirm': {
       const c = checkCurrent(agenda);
       if (c.stop) return c.stop;
@@ -423,7 +473,7 @@ function compose(prep, db, now) {
           : view(fill(TEXTS.CANCELLED_NO_CONSENT, vars), [reception]);
       }
       if (x.result === 'too_late') return tooLate(minutesOf(x));
-      if (x.result === 'not_found') return notActive(x.my_next);
+      if (x.result === 'not_found') return notActive(x.my_next, x.has_reminder);
       return view(TEXTS.ERROR, [reception]);
     }
     case 'move_slots':
@@ -457,7 +507,29 @@ function compose(prep, db, now) {
         return moveList(text, m.type_code, prep.start, m.next_slots);
       }
       if (m.result === 'too_late') return tooLate(minutesOf(m));
-      if (m.result === 'not_found') return notActive(m.my_next);
+      if (m.result === 'not_found') return notActive(m.my_next, m.has_reminder);
+      return view(TEXTS.ERROR, [reception]);
+    }
+    // --- SPEC-009 ---
+    case 'reminder_on': {
+      const r = (db && db.reminder) || {};
+      if (r.result === 'set') return prefixed(TEXTS.REMINDER_SET, myView(r.my_next, r.has_reminder));
+      if (r.result === 'too_late') return myView(r.my_next, r.has_reminder); // under 3 h: no reminder button
+      if (r.result === 'not_found') return notActive(r.my_next, r.has_reminder);
+      return view(TEXTS.ERROR, [reception]);
+    }
+    case 'reminder_off':
+      return prefixed(TEXTS.REMINDER_OFF, myView(agenda.my_next, agenda.has_reminder));
+    case 'reminder_clear': {
+      const r = (db && db.reminder) || {};
+      if (r.result === 'cleared') return prefixed(TEXTS.REMINDER_OFF, myView(r.my_next, r.has_reminder));
+      if (r.result === 'not_found') return notActive(r.my_next, r.has_reminder);
+      return view(TEXTS.ERROR, [reception]);
+    }
+    case 'attend': {
+      const r = (db && db.reminder) || {};
+      if (r.result === 'confirmed' || r.result === 'already') return view(TEXTS.ATTENDANCE, changeRows(prep.start));
+      if (r.result === 'not_found') return notActive(r.my_next, r.has_reminder);
       return view(TEXTS.ERROR, [reception]);
     }
     default:
@@ -468,14 +540,16 @@ function compose(prep, db, now) {
 // --- SPEC-008 MC11, MC12: the reply to a withdrawal («Componer retirada») ---
 // revokedText: the SPEC-006 REVOKED_TEXT from «Decidir»; myNext: agenda_my_next's row, or null;
 // lookupFailed: the appointment lookup after the withdrawal failed. The withdrawal stands either way.
-function revokedReply(revokedText, myNext, lookupFailed, now) {
+// SPEC-009 RM12: hadReminder adds «No te enviaré recordatorios.» (the reminder was deleted with the withdrawal).
+function revokedReply(revokedText, myNext, lookupFailed, now, hadReminder = false) {
   if (lookupFailed) return { text: `${revokedText}\n\n${TEXTS.REVOKED_LOOKUP_FAILED}`, rows: [] };
-  if (!myNext) return { text: revokedText, rows: [] };
+  const tail = hadReminder ? `\n\n${TEXTS.REMINDER_WITHDRAWN}` : '';
+  if (!myNext) return { text: `${revokedText}${tail}`, rows: [] };
   const line = fillText(TEXTS.REVOKED_APPOINTMENT, {
     tipo: typePhrase(myNext.type_code), fecha: longDate(myNext.starts_at, now), hora: hourOf(myNext.starts_at),
   });
   return {
-    text: `${revokedText}\n\n${line}`,
+    text: `${revokedText}\n\n${line}${tail}`,
     rows: [[{ text: LABELS.anularMiCita, data: changeCb('cancel_ask', myNext.starts_at) }]],
   };
 }

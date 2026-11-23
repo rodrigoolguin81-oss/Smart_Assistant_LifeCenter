@@ -289,6 +289,14 @@ const CHANGE_CASES = [
   ['bk:a with two codes, no consent → notice', { route: btnRoute('bk:a:abcde:fghij'), urgency: null, consent: {} }, NOTICE],
   ['bk:ac, lookup failed → D7', { route: btnRoute('bk:ac:abcde'), urgency: null, consent: null, lookupFailed: true }, ERROR],
   ['/micita, revoked → notice', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: REVOKED_ROW }, NOTICE],
+  // SPEC-009 RM6: the reminder buttons need consent in force, like every booking step but cancelling.
+  ['bk:ry (recordármela), in force → booking', { route: btnRoute('bk:ry:abcde'), urgency: null, consent: accepted() }, BOOKING],
+  ['bk:i («Iré»), in force → booking', { route: btnRoute('bk:i:abcde'), urgency: null, consent: accepted() }, BOOKING],
+  ['bk:ry, no consent → notice', { route: btnRoute('bk:ry:abcde'), urgency: null, consent: {} }, NOTICE],
+  ['bk:rn, revoked → notice', { route: btnRoute('bk:rn:abcde'), urgency: null, consent: REVOKED_ROW }, NOTICE],
+  ['bk:rq, older version → notice', { route: btnRoute('bk:rq:abcde'), urgency: null, consent: accepted(OLD) }, NOTICE],
+  ['bk:i («Iré»), revoked → notice', { route: btnRoute('bk:i:abcde'), urgency: null, consent: REVOKED_ROW }, NOTICE],
+  ['bk:i, lookup failed → D7', { route: btnRoute('bk:i:abcde'), urgency: null, consent: null, lookupFailed: true }, ERROR],
 ];
 check('SPEC-008: decide lets only the cancel buttons through without consent', () => {
   const decide = requireFn('decide');

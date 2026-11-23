@@ -4,10 +4,10 @@ spec_id: SPEC-009
 title: reminders — Technical Plan
 description: How to build reminders — read-only preflight (hosts, «Neon main», A and B as published, pgcrypto, no workflow C yet), recordatorios.js and the citas.js extension test-first, 006_reminders.sql (tables, key, trigger, claim) on the test branch then main, the new scheduled workflow C and A's changes through the MCP with pinned data, the daytime Telegram test, and exports and docs. B does not change.
 tags: [plan, reminders, SPEC-009, n8n, neon]
-status: draft
+status: verified
 sources: [./spec.md, ./clarifications.md, ../009-move-cancel/plan.md, ../008-booking/plan.md, ../006-consent/plan.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
-verified: { by: human, at: null }
+verified: { by: human, at: 2026-11-23T00:00:00Z }
 stale_after: null
 ---
 
@@ -175,12 +175,20 @@ which is the default.
 
   This works with SPEC-008's two updates (cancel first, then `replaced_by`): the first update
   must **not** delete the reminder when a move is in progress.
-  - Proposal: delete on `cancelled` only when `replaced_by` is still `NULL` at the **end** of the
-    statement that called `agenda_move`, using a `DEFERRABLE INITIALLY DEFERRED` constraint
-    trigger. An alternative is to move it in the `replaced_by` branch and let the cancelled-only
-    branch run after commit.
-  - The tests decide which of the two is simpler and correct. Both must keep `agenda_cancel` and
-    `agenda_move` unchanged.
+  - **Decision (human, plan review, 2026-11-23): a constraint trigger `DEFERRABLE INITIALLY
+    DEFERRED`**, which runs at the **end of the transaction**. By then a move has set
+    `replaced_by`, so the reminder moves to the new appointment. A cancellation still has
+    `replaced_by = NULL`, so the reminder is deleted.
+  - The other option, deciding at the first update, is rejected. In `agenda_move` the first
+    update cancels the old row while `replaced_by` is still `NULL`, so it would delete the
+    reminder before the move sets it.
+  - The N2 tests must show both cases through the real `agenda_move` and `agenda_cancel`:
+    - a move keeps one reminder, now on the new appointment with its new `due_at`;
+    - a cancellation leaves none;
+    - a move that ends in `taken` (rolled back) leaves the reminder on the old appointment,
+      unchanged.
+
+    `agenda_cancel` and `agenda_move` do not change.
 - **`tests/infra/test_reminders_sql.py`**, written first, with fake ids `9009xx` and dates from
   today. It covers every case of the spec's acceptance criteria, including:
   - two concurrent claims;

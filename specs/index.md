@@ -194,8 +194,8 @@ stale_after: null
     The text has no appointment type. Its buttons are «Iré», «Cambiar», «Anular» and «Hablar
     con recepción».
   - **Where it runs:** A and C with Neon only. No B, no Gemini, and C saves no executions.
-  - **Status: specified** (2026-11-23; clarifications and spec verified by the human; plan and
-    tasks in draft).
+  - **Status: specified** (2026-11-23; clarifications, spec, plan and tasks verified by the
+    human; N0–N6 pending).
   - [clarifications](./010-reminders/clarifications.md), Q1–Q15
   - [spec](./010-reminders/spec.md), RM1–RM33
   - [plan](./010-reminders/plan.md)
