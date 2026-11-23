@@ -144,6 +144,24 @@ stale_after: null
     `tests/infra/test_booking_sql.py` (test branch only)
   - Workflows: A and B, in [`n8n/workflows/`](../n8n/workflows/)
 
-Pending (not yet scaffolded): moving and cancelling, and reminders, which are follow-ups of
-SPEC-004 (proposed SPEC-008 and SPEC-009); and
+- **009-move-cancel**: moving and cancelling one's own appointment from Telegram. PRD `US-005`,
+  `RF-005` (move and cancel), `NFR-07`, `R-05`; traceability row **SPEC-008**, a follow-up of
+  SPEC-004 and SPEC-007.
+  - **Ways in:** «Cambiar» and «Anular» under `/micita`, «Ya tienes…» and «Hecho: tienes…», and
+    strict change and cancel phrases. An urgency always wins.
+  - **Flow:** a confirmation before every write; a minimum notice of 2 hours (example value,
+    DEP-03); a move done in one transaction that keeps the old appointment if the new slot
+    fails; cancelled rows kept until the normal 30-day purge; old buttons answered safely.
+  - **Consent:** withdrawing keeps the appointment and offers «Anular mi cita». Cancelling and
+    its confirmation are the only steps allowed without consent (legal basis pending DEP-04).
+  - **Where it runs:** flow A and Neon only. B and Gemini are not involved, and B does not
+    change.
+  - **Status: specified** (2026-11-23; clarifications and spec verified by the human; plan and
+    tasks in draft).
+  - [clarifications](./009-move-cancel/clarifications.md), Q1–Q14
+  - [spec](./009-move-cancel/spec.md), MC1–MC33
+  - [plan](./009-move-cancel/plan.md)
+  - [tasks](./009-move-cancel/tasks.md)
+
+Pending (not yet scaffolded): reminders, a follow-up of SPEC-004 (proposed SPEC-009); and
 the remaining PRD stories (US-006 to US-008) per `docs/03-prd.md` §11.

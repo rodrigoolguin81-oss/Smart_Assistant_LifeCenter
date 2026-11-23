@@ -123,6 +123,14 @@ period is set. **This spec supersedes CHG-001 D11.**
     - `saveManualExecutions` disabled at the end;
     - all pinned data removed and checked;
     - the human deletes the executions.
+  - **Extension for SPEC-008 (approved by the human, 2026-11-23; SPEC-008 clarifications Q13):**
+    the same conditions apply to the pinned runs of A in SPEC-008 (moving and cancelling). B does
+    not change in that spec.
+    - fake ids `9008xx`;
+    - one run per scenario;
+    - `saveManualExecutions` disabled at the end;
+    - all pinned data removed and checked;
+    - the human deletes the executions.
 
 ## Known limitations
 
