@@ -440,8 +440,9 @@ def test_g15_appointments_hold_only_the_planned_columns(db):
         "SELECT column_name FROM information_schema.columns"
         " WHERE table_schema = 'public' AND table_name = 'agenda_appointments' ORDER BY ordinal_position"
     )]
+    # SPEC-008 (005_move_cancel.sql) adds two operational columns, with no patient data (MC21).
     assert cols == ["id", "subject", "type_code", "starts_at", "ends_at", "professional", "room", "status",
-                    "channel", "created_at", "during"]
+                    "channel", "created_at", "during", "cancelled_at", "replaced_by"]
 
 
 def test_g15_no_stored_row_contains_the_telegram_id(db):
