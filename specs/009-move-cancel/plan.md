@@ -4,10 +4,10 @@ spec_id: SPEC-008
 title: move and cancel — Technical Plan
 description: How to build moving and cancelling from Telegram — read-only preflight (credential hosts, «Neon main», the state of A and B), citas.js and consentimiento.js extended test-first, 005_move_cancel.sql (agenda_cancel, agenda_move, two columns and a setting) on the test branch then main, A's new steps through the MCP with pinned data (a sixth keyboard node, the withdrawal reply), the Telegram test, and exports and docs. B does not change.
 tags: [plan, move, cancel, SPEC-008, n8n, neon]
-status: draft
+status: verified
 sources: [./spec.md, ./clarifications.md, ../008-booking/plan.md, ../007-agenda/plan.md, ../006-consent/plan.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
-verified: { by: human, at: null }
+verified: { by: human, at: 2026-11-23T00:00:00Z }
 stale_after: null
 ---
 

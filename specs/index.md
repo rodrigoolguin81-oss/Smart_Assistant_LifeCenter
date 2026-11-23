@@ -156,8 +156,8 @@ stale_after: null
     its confirmation are the only steps allowed without consent (legal basis pending DEP-04).
   - **Where it runs:** flow A and Neon only. B and Gemini are not involved, and B does not
     change.
-  - **Status: specified** (2026-11-23; clarifications and spec verified by the human; plan and
-    tasks in draft).
+  - **Status: specified** (2026-11-23; clarifications, spec, plan and tasks verified by the
+    human; M0–M6 pending).
   - [clarifications](./009-move-cancel/clarifications.md), Q1–Q14
   - [spec](./009-move-cancel/spec.md), MC1–MC33
   - [plan](./009-move-cancel/plan.md)

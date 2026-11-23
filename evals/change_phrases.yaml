@@ -1,0 +1,103 @@
+# SPEC-008 (specs/009-move-cancel) — change and cancel phrases for n8n/code/citas.js detectChangePhrase().
+# Texts are pseudonymized (SPEC-001 placeholders) as A sees them after "Seudonimizar".
+# expected: change | none.  A `change` match only opens the «Mi cita» view (MC5); it never acts.
+# Every `change` must match, and NO `none` may match (MC4). The SPEC-007 booking dataset
+# (booking_phrases.yaml) does not change, and the two detectors must never overlap.
+
+# --- Positives: clear requests to change or cancel one's own appointment ---
+- text: "cancelar mi cita"
+  expected: change
+- text: "cambiar mi cita"
+  expected: change
+- text: "quiero cancelar la cita"
+  expected: change
+- text: "necesito mover mi cita al jueves"
+  expected: change
+- text: "¿puedo anular la cita?"
+  expected: change
+- text: "quiero anular mi cita"
+  expected: change
+- text: "¿se puede aplazar mi cita?"
+  expected: change
+- text: "no puedo ir a mi cita"
+  expected: change
+- text: "quiero cambiar la cita que pedí"
+  expected: change
+- text: "necesito cambiar la hora de mi cita"
+  expected: change
+- text: "¿me podéis cambiar la cita?"
+  expected: change
+- text: "anular cita"
+  expected: change
+- text: "cancela mi cita por favor"
+  expected: change
+- text: "quiero retrasar mi cita una semana"
+  expected: change
+- text: "¿puedo adelantar la cita?"
+  expected: change
+- text: "Hola, soy [NOMBRE], quiero cancelar mi cita del martes"
+  expected: change
+- text: "no voy a poder ir a la cita del lunes"
+  expected: change
+- text: "tengo que cambiar mi cita"
+  expected: change
+- text: "¿cómo puedo anular mi cita?"
+  expected: change
+- text: "quiero modificar mi cita"
+  expected: change
+- text: "me gustaría mover la cita a otro día"
+  expected: change
+- text: "necesito anular la hora que tengo"
+  expected: change
+- text: "no podré acudir a mi cita"
+  expected: change
+
+# --- Negatives: statements, policy and price questions, other people, other topics ---
+- text: "me cambiaron la cita"
+  expected: none
+- text: "¿se puede cancelar sin coste?"
+  expected: none
+- text: "¿cuánto cuesta cancelar?"
+  expected: none
+- text: "la cita de mi madre es mañana"
+  expected: none
+- text: "¿a qué hora es mi cita?"
+  expected: none
+- text: "tengo una cita el lunes"
+  expected: none
+- text: "quiero pedir cita"
+  expected: none
+- text: "¿cuánto cuesta una limpieza?"
+  expected: none
+- text: "olvidé mi cita de ayer"
+  expected: none
+- text: "confirmo mi cita del lunes"
+  expected: none
+- text: "¿qué pasa si no voy a mi cita?"
+  expected: none
+- text: "quiero cancelar la cita de mi madre"
+  expected: none
+- text: "¿cobráis por anular una cita?"
+  expected: none
+- text: "¿hay penalización por cancelar la cita?"
+  expected: none
+- text: "cambiar de higienista"
+  expected: none
+- text: "¿puedo cambiar de dentista en mi próxima cita?"
+  expected: none
+- text: "no quiero cancelar, solo saber la hora de mi cita"
+  expected: none
+- text: "¿cuánto cuesta cambiar la cita?"
+  expected: none
+- text: "mi madre quiere cambiar su cita"
+  expected: none
+- text: "la clínica canceló mi cita"
+  expected: none
+- text: "gracias por cambiarme la cita"
+  expected: none
+- text: "¿se cancelan las citas en agosto?"
+  expected: none
+- text: "¿mi cita es con la higienista?"
+  expected: none
+- text: "me cambio de casa, ¿pasa algo?"
+  expected: none

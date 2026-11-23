@@ -245,10 +245,13 @@ check('SPEC-007: classifyUpdate builds booking routes with data', () => {
   eq(c(msg('/start')).kind, 'start', '/start unchanged');
   eq(c(cb('handoff')).kind, 'handoff', 'handoff unchanged');
 });
+// SPEC-008 MC10: the booking action now says whether consent is in force (consent: true | false).
+const BOOKING = { action: 'booking', text: null, keyboard: null, consent: true };
+const BOOKING_NO_CONSENT = { action: 'booking', text: null, keyboard: null, consent: false };
 const BOOKING_CASES = [
-  ['/cita, in force → booking', { route: { ...route('booking_command'), data: 'cita' }, urgency: null, consent: accepted() }, { action: 'booking', text: null, keyboard: null }],
-  ['/micita, in force → booking', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: accepted() }, { action: 'booking', text: null, keyboard: null }],
-  ['bk: button, in force → booking', { route: { ...route('booking_button'), data: 'bk:menu' }, urgency: null, consent: accepted() }, { action: 'booking', text: null, keyboard: null }],
+  ['/cita, in force → booking', { route: { ...route('booking_command'), data: 'cita' }, urgency: null, consent: accepted() }, BOOKING],
+  ['/micita, in force → booking', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: accepted() }, BOOKING],
+  ['bk: button, in force → booking', { route: { ...route('booking_button'), data: 'bk:menu' }, urgency: null, consent: accepted() }, BOOKING],
   ['/cita, no consent → notice (BK8)', { route: { ...route('booking_command'), data: 'cita' }, urgency: null, consent: {} }, NOTICE],
   ['bk: button, revoked → notice (BK8)', { route: { ...route('booking_button'), data: 'bk:menu' }, urgency: null, consent: { status: 'revoked', text_version: V } }, NOTICE],
   ['/micita, older version → notice (BK8)', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: accepted(OLD) }, NOTICE],
@@ -264,6 +267,38 @@ check('SPEC-007: decide routes booking steps', () => {
     if (JSON.stringify(got) !== JSON.stringify(expected)) wrong.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(got)}`);
   }
   if (wrong.length) throw new Error(`${wrong.length}/${BOOKING_CASES.length} cases wrong:\n${wrong.join('\n')}`);
+});
+
+// --- SPEC-008 MC10 (Q8, extended at the spec review, human 2026-11-23) ---
+// Without consent, only «Anular» (bk:a:<start>), «Sí, anular» (bk:ac:<start>) and the «Mantener mi
+// cita» of the cancel confirmation (bk:v:<start>) go through, flagged consent: false. Every other
+// booking step still gets the notice, and a failed lookup still gives D7.
+const btnRoute = (data) => ({ ...route('booking_button'), data });
+const REVOKED_ROW = { status: 'revoked', text_version: V, decided_at: '2026-11-23T10:00:00Z' };
+const CHANGE_CASES = [
+  ['bk:a, no consent → booking, consent false', { route: btnRoute('bk:a:abcde'), urgency: null, consent: {} }, BOOKING_NO_CONSENT],
+  ['bk:ac, revoked → booking, consent false', { route: btnRoute('bk:ac:abcde'), urgency: null, consent: REVOKED_ROW }, BOOKING_NO_CONSENT],
+  ['bk:v:<start>, older version → booking, consent false', { route: btnRoute('bk:v:abcde'), urgency: null, consent: accepted(OLD) }, BOOKING_NO_CONSENT],
+  ['bk:a, in force → booking, consent true', { route: btnRoute('bk:a:abcde'), urgency: null, consent: accepted() }, BOOKING],
+  ['bk:v without a start, revoked → notice', { route: btnRoute('bk:v'), urgency: null, consent: REVOKED_ROW }, NOTICE],
+  ['bk:x («Cambiar»), revoked → notice', { route: btnRoute('bk:x:abcde'), urgency: null, consent: REVOKED_ROW }, NOTICE],
+  ['bk:xc («Confirmar cambio»), revoked → notice', { route: btnRoute('bk:xc:abcde:fghij'), urgency: null, consent: REVOKED_ROW }, NOTICE],
+  ['bk:xs, no consent → notice', { route: btnRoute('bk:xs:abcde:fghij'), urgency: null, consent: {} }, NOTICE],
+  ['bk:menu, revoked → notice', { route: btnRoute('bk:menu'), urgency: null, consent: REVOKED_ROW }, NOTICE],
+  ['bk:a malformed, no consent → notice', { route: btnRoute('bk:a:@@'), urgency: null, consent: {} }, NOTICE],
+  ['bk:a with two codes, no consent → notice', { route: btnRoute('bk:a:abcde:fghij'), urgency: null, consent: {} }, NOTICE],
+  ['bk:ac, lookup failed → D7', { route: btnRoute('bk:ac:abcde'), urgency: null, consent: null, lookupFailed: true }, ERROR],
+  ['/micita, revoked → notice', { route: { ...route('booking_command'), data: 'micita' }, urgency: null, consent: REVOKED_ROW }, NOTICE],
+];
+check('SPEC-008: decide lets only the cancel buttons through without consent', () => {
+  const decide = requireFn('decide');
+  const wrong = [];
+  for (const [name, input, expected] of CHANGE_CASES) {
+    let got;
+    try { got = decide(input); } catch (e) { got = `throws: ${e.message}`; }
+    if (JSON.stringify(got) !== JSON.stringify(expected)) wrong.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(got)}`);
+  }
+  if (wrong.length) throw new Error(`${wrong.length}/${CHANGE_CASES.length} cases wrong:\n${wrong.join('\n')}`);
 });
 
 // --- Urgencies without consent, end to end with the real detector (C2; human, 2026-11-22) ---
@@ -308,10 +343,11 @@ check('n8n nodes of A carry this exact code', () => {
   if (!fs.existsSync(EXPORT_PATH)) { console.log('SKIP sync check: no export of A'); return; }
   const wf = JSON.parse(fs.readFileSync(EXPORT_PATH, 'utf8'));
   const nodes = (Array.isArray(wf) ? wf[0] : wf).nodes;
-  // SPEC-007: this module gained the booking routes in R1, and A's export gets them in R5. Until A
-  // has the booking nodes, the export still carries the SPEC-006 module, so the check waits.
-  if (!nodes.some((n) => n.name === 'Preparar reserva')) {
-    console.log("SKIP sync check: A's export has no booking nodes yet; consentimiento.js is checked against it from SPEC-007 R5 (hasta R5)");
+  // SPEC-008: this module gained the cancel buttons without consent in M1, and A's export gets them
+  // in M4. Until A has «Componer retirada», «Clasificar» and «Decidir» still carry the SPEC-007
+  // module, so the check waits.
+  if (!nodes.some((n) => n.name === 'Componer retirada')) {
+    console.log("SKIP sync check: A's export has no SPEC-008 nodes yet; consentimiento.js is checked against it from SPEC-008 M4 (hasta M4)");
     return;
   }
   for (const name of NODE_NAMES) {
@@ -322,6 +358,6 @@ check('n8n nodes of A carry this exact code', () => {
   }
 });
 
-console.log(`\n== SPEC-006 consent report\ndecision cases: ${CASES.length}`);
+console.log(`\n== SPEC-006 consent report\ndecision cases: ${CASES.length} | SPEC-007 booking cases: ${BOOKING_CASES.length} | SPEC-008 change cases: ${CHANGE_CASES.length}`);
 console.log(failures ? `\nRED: ${failures} check(s) failed` : '\nGREEN: all checks passed');
 process.exit(failures ? 1 : 0);

@@ -86,8 +86,10 @@ is the type with its article («una limpieza»), and dates are Madrid dates as i
   - `MOVE_CONFIRM_TEXT`: «Vas a cambiar {tipo} del {fecha} a las {hora} al {fecha nueva} a las
     {hora nueva}. ¿Lo confirmo?» Buttons «Confirmar cambio» · «Elegir otro hueco» · «Mantener mi
     cita».
-  - `MOVED_TEXT`: «Hecho: {tipo} pasa al {fecha nueva} a las {hora nueva}. La cita anterior queda
-    anulada.» Buttons «Cambiar» · «Anular» · «Hablar con recepción».
+  - `MOVED_TEXT`: «Hecho: tu cita pasa al {fecha nueva} a las {hora nueva}. La anterior queda
+    anulada.» Buttons «Cambiar» · «Anular» · «Hablar con recepción». **Changed by the human at the
+    M1 review (2026-11-23).** The first wording, «Hecho: {tipo} pasa al…», read «Hecho: una
+    limpieza pasa al…».
   - `MOVE_TAKEN_TEXT`: «Ese hueco se acaba de ocupar. Tu cita del {fecha} a las {hora} sigue
     igual. Estos son los siguientes:» The slot buttons.
   - `MOVE_UNAVAILABLE_TEXT`: «Ese hueco ya no está disponible. Tu cita del {fecha} a las {hora}
@@ -99,9 +101,11 @@ is the type with its article («una limpieza»), and dates are Madrid dates as i
     recepción.» Button «Hablar con recepción». `{plazo}` comes from `change_min_lead` («2 horas»).
   - `NOT_ACTIVE_TEXT`: «Esa cita ya no está activa.», followed by the «Mi cita» view.
   - `KEPT_TEXT`: «De acuerdo, mantengo tu cita.», followed by the «Mi cita» view.
-  - `REVOKED_WITH_APPOINTMENT_TEXT`: the SPEC-006 `REVOKED_TEXT`, followed by «Tu cita de {tipo}
-    el {fecha} a las {hora} sigue reservada. Si no vas a ir, puedes anularla aquí o llamar a
-    recepción.» Button «Anular mi cita» (`bk:a:<start>`).
+  - `REVOKED_WITH_APPOINTMENT_TEXT`: the SPEC-006 `REVOKED_TEXT`, followed by «Sigues teniendo
+    {tipo} el {fecha} a las {hora}. Si no vas a ir, puedes anularla aquí o llamar a recepción.»
+    Button «Anular mi cita» (`bk:a:<start>`). **Changed by the human at the M1 review
+    (2026-11-23).** The first wording, «Tu cita de {tipo} el…», read «Tu cita de una limpieza
+    el…».
   - `REVOKED_LOOKUP_FAILED_TEXT` (human, spec review, 2026-11-23): the SPEC-006 `REVOKED_TEXT`,
     followed by «Si tenías una cita reservada, se mantiene; para anularla, llama a recepción.»
     No button.

@@ -4,10 +4,10 @@ spec_id: SPEC-008
 title: move and cancel — Task Breakdown
 description: Ordered, test-first tasks for moving and cancelling from Telegram — read-only preflight (hosts, the «Neon main» credential, the state of A and B), the JS modules, 005_move_cancel.sql on the test branch and main, A's change steps with pinned data, the Telegram test, and exports and docs.
 tags: [tasks, move, cancel, SPEC-008]
-status: draft
+status: verified
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
-verified: { by: human, at: null }
+verified: { by: human, at: 2026-11-23T00:00:00Z }
 stale_after: null
 ---
 
@@ -22,7 +22,36 @@ Same pattern as SPEC-007. **Nothing is touched before the plan is approved.**
 - A is only changed in M4, as a draft. The human publishes **A only**. B does not change.
 - Nothing is committed unless the human asks.
 
-- [ ] M0 **[humano for the credential]**: Preflight, read-only (plan Step 0; MC32).
+- [x] M0 **[humano for the credential]**: Preflight, read-only (plan Step 0; MC32).
+  - Done 2026-11-23 (17:48 UTC). Only reads were made: read-only connections to Neon, the MCP,
+    and n8n's local database (metadata only). Nothing was created or changed.
+  - **Neon:**
+
+    | | `DIRECT_URL` (main) | `TEST_DATABASE_URL` |
+    |---|---|---|
+    | Host | `ep-steep-resonance-…` | `ep-blue-firefly-…` |
+    | Branch | `br-crims…` | `br-cool-…` |
+    | SPEC-004 / SPEC-007 functions | 7 of 7 / 2 of 2 | 7 of 7 / 2 of 2 |
+    | `agenda_cancel*`, `agenda_move*` | 0 of 4 | 0 of 4 |
+    | `cancelled_at`, `replaced_by`, `change_min_lead` | none | none |
+    | Agenda configuration | 3/3/5/11/1, 0 closures | 3/3/5/11/1, 0 closures |
+    | Settings | 15 min, 2 h, 30 days, limit 1, example | same |
+    | Appointments | 1 `booked`, **past**: the demo limpieza of 23/11/2026 9:00–9:45 | 0 |
+    | `consent` / `consent_key` | 1 `accepted` / 1 | 0 / 1 |
+
+    The hosts differ, and both are branches of the same project. No subject or key was printed.
+  - **The `Neon main` credential:** the MCP lists `QvG6Gru4fDSLvtzu`, type `postgres`. In n8n's
+    local database, its `updatedAt` is **22/11/2026 16:02:39 UTC**, the SPEC-006 K5 fix,
+    unchanged since. **So the human's check in the UI was not needed** (human, 2026-11-23).
+  - **Workflows** (n8n 2.48.4):
+    - A (35 nodes) and B (11 nodes) are active. For both, draft = published = the export in git
+      (A `6a033c75…`, B `0b3cb06d…`), compared node by node and connection by connection with
+      `workflow_history`.
+    - A's settings are none / none / false / false, with no pinned data. B saves everything, with
+      its caller policy limited to A, and `pinData: {}`.
+    - **A** had one record from 17:35 UTC: the SPEC-005 transient window of a real message. It
+      was gone at 17:49 UTC, and A has no saved execution.
+    - **B** has 18 executions (19/11–22/11), all within their 30 days, and none after 201.
   - **Agent, read-only (nothing created or changed):**
     - the hosts of `DIRECT_URL` and `TEST_DATABASE_URL`, shortened, and their `neon.branch_id`;
     - on both branches:
@@ -45,8 +74,53 @@ Same pattern as SPEC-007. **Nothing is touched before the plan is approved.**
 
     Close it without saving, and report what was seen.
   - Check: the findings are recorded here, and nothing was created or changed.
-- [ ] M1: `citas.js` and `consentimiento.js` extended, with their tests (plan Step 1; MC1–MC20,
+- [x] M1: `citas.js` and `consentimiento.js` extended, with their tests (plan Step 1; MC1–MC20,
   MC27–MC29).
+  - Done 2026-11-23. Nothing was touched in n8n or Neon.
+  - **Red first:**
+    - `citas.test.js` gained 13 SPEC-008 checks:
+      - the change callbacks, their parsing and the 64-byte limit;
+      - `evals/change_phrases.yaml`, with **23 positives and 22 negatives**, and a check that
+        the two detectors never overlap;
+      - the order with the real `urgencias.js`;
+      - `plazoText`;
+      - 12 `prepare` and 37 `compose` cases, with and without consent;
+      - `revokedReply`;
+      - the keyboard check, now 1–6 rows.
+
+      The expected texts and buttons of 6 SPEC-007 cases changed («Cambiar» · «Anular»).
+    - `consentimiento.test.js`: the SPEC-007 booking cases now expect `consent: true`, and 13
+      new cases cover the three buttons allowed without consent.
+    - The modules first gained only their texts and labels. Red: **13** checks of
+      `citas.test.js` failed (missing functions, unknown steps, the 6 changed SPEC-007 cases), and
+      **2** of `consentimiento.test.js`. `urgencias.test.js` stayed green.
+  - **Green:**
+    - `citas.test.js`:
+      - change phrases **23/23 positives, 0/22 negatives**;
+      - booking phrases still **25/25 and 0/25**;
+      - 0 overlaps between the two detectors;
+      - every callback ≤ 64 bytes;
+      - every keyboard has 1–6 rows of one button.
+    - `consentimiento.test.js` and `urgencias.test.js` are green.
+    - The sync checks of `citas.js` and `consentimiento.js` are skipped «hasta M4», until A's
+      export has «Componer retirada». `urgencias.js` is still checked against both exports.
+  - **Choices made in the code:**
+    - Without consent, the cancelled, not-active and kept replies carry only «Hablar con
+      recepción». A booking keyboard needs at least one row, and the handoff button works without
+      consent (SPEC-006 C12).
+    - After cancelling with consent, `CANCELLED_TEXT` gets «Pedir cita» and «Hablar con
+      recepción», as every booking message does (SPEC-007).
+    - Change verbs are only matched in the infinitive or the imperative. «anuló» normalizes to
+      «anulo», so «la clínica me anuló la cita» would otherwise match.
+    - If a query does not return `change_min_lead`, the code uses its example value, 2 hours.
+  - **Human review (2026-11-23):** the texts, phrases and code choices are approved. Two texts
+    changed, test first (red: 3 checks, then green):
+    - `MOVED_TEXT` → «Hecho: tu cita pasa al {fecha nueva} a las {hora nueva}. La anterior queda
+      anulada.»;
+    - the withdrawal line → «Sigues teniendo {tipo} el {fecha} a las {hora}. Si no vas a ir, puedes
+      anularla aquí o llamar a recepción.»
+
+    Both are recorded in the spec.
   - **Red first:**
     - `citas.test.js` with the change callbacks, `evals/change_phrases.yaml`, the order cases,
       the new `prepare` and `compose` cases with and without consent, `revokedReply`, the three

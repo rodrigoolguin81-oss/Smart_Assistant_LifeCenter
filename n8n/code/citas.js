@@ -12,15 +12,35 @@ const TEXTS = {
   MORE_SLOTS: 'Estos son los siguientes huecos para {tipo}:',
   NO_SLOTS: 'Ahora mismo no hay huecos libres para {tipo} en los próximos 30 días. Llama a recepción para buscar otra fecha.',
   CONFIRM: 'Vas a reservar {tipo} el {fecha} a las {hora}. ¿Lo confirmo?',
-  BOOKED: 'Hecho: tienes {tipo} el {fecha} a las {hora}. Para cambiarla o anularla, de momento llama a recepción.',
+  // SPEC-008 Q11 (human, 2026-11-23): these three drop «llama a recepción»; the «Cambiar» and
+  // «Anular» buttons replace it.
+  BOOKED: 'Hecho: tienes {tipo} el {fecha} a las {hora}.',
   TAKEN: 'Ese hueco se acaba de ocupar. Estos son los siguientes:',
   UNAVAILABLE: 'Ese hueco ya no está disponible. Estos son los siguientes:',
-  // Changed by the human at R1 review (2026-11-22): «Ya tienes una limpieza el …».
-  LIMIT: 'Ya tienes {tipo} el {fecha} a las {hora}. Para cambiarla o anularla, llama a recepción.',
-  MY_APPOINTMENT: 'Tu próxima cita: {tipo} el {fecha} a las {hora}. Para cambiarla o anularla, llama a recepción.',
+  LIMIT: 'Ya tienes {tipo} el {fecha} a las {hora}. Solo se puede tener una cita reservada por el bot.',
+  MY_APPOINTMENT: 'Tu próxima cita: {tipo} el {fecha} a las {hora}.',
   NO_APPOINTMENT: 'No tienes ninguna cita reservada. Escribe /cita para pedir una.',
   // Copy of the CHG-001 D7 text, used when a Neon call of a booking step fails (BK20).
   ERROR: 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?',
+  // --- SPEC-008, moving and cancelling (spec "Fixed texts", human 2026-11-23) ---
+  CANCEL_CONFIRM: '¿Seguro que quieres anular {tipo} del {fecha} a las {hora}?',
+  CANCELLED: 'Hecho: he anulado {tipo} del {fecha} a las {hora}. Si quieres otra, escribe /cita.',
+  CANCELLED_NO_CONSENT: 'Hecho: he anulado {tipo} del {fecha} a las {hora}.',
+  MOVE_SLOTS: '¿A cuándo quieres cambiar {tipo} del {fecha} a las {hora}? Estos son los primeros huecos:',
+  MOVE_MORE_SLOTS: 'Estos son los siguientes huecos:',
+  MOVE_CONFIRM: 'Vas a cambiar {tipo} del {fecha} a las {hora} al {fecha_nueva} a las {hora_nueva}. ¿Lo confirmo?',
+  // Changed by the human at the M1 review (2026-11-23): «tu cita», not «una limpieza».
+  MOVED: 'Hecho: tu cita pasa al {fecha_nueva} a las {hora_nueva}. La anterior queda anulada.',
+  MOVE_TAKEN: 'Ese hueco se acaba de ocupar. Tu cita del {fecha} a las {hora} sigue igual. Estos son los siguientes:',
+  MOVE_UNAVAILABLE: 'Ese hueco ya no está disponible. Tu cita del {fecha} a las {hora} sigue igual. Estos son los siguientes:',
+  MOVE_NO_SLOTS: 'Ahora mismo no hay otros huecos para {tipo} en los próximos 30 días. Tu cita sigue igual. Llama a recepción para buscar otra fecha.',
+  TOO_LATE: 'Tu cita es en menos de {plazo}. Para cambiarla o anularla, llama a recepción.',
+  NOT_ACTIVE: 'Esa cita ya no está activa.',
+  KEPT: 'De acuerdo, mantengo tu cita.',
+  // Appended to the SPEC-006 REVOKED_TEXT (MC11, MC12; the second one: human, spec review).
+  // Changed by the human at the M1 review (2026-11-23).
+  REVOKED_APPOINTMENT: 'Sigues teniendo {tipo} el {fecha} a las {hora}. Si no vas a ir, puedes anularla aquí o llamar a recepción.',
+  REVOKED_LOOKUP_FAILED: 'Si tenías una cita reservada, se mantiene; para anularla, llama a recepción.',
 };
 
 // --- Button labels (approved 2026-11-22) and the existing handoff callback (CHG-001 D8) ---
@@ -32,6 +52,13 @@ const LABELS = {
   otroTratamiento: 'Otro tratamiento',
   recepcion: 'Hablar con recepción',
   primeraVisita: 'Primera visita',
+  // SPEC-008
+  cambiar: 'Cambiar',
+  anular: 'Anular',
+  siAnular: 'Sí, anular',
+  mantener: 'Mantener mi cita',
+  confirmarCambio: 'Confirmar cambio',
+  anularMiCita: 'Anular mi cita',
 };
 const CALLBACK_HANDOFF = 'handoff';
 
@@ -65,10 +92,34 @@ function cb(kind, type, start) {
   if (kind === 'type' || kind === 'retry') return `bk:${CALLBACK_PREFIX[kind]}:${type}`;
   return `bk:${CALLBACK_PREFIX[kind]}:${type}:${encodeSlot(start)}`;
 }
+// SPEC-008 change callbacks (spec "Change callbacks"): no type, because the functions read it from
+// the appointment. <start> is always the start of the appointment the button refers to (MC17).
+const CHANGE_PREFIX = {
+  keep: 'v', cancel_ask: 'a', cancel: 'ac', move: 'x', move_more: 'xm', move_slot: 'xs', move_confirm: 'xc',
+};
+function changeCb(kind, start, other) {
+  if (kind === 'view') return 'bk:v';
+  const base = `bk:${CHANGE_PREFIX[kind]}:${encodeSlot(start)}`;
+  return ['move_more', 'move_slot', 'move_confirm'].includes(kind) ? `${base}:${encodeSlot(other)}` : base;
+}
+const CHANGE_STEPS = { v: 'keep', a: 'cancel_ask', ac: 'cancel', x: 'move', xm: 'move_more', xs: 'move_slot', xc: 'move_confirm' };
+function parseChangeCallback(data) {
+  if (data === 'bk:v') return { step: 'view', type: null, start: null, target: null };
+  const m = /^bk:(v|a|ac|x|xm|xs|xc):([0-9a-z]+)(?::([0-9a-z]+))?$/.exec(data);
+  if (!m) return null;
+  const [, p, startCode, otherCode] = m;
+  const twoCodes = ['xm', 'xs', 'xc'].includes(p);
+  if (twoCodes !== (otherCode !== undefined)) return null;
+  const start = decodeSlot(startCode);
+  const target = twoCodes ? decodeSlot(otherCode) : null;
+  if (!start || (twoCodes && !target)) return null;
+  return { step: CHANGE_STEPS[p], type: null, start, target };
+}
 function parseBookingCallback(data) {
   const bad = { step: 'malformed', type: null, start: null };
   if (data === 'bk:menu') return { step: 'menu', type: null, start: null };
   if (data === 'bk:o') return { step: 'other', type: null, start: null };
+  if (typeof data === 'string' && /^bk:(v|a|ac|x|xm|xs|xc)(:|$)/.test(data)) return parseChangeCallback(data) || bad;
   const m = /^bk:([tscmr]):([a-z_]+)(?::([0-9a-z]+))?$/.exec(typeof data === 'string' ? data : '');
   if (!m) return bad;
   const [, p, type, slot] = m;
@@ -130,6 +181,39 @@ function bookingPhraseFor(question, urgency) {
   return detectBookingPhrase(question);
 }
 
+// --- SPEC-008 change and cancel phrases (MC4, MC5): a fixed, strict list ---
+// A match only opens the «Mi cita» view: it never cancels or moves, and no date is read from it.
+// Verbs in the infinitive or the imperative only: «anuló» normalizes to «anulo», which would also
+// match «la clínica me anuló la cita». The object is one's appointment («cita», «hora»), singular.
+const CHANGE_VERBS = '(?:cancelar|cancela|anular|anula|cambiar|mover|aplazar|retrasar|adelantar|modificar)';
+const CHANGE_REQUESTS = [
+  new RegExp(`\\b${CHANGE_VERBS}\\b.*\\b(?:cita|hora)\\b`),
+  new RegExp(`\\bcita\\b.*\\b${CHANGE_VERBS}\\b`),
+  /\bno (?:puedo|podre|voy a poder) (?:ir|acudir|asistir)\b.*\b(?:cita|hora)\b/,
+];
+// Policy and price questions, other people's appointments, refusals, and changing the professional
+// or the treatment are never a request to change one's own appointment.
+const CHANGE_BLOCKERS = [
+  /\b(?:cuanto|cuanta|cuesta|cuestan|precio|precios|coste|cobra\w*|penaliza\w*|gratis|multa)\b/,
+  /\b(?:madre|padre|hijo|hija|marido|mujer|pareja|hermano|hermana|abuelo|abuela|novio|novia)\b/,
+  /\bno (?:quiero|necesito|deseo)\b/,
+  /\bcambiar de (?:dentista|odontologo|odontologa|higienista|doctor|doctora|profesional|tratamiento|clinica)\b/,
+];
+function detectChangePhrase(text) {
+  const t = normalizeText(text);
+  const match = CHANGE_REQUESTS.some((re) => re.test(t)) && !CHANGE_BLOCKERS.some((re) => re.test(t));
+  return { match };
+}
+// What "¿Es una reserva?" uses in A since SPEC-008 (MC3): an urgency always wins; then a change or
+// cancel phrase; then a booking phrase; otherwise the message goes to B.
+function textIntentFor(question, urgency) {
+  const none = { match: false, intent: null, type: null, requestOnly: false };
+  if (urgency && urgency.urgency_level && urgency.urgency_level !== 'none') return none;
+  if (detectChangePhrase(question).match) return { match: true, intent: 'change', type: null, requestOnly: false };
+  const b = detectBookingPhrase(question);
+  return b.match ? { match: true, intent: 'booking', type: b.type, requestOnly: b.requestOnly } : none;
+}
+
 // --- Madrid dates (Q15) ---
 const WEEKDAYS_SHORT = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 const WEEKDAYS_LONG = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
@@ -162,22 +246,33 @@ function longDate(value, now) {
   return `${WEEKDAYS_LONG[p.weekday]} ${p.d} de ${MONTHS_LONG[p.mo - 1]}${year}`;
 }
 
-// --- What to do for a booking step (BK1, BK5, BK9–BK16, BK18) ---
+// --- What to do for a booking step (BK1, BK5, BK9–BK16, BK18; SPEC-008 MC5–MC18) ---
 // route: from "Clasificar" (booking_command / booking_button), or a text with a matching phrase.
-// Returns the step and the single query it needs: none | agenda (my next + slots) | book.
-function prepare(route, phrase, now) {
+// consent: whether consent is in force («Decidir»). Without it, only «Anular», «Sí, anular» and the
+// «Mantener mi cita» of the cancel confirmation can get here (SPEC-008 MC10); anything else throws.
+// Returns the step and the single query it needs: none | agenda (my next + slots) | book | cancel | move.
+function prepare(route, phrase, now, consent = true) {
   const P = (step, query, extra = {}) => ({ step, query, type: null, from: null, start: null, requestOnly: false, ...extra });
+  // SPEC-008 steps also carry the target (a new start, or the slot after which «Ver más» goes on) and
+  // the consent flag, which compose() needs.
+  const PC = (step, query, extra = {}) => P(step, query, { target: null, consent: !!consent, ...extra });
   const nowIso = new Date(now).toISOString();
+  const after = (iso) => new Date(Date.parse(iso) + 60000).toISOString();
   const kind = route && route.kind;
+  const refuse = () => { throw new Error('prepare(): this step needs consent in force (SPEC-008 MC10)'); };
   if (kind === 'booking_command') {
+    if (!consent) refuse();
     if (route.data === 'cita') return P('cita', 'agenda', { from: nowIso });
     if (route.data === 'micita') return P('micita', 'agenda', { from: nowIso });
   }
   if (kind === 'text' && phrase && phrase.match) {
+    if (!consent) refuse();
+    if (phrase.intent === 'change') return PC('view', 'agenda', { from: nowIso });
     return P('cita', 'agenda', { type: phrase.type || null, from: nowIso, requestOnly: !!phrase.requestOnly });
   }
   if (kind === 'booking_button') {
     const c = parseBookingCallback(route.data);
+    if (!consent && !['cancel_ask', 'cancel', 'keep'].includes(c.step)) refuse();
     switch (c.step) {
       case 'menu': return P('cita', 'agenda', { from: nowIso });
       case 'other': return P('request_only', 'none');
@@ -185,30 +280,60 @@ function prepare(route, phrase, now) {
         return REQUEST_ONLY_TYPES.includes(c.type) ? P('request_only', 'none') : P('slots', 'agenda', { type: c.type, from: nowIso });
       case 'slot': return P('confirm', 'none', { type: c.type, start: c.start });
       case 'confirm': return P('book', 'book', { type: c.type, start: c.start });
-      case 'more': return P('more', 'agenda', { type: c.type, from: new Date(Date.parse(c.start) + 60000).toISOString() });
+      case 'more': return P('more', 'agenda', { type: c.type, from: after(c.start) });
       case 'retry': return P('slots', 'agenda', { type: c.type, from: nowIso });
+      // SPEC-008
+      case 'view': return PC('view', 'agenda', { from: nowIso });
+      case 'keep': return consent ? PC('keep', 'agenda', { start: c.start, from: nowIso }) : PC('keep', 'none', { start: c.start });
+      case 'cancel_ask': return PC('cancel_confirm', 'agenda', { start: c.start, from: nowIso });
+      case 'cancel': return PC('cancel', 'cancel', { start: c.start });
+      case 'move': return PC('move_slots', 'agenda', { start: c.start, from: nowIso });
+      case 'move_more': return PC('move_more', 'agenda', { start: c.start, from: after(c.target) });
+      case 'move_slot': return PC('move_confirm', 'agenda', { start: c.start, target: c.target, from: nowIso });
+      case 'move_confirm': return PC('move', 'move', { start: c.start, target: c.target });
       default: return P('menu', 'none');
     }
   }
   throw new Error(`prepare(): not a booking step (${kind})`);
 }
 
-// --- Text and keyboard rows for every result (BK9–BK20) ---
-// db: { failed } | { agenda: { my_next, slots } } | { book: { result, reason, starts_at, next_slots, my_next } }
+// --- Shared text helpers ---
+const fillText = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);
+// SPEC-008 MC19: {plazo} of TOO_LATE_TEXT, from change_min_lead in minutes («2 horas»).
+function plazoText(minutes) {
+  if (minutes % 60 === 0) return minutes === 60 ? '1 hora' : `${minutes / 60} horas`;
+  return `${minutes} minutos`;
+}
+// The example value of change_min_lead (SPEC-008 MC19), used only if a query did not return it.
+const DEFAULT_CHANGE_MIN_MINUTES = 120;
+
+// --- Text and keyboard rows for every result (BK9–BK20; SPEC-008 MC1–MC18, MC24) ---
+// db: { failed } | { agenda: { my_next, slots, change_min_minutes } }
+//   | { book: { result, reason, starts_at, next_slots, my_next } }
+//   | { cancel: { result, type_code, starts_at, ends_at, my_next, change_min_minutes } }
+//   | { move: { result, reason, type_code, old_starts_at, old_ends_at, starts_at, ends_at, next_slots, my_next,
+//               change_min_minutes } }
 function compose(prep, db, now) {
   const button = (text, data) => ({ text, data });
   const reception = [button(LABELS.recepcion, CALLBACK_HANDOFF)];
-  const fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);
+  const fill = fillText;
   const when = (start) => ({ fecha: longDate(start, now), hora: hourOf(start) });
   const view = (text, rows) => ({ text, rows });
+  const consent = prep.consent !== false;
   const menu = () => view(TEXTS.TYPE_MENU, [
     ...BOOKABLE_TYPES.map((t) => [button(TYPE_NAMES[t], cb('type', t))]),
     [button(LABELS.otroTratamiento, cb('other'))],
     reception,
   ]);
   const requestOnly = () => view(TEXTS.REQUEST_ONLY, [[button(LABELS.primeraVisita, cb('type', 'primera_visita'))], reception]);
+  // SPEC-008 MC1: every message that shows the current appointment offers to change or cancel it.
+  const changeRows = (start) => [
+    [button(LABELS.cambiar, changeCb('move', start))],
+    [button(LABELS.anular, changeCb('cancel_ask', start))],
+    reception,
+  ];
   // my: agenda_my_next's row { type_code, starts_at, ends_at } (spec BK19)
-  const appointment = (text, my) => view(fill(text, { tipo: typePhrase(my.type_code), ...when(my.starts_at) }), [reception]);
+  const appointment = (text, my) => view(fill(text, { tipo: typePhrase(my.type_code), ...when(my.starts_at) }), changeRows(my.starts_at));
   const slotList = (text, type, slots) => {
     if (!slots || !slots.length) return view(fill(TEXTS.NO_SLOTS, { tipo: typePhrase(type) }), [reception]);
     return view(fill(text, { tipo: typePhrase(type) }), [
@@ -217,13 +342,39 @@ function compose(prep, db, now) {
       reception,
     ]);
   };
+  // --- SPEC-008 helpers ---
+  const sameStart = (a, b) => !!a && !!b && Date.parse(a) === Date.parse(b);
+  const minutesOf = (x) => (x && Number.isFinite(x.change_min_minutes) ? x.change_min_minutes : DEFAULT_CHANGE_MIN_MINUTES);
+  const myView = (my) => (my ? appointment(TEXTS.MY_APPOINTMENT, my)
+    : view(TEXTS.NO_APPOINTMENT, [[button(LABELS.pedir, cb('menu'))], reception]));
+  const prefixed = (prefix, v) => view(`${prefix}\n\n${v.text}`, v.rows);
+  // Without consent (MC10), a step shows only what concerns that appointment.
+  const notActive = (my) => (consent ? prefixed(TEXTS.NOT_ACTIVE, myView(my)) : view(TEXTS.NOT_ACTIVE, [reception]));
+  const tooLate = (minutes) => view(fill(TEXTS.TOO_LATE, { plazo: plazoText(minutes) }), [reception]);
+  // The appointment at the button's start must still be the current one, and not too close (MC17, MC18).
+  const checkCurrent = (agenda) => {
+    const my = agenda.my_next;
+    if (!my || !sameStart(my.starts_at, prep.start)) return { stop: notActive(my) };
+    if (Date.parse(my.starts_at) < Date.parse(now) + minutesOf(agenda) * 60000) return { stop: tooLate(minutesOf(agenda)) };
+    return { my };
+  };
+  // The slots for a move: never the current start; then «Ver más», «Mantener mi cita», reception.
+  const moveList = (text, type, start, slots) => {
+    const others = (slots || []).filter((s) => !sameStart(s.starts_at, start));
+    if (!others.length) return view(fill(TEXTS.MOVE_NO_SLOTS, { tipo: typePhrase(type) }), [reception]);
+    return view(text, [
+      ...others.map((s) => [button(shortLabel(s.starts_at), changeCb('move_slot', start, s.starts_at))]),
+      [button(LABELS.mas, changeCb('move_more', start, others[others.length - 1].starts_at))],
+      [button(LABELS.mantener, changeCb('view'))],
+      reception,
+    ]);
+  };
 
   if (db && db.failed) return view(TEXTS.ERROR, [reception]);
   const agenda = (db && db.agenda) || {};
   switch (prep.step) {
     case 'micita':
-      return agenda.my_next ? appointment(TEXTS.MY_APPOINTMENT, agenda.my_next)
-        : view(TEXTS.NO_APPOINTMENT, [[button(LABELS.pedir, cb('menu'))], reception]);
+      return myView(agenda.my_next);
     case 'cita':
       if (agenda.my_next) return appointment(TEXTS.LIMIT, agenda.my_next);
       if (prep.requestOnly) return requestOnly();
@@ -244,16 +395,89 @@ function compose(prep, db, now) {
       ]);
     case 'book': {
       const b = (db && db.book) || {};
-      if (b.result === 'booked') return view(fill(TEXTS.BOOKED, { tipo: typePhrase(prep.type), ...when(b.starts_at) }), [reception]);
+      if (b.result === 'booked') return view(fill(TEXTS.BOOKED, { tipo: typePhrase(prep.type), ...when(b.starts_at) }), changeRows(b.starts_at));
       if (b.result === 'limit' && b.my_next) return appointment(TEXTS.LIMIT, b.my_next);
       if (b.result === 'taken') return slotList(TEXTS.TAKEN, prep.type, b.next_slots);
       if (b.result === 'invalid' && ['request_only', 'unknown_type'].includes(b.reason)) return menu();
       if (b.result === 'invalid') return slotList(TEXTS.UNAVAILABLE, prep.type, b.next_slots);
       return view(TEXTS.ERROR, [reception]); // an unexpected result is reported as a failure
     }
+    // --- SPEC-008 ---
+    case 'view':
+      return myView(agenda.my_next);
+    case 'keep':
+      return consent ? prefixed(TEXTS.KEPT, myView(agenda.my_next)) : view(TEXTS.KEPT, [reception]);
+    case 'cancel_confirm': {
+      const c = checkCurrent(agenda);
+      if (c.stop) return c.stop;
+      return view(fill(TEXTS.CANCEL_CONFIRM, { tipo: typePhrase(c.my.type_code), ...when(c.my.starts_at) }), [
+        [button(LABELS.siAnular, changeCb('cancel', prep.start))],
+        [button(LABELS.mantener, changeCb('keep', prep.start))],
+      ]);
+    }
+    case 'cancel': {
+      const x = (db && db.cancel) || {};
+      if (x.result === 'cancelled') {
+        const vars = { tipo: typePhrase(x.type_code), ...when(x.starts_at) };
+        return consent ? view(fill(TEXTS.CANCELLED, vars), [[button(LABELS.pedir, cb('menu'))], reception])
+          : view(fill(TEXTS.CANCELLED_NO_CONSENT, vars), [reception]);
+      }
+      if (x.result === 'too_late') return tooLate(minutesOf(x));
+      if (x.result === 'not_found') return notActive(x.my_next);
+      return view(TEXTS.ERROR, [reception]);
+    }
+    case 'move_slots':
+    case 'move_more': {
+      const c = checkCurrent(agenda);
+      if (c.stop) return c.stop;
+      const text = prep.step === 'move_slots'
+        ? fill(TEXTS.MOVE_SLOTS, { tipo: typePhrase(c.my.type_code), ...when(c.my.starts_at) }) : TEXTS.MOVE_MORE_SLOTS;
+      return moveList(text, c.my.type_code, prep.start, agenda.slots);
+    }
+    case 'move_confirm': {
+      const c = checkCurrent(agenda);
+      if (c.stop) return c.stop;
+      return view(fill(TEXTS.MOVE_CONFIRM, {
+        tipo: typePhrase(c.my.type_code), ...when(c.my.starts_at),
+        fecha_nueva: longDate(prep.target, now), hora_nueva: hourOf(prep.target),
+      }), [
+        [button(LABELS.confirmarCambio, changeCb('move_confirm', prep.start, prep.target))],
+        [button(LABELS.otroHueco, changeCb('move', prep.start))],
+        [button(LABELS.mantener, changeCb('view'))],
+      ]);
+    }
+    case 'move': {
+      const m = (db && db.move) || {};
+      if (m.result === 'moved') {
+        return view(fill(TEXTS.MOVED, { tipo: typePhrase(m.type_code), fecha_nueva: longDate(m.starts_at, now), hora_nueva: hourOf(m.starts_at) }),
+          changeRows(m.starts_at));
+      }
+      if (m.result === 'taken' || m.result === 'invalid') {
+        const text = fill(m.result === 'taken' ? TEXTS.MOVE_TAKEN : TEXTS.MOVE_UNAVAILABLE, when(m.old_starts_at));
+        return moveList(text, m.type_code, prep.start, m.next_slots);
+      }
+      if (m.result === 'too_late') return tooLate(minutesOf(m));
+      if (m.result === 'not_found') return notActive(m.my_next);
+      return view(TEXTS.ERROR, [reception]);
+    }
     default:
       throw new Error(`compose(): unknown step ${prep.step}`);
   }
+}
+
+// --- SPEC-008 MC11, MC12: the reply to a withdrawal («Componer retirada») ---
+// revokedText: the SPEC-006 REVOKED_TEXT from «Decidir»; myNext: agenda_my_next's row, or null;
+// lookupFailed: the appointment lookup after the withdrawal failed. The withdrawal stands either way.
+function revokedReply(revokedText, myNext, lookupFailed, now) {
+  if (lookupFailed) return { text: `${revokedText}\n\n${TEXTS.REVOKED_LOOKUP_FAILED}`, rows: [] };
+  if (!myNext) return { text: revokedText, rows: [] };
+  const line = fillText(TEXTS.REVOKED_APPOINTMENT, {
+    tipo: typePhrase(myNext.type_code), fecha: longDate(myNext.starts_at, now), hora: hourOf(myNext.starts_at),
+  });
+  return {
+    text: `${revokedText}\n\n${line}`,
+    rows: [[{ text: LABELS.anularMiCita, data: changeCb('cancel_ask', myNext.starts_at) }]],
+  };
 }
 
 // --- The Telegram node's inlineKeyboard parameter, built from the rows (plan Step 5) ---

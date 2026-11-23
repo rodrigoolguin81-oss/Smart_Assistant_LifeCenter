@@ -84,6 +84,9 @@ function classifyUpdate(update) {
   return booking ? { ...route, data: command } : route; // SPEC-007: /cita, /micita
 }
 
+// --- SPEC-008 MC10: the only booking buttons allowed without consent (one start code each) ---
+const CANCEL_WITHOUT_CONSENT = /^bk:(?:a|ac|v):[0-9a-z]{1,8}$/;
+
 // --- Consent in force (C22): accepted with the current version; anything else is no consent ---
 function isConsentInForce(row) {
   return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;
@@ -131,7 +134,13 @@ function decide({ route, urgency, consent, lookupFailed }) {
       return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };
     case 'booking_command': // SPEC-007 BK8: every booking step needs consent in force
     case 'booking_button':
-      return inForce ? { action: 'booking', text: null, keyboard: null } : notice;
+      if (inForce) return { action: 'booking', text: null, keyboard: null, consent: true };
+      // SPEC-008 MC10: without consent, only «Anular» (bk:a), «Sí, anular» (bk:ac) and the «Mantener
+      // mi cita» of the cancel confirmation (bk:v with a start) go through, flagged consent: false.
+      if (kind === 'booking_button' && CANCEL_WITHOUT_CONSENT.test(route.data || '')) {
+        return { action: 'booking', text: null, keyboard: null, consent: false };
+      }
+      return notice;
     case 'unknown_button':
       return notice;
     default:
