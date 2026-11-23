@@ -161,7 +161,26 @@ Same pattern as SPEC-007. **Nothing is touched before the plan is approved.**
   - First `tests/infra/test_move_cancel_sql.py`, then the SQL.
   - **Before running anything,** show the SQL, the exact commands and the host.
   - Run: red (nothing created), the schema, green, then all of `tests/infra`.
-- [ ] M3 **[confirmación]**: `main` (plan Step 3; MC30).
+- [x] M3 **[confirmación]**: `main` (plan Step 3; MC30).
+  - Done 2026-11-23, after the human confirmed. Beforehand the human was shown the command, the
+    host (`ep-steep-resonance-…`, guarded by the script) and the read-only check.
+  - **Read-only check, before and after.** It printed only counts, existence and yes/no. The
+    digests were computed in the database, re-hashed and compared inside the script. The state
+    file was deleted afterwards.
+
+    | | Before | After |
+    |---|---|---|
+    | `kb_fragments` | 9 rows | same rows and md5 |
+    | `consent` / `consent_key` | 1 / 1 | **unchanged** (digests equal) |
+    | Agenda configuration | 3/3/5/11/1, 0 closures | **unchanged** (old setting columns included) |
+    | `change_min_lead` | missing | **2 hours** |
+    | Appointments | 1 (the demo one, past) | **unchanged** in their old columns |
+    | `cancelled_at`, `replaced_by` | missing | present, **empty** on every row |
+    | Earlier public functions | 15 (10 of the agenda) | **unchanged** definitions |
+    | `agenda_cancel*`, `agenda_move*` | 0 of 4 | **4 of 4** |
+
+  - **Applied:** `python -m app.infra.schema --database-url-env DIRECT_URL` → "Esquema aplicado en
+    ep-steep-resonance-… (DIRECT_URL)." No «PARA».
   - Show the command, the host and the read-only check, and wait.
   - Run: the check before, the schema on `DIRECT_URL`, the check after.
   - **Stop if** `kb_fragments`, `consent`, `consent_key`, the agenda configuration or the
