@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-22T21:14:52.733Z",
+    "updatedAt": "2026-11-24T18:15:23.718Z",
     "createdAt": "2026-11-19T19:25:14.918Z",
     "id": "v7Bxk8HuE4GQ3lBl",
     "name": "lifecenter-demo-core",
@@ -191,7 +191,9 @@
           }
         },
         "onError": "continueErrorOutput",
-        "retryOnFail": false
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 3000
       },
       {
         "id": "2fdee03d-ee34-43c4-a149-ca0f56a957a4",
@@ -387,15 +389,15 @@
       "builderVariant": "mcp"
     },
     "nodeGroups": [],
-    "versionId": "0b3cb06d-b9cf-4bc4-a044-53b1d4fa42b3",
-    "activeVersionId": "0b3cb06d-b9cf-4bc4-a044-53b1d4fa42b3",
-    "versionCounter": 2,
+    "versionId": "a3682f96-0793-4b94-950e-20fab75f449d",
+    "activeVersionId": "a3682f96-0793-4b94-950e-20fab75f449d",
+    "versionCounter": 3,
     "triggerCount": 0,
     "sourceWorkflowId": null,
     "tags": [],
     "versionMetadata": {
-      "name": "SPEC-007 R4: offer_booking en Validar y componer y Resultado",
-      "description": "offer_booking = true cuando un fragmento citado de una respuesta validada es tarifa o tratamiento (SPEC-001 R14, spec BK6); Resultado lo añade a la lista y lo fuerza a booleano (BK7). Sin Gemini. B sigue recibiendo solo question."
+      "name": "SPEC-001 Q12 (2026-11-24): Gemini reintenta una vez (2 intentos, 3 s)",
+      "description": "Updated nodes: Gemini"
     }
   }
 ]

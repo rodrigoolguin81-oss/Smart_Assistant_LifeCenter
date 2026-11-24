@@ -120,6 +120,11 @@ responsibility.
   → A: A **distinct fixed message** plus the handoff offer, **no retries**, with a configurable
   timeout that fits within the 5 s latency budget. Recorded with its own `reason` so telemetry
   distinguishes "don't know" from "failed".
+  - **Changed by the human on 2026-11-24 (demo):** the «Gemini» node of B retries **once** on
+    failure (n8n «Retry On Fail»: 2 tries, 3 s apart), so a one-off 503 or 429 of the free tier
+    does not end in the error message. If both tries fail, the fixed error message and the handoff
+    offer stay as before (`reason: llm_error`). A failing call can now take up to about 2 × 20 s +
+    3 s, further from NFR-01 (already a demo deviation).
 
 - Q13: Exact abstention wording?
   → A: "Lo siento, no tengo esa información. ¿Quieres que pase tu consulta a recepción?" plus the
