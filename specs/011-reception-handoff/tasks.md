@@ -61,7 +61,26 @@ stale_after: null
     `citas.js`, so a phrase without consent gets `COMPLAINT_NO_CONSENT_TEXT` (RH15) before the
     consent check. `citas.js` does not change: its «Hablar con recepción» buttons (`handoff`) read
     as `handoff:p`.
-- [ ] H2 **[confirmación]**: `007_reception.sql` on the test branch (plan Step 2).
+- [x] H2 **[confirmación]**: `007_reception.sql` on the test branch (plan Step 2).
+  - Done 2026-11-24, after the human saw the summarized SQL, the commands, the host
+    (`ep-blue-firefly-…`) and the warning that steps 2–4 re-apply the schema, and confirmed.
+    **Main was not touched.**
+  - **`tests/infra/test_reception_sql.py`**, written first (27 tests, 33 with parameters; fake
+    chat ids `901001…` and a fake group `-1009010000001`, cleaned before and after; keys never
+    selected): no text and no subject column; `feedback_daily` only counts; `reception_settings`
+    one row and only a supergroup id; the chat id encrypted; `R-`/`Q-` codes, unique; one waiting
+    handoff per patient; opening by the group message id; a failed post; the reply by message id;
+    closing; 30 minutes and 48 hours; C's claim purging; withdrawal; ratings per Madrid day and
+    reason; the public functions; no function returns bytes; re-applying changes nothing.
+  - **`app/infra/sql/007_reception.sql`:** `reception_settings`, `reception_handoffs`,
+    `feedback_daily`, the `handoff_*` and `feedback_*` functions and `reception_chat_id()`.
+    **`006_reminders.sql`:** `reminder_claim_due_at` calls `handoff_purge_at` when it exists (RH20).
+  - **Red** (the re-apply and file tests left out, so nothing was created): **30 failed**, each
+    because a table or function did not exist yet; 0 objects created.
+  - **Schema applied:** "Esquema aplicado en ep-blue-firefly-… (TEST_DATABASE_URL)."
+  - **Green:** 33 passed at the first run. **`tests/infra`: 244 passed.** Afterwards the test
+    branch holds 0 handoffs, settings, ratings, appointments and reminders.
+  - **Limitation recorded** (human): finding a patient decrypts every stored chat id.
 - [ ] H3 **[confirmación]**: `main` (plan Step 3).
 - [ ] H3b **[humano]**: the group id into `reception_settings` with a hidden prompt (plan
   Step 3b).

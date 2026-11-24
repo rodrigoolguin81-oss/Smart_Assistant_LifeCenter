@@ -152,6 +152,9 @@ reception's working hours.
 - The group shows reception's members to each other, and Telegram keeps the group history for
   up to 1 week (the auto-delete timer, D5), outside the 30-day purge of B.
 - The encryption key is in the same database as the chat ids (as in SPEC-009).
+- A patient's handoffs are found by decrypting every stored chat id and comparing (no subject is
+  stored). This is fine with few rows, all deleted within 48 hours; with many it would need a keyed
+  hash column (human, 2026-11-24).
 - The pseudonymized text can still contain a name written in other words, and health data, as in
   SPEC-005.
 - The ratings say nothing about which answer was rated.

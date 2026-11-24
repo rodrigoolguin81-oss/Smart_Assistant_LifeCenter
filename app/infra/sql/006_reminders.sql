@@ -184,6 +184,11 @@ DECLARE
     v_local time;
 BEGIN
     PERFORM agenda_purge();
+    -- SPEC-010 RH20: C also purges the reception handoffs every 15 minutes (007_reception.sql; skipped
+    -- when 007 is not applied).
+    IF to_regprocedure('public.handoff_purge_at(timestamp with time zone)') IS NOT NULL THEN
+        EXECUTE 'SELECT handoff_purge_at($1)' USING p_now;
+    END IF;
     -- One claim at a time: two runs of C never claim the same row (RM16).
     PERFORM pg_advisory_xact_lock(hashtextextended('agenda:reminder_claim', 0));
     SELECT * INTO s FROM agenda_settings;
