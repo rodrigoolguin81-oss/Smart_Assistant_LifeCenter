@@ -1,0 +1,284 @@
+[
+  {
+    "updatedAt": "2026-11-23T23:58:50.515Z",
+    "createdAt": "2026-11-23T23:42:36.205Z",
+    "id": "SRwLvxYjPtnZwXfK",
+    "name": "lifecenter-reminders",
+    "description": "SPEC-009: cada 15 minutos reclama los recordatorios vencidos en Neon, los envía por Telegram y marca el resultado. No guarda ejecuciones.",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "3c4beb94-b329-4499-8ea9-7949c9eadff9",
+        "name": "Cada 15 minutos",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "22101097-5ad6-4844-bcfa-ef219e3078ef",
+        "name": "Reclamar recordatorios",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, chat_id, starts_at, ends_at FROM reminder_claim_due(20, $1)",
+          "options": {
+            "queryReplacement": "1"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "d11a9227-90d5-4232-842b-40869f5ea4c2",
+        "name": "Componer recordatorio",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// SPEC-009 reminders module (specs/010-reminders/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Componer recordatorio» and «Clasificar error» of lifecenter-reminders\n// carry this exact code followed only by their wiring (RM27). No require, no network, no state.\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-23) ---\nconst TEXTS = {\n  REMINDER: 'Recordatorio de LifeCenter: tienes una cita {cuando}, a las {hora}, en {direccion}. Si no puedes venir, puedes cambiarla o anularla aquí.',\n};\nconst LABELS = { ire: 'Iré', cambiar: 'Cambiar', anular: 'Anular', recepcion: 'Hablar con recepción' };\nconst CALLBACK_HANDOFF = 'handoff';\n\n// --- The clinic's address (clarifications Q5): an example value until LifeCenter provides it (DEP-01).\n// To set the real one, change CLINIC_ADDRESS, set CLINIC_ADDRESS_IS_EXAMPLE to false, and paste this\n// file into C's two Code nodes again (keeping their wiring).\nconst CLINIC_ADDRESS = 'Calle de Ejemplo 1, Madrid';\nconst CLINIC_ADDRESS_IS_EXAMPLE = true;\n\n// --- The consent notice version (SPEC-006 C22): the same value as consentimiento.js, checked by a test.\n// C passes it to reminder_claim_due, which skips anyone without consent in force for this version.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Madrid dates: the same rules as citas.js (Q15 of SPEC-007), kept here so C needs no other module ---\nconst WEEKDAYS_LONG = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];\nconst MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre',\n  'octubre', 'noviembre', 'diciembre'];\nfunction madridParts(value) {\n  const parts = new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Europe/Madrid', year: 'numeric', month: 'numeric', day: 'numeric',\n    hour: 'numeric', minute: '2-digit', hourCycle: 'h23',\n  }).formatToParts(new Date(value));\n  const get = (type) => parseInt(parts.find((p) => p.type === type).value, 10);\n  const y = get('year');\n  const mo = get('month');\n  const d = get('day');\n  const weekday = (new Date(Date.UTC(y, mo - 1, d)).getUTCDay() + 6) % 7; // 0 = Monday\n  return { y, mo, d, h: get('hour'), mi: get('minute'), weekday };\n}\nfunction hourOf(value) {\n  const p = madridParts(value);\n  return `${p.h}:${String(p.mi).padStart(2, '0')}`;\n}\nfunction longDate(value, now) {\n  const p = madridParts(value);\n  const year = p.y !== madridParts(now).y ? ` de ${p.y}` : '';\n  return `${WEEKDAYS_LONG[p.weekday]} ${p.d} de ${MONTHS_LONG[p.mo - 1]}${year}`;\n}\n// Whole Madrid calendar days from now's date to value's date (0 = today, 1 = tomorrow).\nfunction madridDayDiff(value, now) {\n  const a = madridParts(value);\n  const b = madridParts(now);\n  return Math.round((Date.UTC(a.y, a.mo - 1, a.d) - Date.UTC(b.y, b.mo - 1, b.d)) / 86400000);\n}\n// {cuándo} of REMINDER_TEXT: «mañana, martes 1 de diciembre», «hoy, …» for a late reminder, or the full date.\nfunction whenText(start, now) {\n  const diff = madridDayDiff(start, now);\n  const date = longDate(start, now);\n  if (diff === 0) return `hoy, ${date}`;\n  if (diff === 1) return `mañana, ${date}`;\n  return `el ${date}`;\n}\n\n// --- The reminder message (RM18): no appointment type; «Iré», «Cambiar», «Anular», reception ---\n// row: what reminder_claim_due returns ({ id, chat_id, starts_at, ends_at }). The callbacks are the ones\n// A understands: bk:i (SPEC-009), bk:x and bk:a (SPEC-008), each with the appointment's start code.\nconst startCode = (start) => Math.round(new Date(start).getTime() / 60000).toString(36);\nfunction composeReminder(row, now) {\n  const code = startCode(row.starts_at);\n  const text = TEXTS.REMINDER\n    .replace('{cuando}', whenText(row.starts_at, now))\n    .replace('{hora}', hourOf(row.starts_at))\n    .replace('{direccion}', CLINIC_ADDRESS);\n  return {\n    text,\n    rows: [\n      [{ text: LABELS.ire, data: `bk:i:${code}` }],\n      [{ text: LABELS.cambiar, data: `bk:x:${code}` }],\n      [{ text: LABELS.anular, data: `bk:a:${code}` }],\n      [{ text: LABELS.recepcion, data: CALLBACK_HANDOFF }],\n    ],\n  };\n}\n\n// --- Telegram errors (RM17; human, 2026-11-24, Q8: better a missing reminder than a duplicate) ---\n// blocked: the patient blocked the bot or the chat is gone (never retried).\n// retry:   only a 429, the one error where Telegram surely did not deliver the message.\n// failed:  anything else (5xx, network, unknown): it may have been delivered, so it is never retried.\nfunction classifySendError(error) {\n  const text = typeof error === 'string' ? error : JSON.stringify(error || {});\n  if (/\\b403\\b|forbidden|blocked by the user|chat not found|user is deactivated/i.test(text)) return 'blocked';\n  if (/(?<![0-9])429(?![0-9])|too many requests/i.test(text)) return 'retry';\n  return 'failed';\n}\n\n// --- The Telegram node's inlineKeyboard, from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Componer recordatorio», SPEC-009 RM18): one message per claimed reminder ---\n// Only rows with an id and a chat id (a Neon failure in the claim gives none); the chat id goes no further than «Enviar recordatorio».\nconst now = new Date().toISOString();\nconst out = [];\n$input.all().forEach((item, index) => {\n  const row = item.json || {};\n  if (!row.id || !row.chat_id) return;\n  const r = composeReminder(row, now);\n  out.push({ json: { id: row.id, chatId: String(row.chat_id), text: r.text, inlineKeyboard: toTelegramKeyboard(r.rows) }, pairedItem: { item: index } });\n});\nreturn out;\n"
+        }
+      },
+      {
+        "id": "85c6e7cc-89f1-466b-a37c-ed82ef047b84",
+        "name": "Enviar recordatorio",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "sendMessage",
+          "chatId": "={{ $json.chatId }}",
+          "text": "={{ $json.text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": {
+            "rows": [
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "={{ $json.inlineKeyboard.rows[0].row.buttons[0].text }}",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.inlineKeyboard.rows[0].row.buttons[0].additionalFields.callback_data }}"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "={{ $json.inlineKeyboard.rows[1].row.buttons[0].text }}",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.inlineKeyboard.rows[1].row.buttons[0].additionalFields.callback_data }}"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "={{ $json.inlineKeyboard.rows[2].row.buttons[0].text }}",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.inlineKeyboard.rows[2].row.buttons[0].additionalFields.callback_data }}"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "={{ $json.inlineKeyboard.rows[3].row.buttons[0].text }}",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.inlineKeyboard.rows[3].row.buttons[0].additionalFields.callback_data }}"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "additionalFields": {
+            "appendAttribution": false,
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "onError": "continueRegularOutput",
+        "webhookId": "9eab4400-2b71-4775-a3e0-44235c59ddf3"
+      },
+      {
+        "id": "a56cb78b-1a44-4928-a6b1-bb191b519dd4",
+        "name": "Clasificar error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-009 reminders module (specs/010-reminders/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Componer recordatorio» and «Clasificar error» of lifecenter-reminders\n// carry this exact code followed only by their wiring (RM27). No require, no network, no state.\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-23) ---\nconst TEXTS = {\n  REMINDER: 'Recordatorio de LifeCenter: tienes una cita {cuando}, a las {hora}, en {direccion}. Si no puedes venir, puedes cambiarla o anularla aquí.',\n};\nconst LABELS = { ire: 'Iré', cambiar: 'Cambiar', anular: 'Anular', recepcion: 'Hablar con recepción' };\nconst CALLBACK_HANDOFF = 'handoff';\n\n// --- The clinic's address (clarifications Q5): an example value until LifeCenter provides it (DEP-01).\n// To set the real one, change CLINIC_ADDRESS, set CLINIC_ADDRESS_IS_EXAMPLE to false, and paste this\n// file into C's two Code nodes again (keeping their wiring).\nconst CLINIC_ADDRESS = 'Calle de Ejemplo 1, Madrid';\nconst CLINIC_ADDRESS_IS_EXAMPLE = true;\n\n// --- The consent notice version (SPEC-006 C22): the same value as consentimiento.js, checked by a test.\n// C passes it to reminder_claim_due, which skips anyone without consent in force for this version.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Madrid dates: the same rules as citas.js (Q15 of SPEC-007), kept here so C needs no other module ---\nconst WEEKDAYS_LONG = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];\nconst MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre',\n  'octubre', 'noviembre', 'diciembre'];\nfunction madridParts(value) {\n  const parts = new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Europe/Madrid', year: 'numeric', month: 'numeric', day: 'numeric',\n    hour: 'numeric', minute: '2-digit', hourCycle: 'h23',\n  }).formatToParts(new Date(value));\n  const get = (type) => parseInt(parts.find((p) => p.type === type).value, 10);\n  const y = get('year');\n  const mo = get('month');\n  const d = get('day');\n  const weekday = (new Date(Date.UTC(y, mo - 1, d)).getUTCDay() + 6) % 7; // 0 = Monday\n  return { y, mo, d, h: get('hour'), mi: get('minute'), weekday };\n}\nfunction hourOf(value) {\n  const p = madridParts(value);\n  return `${p.h}:${String(p.mi).padStart(2, '0')}`;\n}\nfunction longDate(value, now) {\n  const p = madridParts(value);\n  const year = p.y !== madridParts(now).y ? ` de ${p.y}` : '';\n  return `${WEEKDAYS_LONG[p.weekday]} ${p.d} de ${MONTHS_LONG[p.mo - 1]}${year}`;\n}\n// Whole Madrid calendar days from now's date to value's date (0 = today, 1 = tomorrow).\nfunction madridDayDiff(value, now) {\n  const a = madridParts(value);\n  const b = madridParts(now);\n  return Math.round((Date.UTC(a.y, a.mo - 1, a.d) - Date.UTC(b.y, b.mo - 1, b.d)) / 86400000);\n}\n// {cuándo} of REMINDER_TEXT: «mañana, martes 1 de diciembre», «hoy, …» for a late reminder, or the full date.\nfunction whenText(start, now) {\n  const diff = madridDayDiff(start, now);\n  const date = longDate(start, now);\n  if (diff === 0) return `hoy, ${date}`;\n  if (diff === 1) return `mañana, ${date}`;\n  return `el ${date}`;\n}\n\n// --- The reminder message (RM18): no appointment type; «Iré», «Cambiar», «Anular», reception ---\n// row: what reminder_claim_due returns ({ id, chat_id, starts_at, ends_at }). The callbacks are the ones\n// A understands: bk:i (SPEC-009), bk:x and bk:a (SPEC-008), each with the appointment's start code.\nconst startCode = (start) => Math.round(new Date(start).getTime() / 60000).toString(36);\nfunction composeReminder(row, now) {\n  const code = startCode(row.starts_at);\n  const text = TEXTS.REMINDER\n    .replace('{cuando}', whenText(row.starts_at, now))\n    .replace('{hora}', hourOf(row.starts_at))\n    .replace('{direccion}', CLINIC_ADDRESS);\n  return {\n    text,\n    rows: [\n      [{ text: LABELS.ire, data: `bk:i:${code}` }],\n      [{ text: LABELS.cambiar, data: `bk:x:${code}` }],\n      [{ text: LABELS.anular, data: `bk:a:${code}` }],\n      [{ text: LABELS.recepcion, data: CALLBACK_HANDOFF }],\n    ],\n  };\n}\n\n// --- Telegram errors (RM17; human, 2026-11-24, Q8: better a missing reminder than a duplicate) ---\n// blocked: the patient blocked the bot or the chat is gone (never retried).\n// retry:   only a 429, the one error where Telegram surely did not deliver the message.\n// failed:  anything else (5xx, network, unknown): it may have been delivered, so it is never retried.\nfunction classifySendError(error) {\n  const text = typeof error === 'string' ? error : JSON.stringify(error || {});\n  if (/\\b403\\b|forbidden|blocked by the user|chat not found|user is deactivated/i.test(text)) return 'blocked';\n  if (/(?<![0-9])429(?![0-9])|too many requests/i.test(text)) return 'retry';\n  return 'failed';\n}\n\n// --- The Telegram node's inlineKeyboard, from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Clasificar error», SPEC-009 RM17; human 2026-11-24): «Enviar recordatorio» continues on error, so an error arrives as {error} ---\nconst sent = $('Componer recordatorio').item.json;\nconst result = $json.error ? classifySendError($json.error) : 'sent';\nreturn { json: { id: sent.id, result } };\n"
+        }
+      },
+      {
+        "id": "589a9e20-24e8-4c8a-aa1f-538faeb96dc9",
+        "name": "Marcar recordatorio",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT reminder_mark($1::uuid, $2) AS result",
+          "options": {
+            "queryReplacement": "={{ [ $json.id, $json.result ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      }
+    ],
+    "connections": {
+      "Cada 15 minutos": {
+        "main": [
+          [
+            {
+              "node": "Reclamar recordatorios",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reclamar recordatorios": {
+        "main": [
+          [
+            {
+              "node": "Componer recordatorio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Componer recordatorio": {
+        "main": [
+          [
+            {
+              "node": "Enviar recordatorio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar recordatorio": {
+        "main": [
+          [
+            {
+              "node": "Clasificar error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Clasificar error": {
+        "main": [
+          [
+            {
+              "node": "Marcar recordatorio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true,
+      "timezone": "Europe/Madrid",
+      "saveExecutionProgress": false,
+      "saveManualExecutions": false,
+      "saveDataErrorExecution": "none",
+      "saveDataSuccessExecution": "none",
+      "callerPolicy": "none"
+    },
+    "staticData": {
+      "node:Cada 15 minutos": {
+        "recurrenceRules": [
+          null
+        ],
+        "recurrenceRuleSignatures": [
+          null
+        ]
+      }
+    },
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "nodeGroups": [],
+    "versionId": "9b8ccecd-62e7-4075-9cf3-54bb92063448",
+    "activeVersionId": "9b8ccecd-62e7-4075-9cf3-54bb92063448",
+    "versionCounter": 4,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "versionMetadata": {
+      "name": "SPEC-009 N4: flujo C de recordatorios (borrador)",
+      "description": "Created with 6 nodes: Cada 15 minutos, Reclamar recordatorios, Componer recordatorio, Enviar recordatorio, Clasificar error and 1 more"
+    }
+  }
+]

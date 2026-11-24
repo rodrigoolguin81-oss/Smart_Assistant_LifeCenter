@@ -103,6 +103,9 @@ SPEC-006, [specs/006-consent](specs/006-consent/plan.md)):
   answer rules. It receives **only** the pseudonymized `question`, with no chat id and no Telegram
   data. It **saves its executions**, kept for 30 days, so **each message's path is followed in
   the Executions of `lifecenter-demo-core`**.
+- **`lifecenter-reminders` (C, reminders; SPEC-009).** Every 15 minutes it claims the due
+  reminders in Neon, sends each one by Telegram and records the result. It has no webhook and
+  **saves no executions**. See [Reminders](#reminders-spec-009).
 
 ```text
 A  Telegram → Clasificar → ¿Qué ha llegado? ─ handoff button → D8 handoff text
@@ -132,9 +135,10 @@ LLM). Its code is [n8n/code/urgencias.js](n8n/code/urgencias.js), the same code 
 which reports NFR-04 and the false positives, and also checks that the exported node carries the
 same code.
 
-Both workflows are versioned in
-[n8n/workflows/lifecenter-telegram-demo.json](n8n/workflows/lifecenter-telegram-demo.json) (A)
-and [n8n/workflows/lifecenter-demo-core.json](n8n/workflows/lifecenter-demo-core.json) (B). They
+The workflows are versioned in
+[n8n/workflows/lifecenter-telegram-demo.json](n8n/workflows/lifecenter-telegram-demo.json) (A),
+[n8n/workflows/lifecenter-demo-core.json](n8n/workflows/lifecenter-demo-core.json) (B) and
+[n8n/workflows/lifecenter-reminders.json](n8n/workflows/lifecenter-reminders.json) (C). They
 hold no keys: they only reference three n8n credentials by name.
 
 ### Prerequisites
@@ -268,6 +272,18 @@ Changing and cancelling, with consent (SPEC-008; see [Changing and cancelling](#
 | Less than 2 hours before the appointment | «Tu cita es en menos de 2 horas. Para cambiarla o anularla, llama a recepción.» |
 | «Retirar consentimiento» with an appointment | The withdrawal text, then «Sigues teniendo una limpieza el …», with «Anular mi cita», which works without consent |
 | quiero anular la cita, me sangra mucho la encía | The urgency reply: an urgency always wins |
+
+Reminders, with consent (SPEC-009; see [Reminders](#reminders-spec-009)):
+
+| Message | Expected reply |
+|---|---|
+| «Confirmar» a slot 3 hours away or more | «Hecho: tienes …» and «¿Quieres que te recuerde la cita el día antes por aquí?», with «Sí, recuérdamela», «No, gracias», «Cambiar», «Anular» and «Hablar con recepción». Under 3 hours, no question |
+| «Sí, recuérdamela» | «De acuerdo, te la recordaré el día antes.», the view and «Te recordaré la cita el día antes.», with «No quiero recordatorio» |
+| «No, gracias» | «De acuerdo, no te enviaré recordatorio.» and the view, with «Recordármela el día antes» |
+| `/micita` | The view with the reminder line and «No quiero recordatorio», or with «Recordármela el día antes» (only 3 hours ahead or more) |
+| The reminder (from C, the day before, 9:00–21:00) | «Recordatorio de LifeCenter: tienes una cita mañana, …, a las …, en …», with «Iré», «Cambiar», «Anular» and «Hablar con recepción» |
+| «Iré» | «Gracias, te esperamos.» with «Cambiar», «Anular» and «Hablar con recepción» |
+| «Retirar consentimiento» with a reminder | The withdrawal text, and «No te enviaré recordatorios.» |
 
 To set the clinic's real urgency phone, change `URGENCY_PHONE` (and set `URGENCY_PHONE_IS_EXAMPLE`
 to `false`) at the top of `n8n/code/urgencias.js`. Then paste the file into the "Detectar
@@ -503,30 +519,77 @@ did not change.
 - If Neon fails at «Sí, anular» or «Confirmar cambio», the reply cannot tell whether it was saved.
   `/micita` tells.
 
+### Reminders (SPEC-009)
+
+Patients can ask for a Telegram reminder the day before their appointment. See
+[specs/010-reminders](specs/010-reminders/spec.md) and the [Try it](#try-it) rows.
+
+**Opt-in:** a separate question right after «Hecho: tienes…», only for an appointment 3 hours
+away or more. It can be added or removed from «Mi cita». All the reminder buttons need consent.
+Withdrawing the general consent deletes the reminder (`reminder_forget`).
+
+**Sending (workflow C):**
+- every 15 minutes, `reminder_claim_due` claims the due reminders: 24 hours before
+  (`reminder_lead`), never between 21:00 and 9:00 Madrid (`reminder_quiet_from` /
+  `reminder_quiet_to`), and never with less than the 2-hour change notice left. A reminder missed
+  while n8n was off is sent late, inside that window;
+- the claim skips anyone without consent in force for the current notice version
+  (`CONSENT_TEXT_VERSION`, in `recordatorios.js` and checked against `consentimiento.js`);
+- the message has no appointment type, and its buttons are A's: «Iré» (`bk:i`, sets
+  `attendance_confirmed_at`), «Cambiar», «Anular» and «Hablar con recepción»;
+- each reminder is sent **at most once**. Telegram 403 or «chat not found» → `blocked`; **only a
+  429 is retried** (up to 3 attempts); a 5xx, a network error or anything else → `failed`,
+  because the message may have been delivered. A row left in `sending` for an hour becomes
+  `failed`.
+
+**Data:** `agenda_reminders` holds the chat id **encrypted** with pgcrypto (`reminder_key`), and
+only while the reminder is open: it is wiped when it is sent, blocked, failed or skipped. Moving
+the appointment moves its reminder, and cancelling deletes it (a deferred trigger).
+
+**Where it runs:** A, C and Neon only, with the SQL in
+[`app/infra/sql/006_reminders.sql`](app/infra/sql/006_reminders.sql), tested by
+`tests/infra/test_reminders_sql.py` (test branch only). C's code is
+[`n8n/code/recordatorios.js`](n8n/code/recordatorios.js), tested by
+`node n8n/code/recordatorios.test.js`. B and Gemini are not involved, and B did not change.
+
+**Limitations:**
+- The clinic's address in the text is an example (`CLINIC_ADDRESS`, DEP-01).
+- The encryption key is in the same database as the chat ids, like the consent HMAC key. In
+  production it would live outside the database.
+- n8n must be running: a reminder is sent late only while the 2-hour window is open.
+- A's transient window (SPEC-005) also applies to the reminder buttons. C keeps no execution, but
+  n8n may write its running execution, with the chat id, for a few minutes.
+- The reminder settings are example values (DEP-03). The legal basis is pending DEP-04, so real
+  patients stay blocked.
+
 ### Export after changing the workflow
 
 ```bash
 n8n export:workflow --id=<A id> --output=n8n/workflows/lifecenter-telegram-demo.json --pretty
 n8n export:workflow --id=<B id> --output=n8n/workflows/lifecenter-demo-core.json --pretty
-# Drop the owner block ("shared": project name and e-mail) and "pinData" from both before committing:
-for f in n8n/workflows/lifecenter-telegram-demo.json n8n/workflows/lifecenter-demo-core.json; do
+n8n export:workflow --id=<C id> --output=n8n/workflows/lifecenter-reminders.json --pretty
+# Drop the owner block ("shared": project name and e-mail) and "pinData" from all three before committing:
+for f in n8n/workflows/lifecenter-telegram-demo.json n8n/workflows/lifecenter-demo-core.json n8n/workflows/lifecenter-reminders.json; do
   python -c "import json,sys;p=sys.argv[1];d=json.load(open(p,encoding='utf-8'));[(w.pop('shared',None),w.pop('pinData',None)) for w in d];open(p,'w',encoding='utf-8',newline='\n').write(json.dumps(d,ensure_ascii=False,indent=2)+'\n')" "$f"
 done
 # Must print nothing:
 grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/*.json
 # The urgency test checks that "Detectar urgencia" in B and in A carries n8n/code/urgencias.js,
 # the consent test that A's "Clasificar" and "Decidir" carry n8n/code/consentimiento.js, and the
-# booking test that A's four booking Code nodes carry n8n/code/citas.js:
+# booking test that A's four booking Code nodes carry n8n/code/citas.js, and the reminder test
+# that C's two Code nodes carry n8n/code/recordatorios.js:
 node n8n/code/urgencias.test.js
 node n8n/code/consentimiento.test.js
 node n8n/code/citas.test.js
+node n8n/code/recordatorios.test.js
 ```
 
 Export only after **publishing**, and check that the draft is the published version: the
 exports in git are the rollback copy.
 
 The consent and booking SQL is tested against the Neon test branch only:
-`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py tests/infra/test_move_cancel_sql.py`.
+`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py tests/infra/test_move_cancel_sql.py tests/infra/test_reminders_sql.py`.
+Some of these tests re-apply the whole schema to the test branch.
 
 ## Git rule
 

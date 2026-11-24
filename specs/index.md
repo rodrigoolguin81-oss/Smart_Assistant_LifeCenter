@@ -194,12 +194,33 @@ stale_after: null
     The text has no appointment type. Its buttons are «Iré», «Cambiar», «Anular» and «Hablar
     con recepción».
   - **Where it runs:** A and C with Neon only. No B, no Gemini, and C saves no executions.
-  - **Status: specified** (2026-11-23; clarifications, spec, plan and tasks verified by the
-    human; N0–N6 pending).
-  - [clarifications](./010-reminders/clarifications.md), Q1–Q15
+  - **Sending rule** (human, 2026-11-24): only a Telegram 429 is retried; a 5xx or a network
+    error becomes `failed`, because the message may have been delivered. Better a missing
+    reminder than a duplicate.
+  - **Status: implemented for the demo** (2026-11-24; N0–N6 done), with the **real reminder
+    still pending**, like the clinical review of SPEC-003. Tested through:
+    - the Node tests;
+    - 41 SQL tests on the test branch: the deferred trigger with the real moves and cancels,
+      two claims at once, consent at sending, and the chat id wiped in every final state;
+    - `main` checked before and after (N3 and N4b);
+    - 38 pinned runs of A and C;
+    - the Telegram test of the opt-in, «Sí» and «No», the «Mi cita» view, and removing and
+      adding the reminder.
+
+    **Pending:** the reminder actually arriving, and «Iré», «Cambiar» and «Anular» tapped from
+    it. The clinic's address and the reminder settings are example data until DEP-01 and DEP-03;
+    the legal basis is pending DEP-04, so real patients stay blocked.
+  - [clarifications](./010-reminders/clarifications.md), Q1–Q15 and the decisions of 2026-11-24
   - [spec](./010-reminders/spec.md), RM1–RM33
-  - [plan](./010-reminders/plan.md)
-  - [tasks](./010-reminders/tasks.md)
+  - [plan](./010-reminders/plan.md) — Steps 0–6
+  - [tasks](./010-reminders/tasks.md) — N0–N6 (and N4b)
+  - Code: [`n8n/code/recordatorios.js`](../n8n/code/recordatorios.js) (C) ·
+    [`n8n/code/citas.js`](../n8n/code/citas.js) (A) · test `node n8n/code/recordatorios.test.js` ·
+    SQL [`app/infra/sql/006_reminders.sql`](../app/infra/sql/006_reminders.sql), tested by
+    `tests/infra/test_reminders_sql.py` (test branch only)
+  - Workflows: A, [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json),
+    and C, [`n8n/workflows/lifecenter-reminders.json`](../n8n/workflows/lifecenter-reminders.json);
+    B unchanged
 
 Pending (not yet scaffolded): the remaining PRD stories (US-007 and US-008, and the reception
 panel, RF-007) per `docs/03-prd.md` §11.

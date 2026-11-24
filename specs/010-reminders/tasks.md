@@ -4,7 +4,7 @@ spec_id: SPEC-009
 title: reminders — Task Breakdown
 description: Ordered, test-first tasks for reminders — read-only preflight (hosts, «Neon main», A and B as published, pgcrypto, no workflow C yet), the JS modules, 006_reminders.sql on the test branch and main, C and A through the MCP with pinned data, the daytime Telegram test, and exports and docs.
 tags: [tasks, reminders, SPEC-009]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
 verified: { by: human, at: 2026-11-23T00:00:00Z }
@@ -242,7 +242,27 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
     `attendance_confirmed_at` and `agenda_reminders` still empty; the trigger and the other 35
     public functions unchanged; `reminder_mark_at` the only function changed, now accepting
     `failed`. The digest file was deleted.
-- [ ] N5 **[humano]**: Publish **C, then A**, and test from Telegram (plan Step 5; RM31).
+- [x] N5 **[humano]**: Publish **C, then A**, and test from Telegram (plan Step 5; RM31).
+  - **Closed 2026-11-24 by the human, with the real reminder still pending** (like U5 of
+    SPEC-003).
+  - **Tested from Telegram by the human:**
+    - the question after «Hecho: tienes…»;
+    - «Sí, recuérdamela» and «No, gracias»;
+    - the «Mi cita» view with and without a reminder;
+    - removing and adding the reminder.
+  - **Tested with pinned data in N4:** the sending, the text with no type, the 4 buttons, «Iré»,
+    403, 429, and the Neon failures.
+  - **Checked read-only on `main` at 09:41 Madrid** (no subject or chat id printed): the
+    appointment (cleaning, Wednesday 25/11 16:00, `booked`, no «Iré»), and its reminder
+    `pending`, due 24/11 16:00 (in the future), 0 attempts, chat id stored encrypted. It is the
+    only reminder.
+  - **Pending:**
+    - the real reception of the reminder (due 24/11 16:00; with n8n off until 18:00, C sends it
+      at its first run after that, still inside the send window);
+    - «Iré», «Cambiar» and «Anular» tapped from the reminder itself.
+
+    When it arrives, the agent checks read-only that the row is `sent` with the chat id wiped,
+    and, after «Iré», that `attendance_confirmed_at` is set.
   - **2026-11-24, first part (night):**
     - The human published C (`9b8ccecd…`) and A (`eb46a1e6…`), the versions checked in N4, and
       at 01:13 Madrid booked a cleaning for Wednesday 25/11 at 16:00 with a reminder.
@@ -259,7 +279,29 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
   - The agent checks, read-only with no subject or chat id printed, the reminder rows,
     `attendance_confirmed_at`, and that A and C saved no executions and B received only
     `question`.
-- [ ] N6: Exports and docs (plan Step 6; RM33).
+- [x] N6: Exports and docs (plan Step 6; RM33).
+  - Done 2026-11-24.
+  - **Exports**, from the published versions, without `shared` and `pinData`:
+    - A (`eb46a1e6…`) and C (`9b8ccecd…`, the new file `lifecenter-reminders.json`): draft =
+      published, and their nodes and connections equal the published version in n8n's
+      `workflow_history`;
+    - B (`0b3cb06d…`): byte for byte equal to its export in git, so it is not in the commit.
+  - **Tests:**
+    - the four Node tests are green, and their sync checks now run against A and C (no skip
+      left);
+    - `pytest`: **381 passed**. Following the human's rule of 2026-11-24, the 11 tests that
+      re-apply the schema on the test branch were left out (the 9 re-apply tests and the kb
+      tests whose ingest re-applies it). The schema did not change since N4, where the full
+      run gave 434 passed.
+  - **Scan of the diff:**
+    - checked against the `.env` values, both full Neon hosts, git's name and e-mail, and the
+      consent and reminder keys (in memory only);
+    - every 5–12 digit number was checked against the consent subjects of `main`, to catch a
+      real Telegram id;
+    - **no finding**, apart from a node UUID that matched the chat id pattern (a false
+      positive).
+  - **Docs:** the README (C, the «Reminders» section, the Try it rows, the export and the tests),
+    `specs/index.md`, and spec, plan and tasks marked implemented.
   - Export A and C from their published versions, without `shared` and `pinData`. C is a new
     file. Check that B's export is still its published version.
   - Run the scan (including both full Neon hosts), every Node test and `pytest`.

@@ -4,7 +4,7 @@ spec_id: SPEC-009
 title: reminders — Functional Spec
 description: Requirements for a Telegram reminder the day before each appointment (US-006, RF-006, CONF-005) — a separate opt-in after booking, the chat id encrypted in its own table and deleted as soon as it is not needed, a generic text with no health data, the «Iré», «Cambiar» and «Anular» buttons, a scheduled workflow C that sends each reminder exactly once, outside quiet hours and never with less than 2 hours left, and the effect of moves, cancellations, consent withdrawal and a blocked bot. No B, no Gemini. EARS notation.
 tags: [spec, reminders, SPEC-009, US-006, RF-006, CONF-005, SPEC-004, SPEC-006, SPEC-007, SPEC-008]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../007-agenda/spec.md, ../008-booking/spec.md, ../009-move-cancel/spec.md, ../006-consent/spec.md, ../005-pseudonymized-log/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
 verified: { by: human, at: 2026-11-23T00:00:00Z }

@@ -4,7 +4,7 @@ spec_id: SPEC-009
 title: reminders — Technical Plan
 description: How to build reminders — read-only preflight (hosts, «Neon main», A and B as published, pgcrypto, no workflow C yet), recordatorios.js and the citas.js extension test-first, 006_reminders.sql (tables, key, trigger, claim) on the test branch then main, the new scheduled workflow C and A's changes through the MCP with pinned data, the daytime Telegram test, and exports and docs. B does not change.
 tags: [plan, reminders, SPEC-009, n8n, neon]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md, ../009-move-cancel/plan.md, ../008-booking/plan.md, ../006-consent/plan.md]
 generated: { by: claude-code, at: 2026-11-23T00:00:00Z }
 verified: { by: human, at: 2026-11-23T00:00:00Z }
