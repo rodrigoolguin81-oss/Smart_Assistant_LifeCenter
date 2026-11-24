@@ -12,6 +12,26 @@ stale_after: null
 
 # Specs Index
 
+## Estado final (2026-11-24)
+
+The phases come from the project roadmap (Whiteboard).
+
+- **Phase 1, the assistant's base — implemented:** SPEC-002 (RAG retrieval), SPEC-001 (answers
+  with Gemini; tasks T8–T16 paused), CHG-001 (migration to n8n), SPEC-003 (urgencies; clinical
+  review U5 pending), SPEC-005 (pseudonymized log), SPEC-006 (consent).
+- **Phase 2, appointments — implemented:** SPEC-004 (agenda), SPEC-007 (booking), SPEC-008 (move
+  and cancel), SPEC-009 (reminders).
+- **Phase 3, reception — implemented:** SPEC-010 (handoff through a Telegram group, complaints and
+  ratings).
+- **Phase 4, quality — out of the bootcamp's scope:** evals of NFR-03, NFR-05, NFR-06, NFR-01 and
+  NFR-02, and a larger knowledge base.
+- **Phase 5, production — out of the bootcamp's scope:** a paid Gemini plan, a server, the
+  clinic's real data, and DEP-04.
+
+**Phases 1–3 are implemented and tested in real for the demo.** The bot stays **blocked for real
+patients** until DEP-04 (consent, pseudonymization and retention policy) and the clinical review
+(SPEC-003 U5).
+
 - [constitution](./constitution.md) — project-wide principles, constraints and conventions.
 - **001-rag-retrieval** — knowledge base indexing and lexical retrieval (PRD `RF-001`, `RF-002`,
   traceability row **SPEC-002**) — **implemented** (2026-11-12; tasks T0–T11 done, R1–R11):
@@ -197,18 +217,17 @@ stale_after: null
   - **Sending rule** (human, 2026-11-24): only a Telegram 429 is retried; a 5xx or a network
     error becomes `failed`, because the message may have been delivered. Better a missing
     reminder than a duplicate.
-  - **Status: implemented for the demo** (2026-11-24; N0–N6 done), with the **real reminder
-    still pending**, like the clinical review of SPEC-003. Tested through:
+  - **Status: implemented for the demo and tested in real** (2026-11-24; N0–N6 done). Tested
+    through:
     - the Node tests;
     - 41 SQL tests on the test branch: the deferred trigger with the real moves and cancels,
       two claims at once, consent at sending, and the chat id wiped in every final state;
     - `main` checked before and after (N3 and N4b);
     - 38 pinned runs of A and C;
-    - the Telegram test of the opt-in, «Sí» and «No», the «Mi cita» view, and removing and
-      adding the reminder.
+    - the Telegram test of the opt-in, «Sí» and «No», the «Mi cita» view, removing and adding the
+      reminder, the reminder actually arriving (no appointment type) and «Iré».
 
-    **Pending:** the reminder actually arriving, and «Iré», «Cambiar» and «Anular» tapped from
-    it. The clinic's address and the reminder settings are example data until DEP-01 and DEP-03;
+    The clinic's address and the reminder settings are example data until DEP-01 and DEP-03;
     the legal basis is pending DEP-04, so real patients stay blocked.
   - [clarifications](./010-reminders/clarifications.md), Q1–Q15 and the decisions of 2026-11-24
   - [spec](./010-reminders/spec.md), RM1–RM33
@@ -233,16 +252,16 @@ stale_after: null
   - **Data:** the chat id encrypted with the SPEC-009 key in its own table, with no message text;
     the group id only in Neon (`reception_settings`); the group's auto-delete at 1 week.
   - **Where it runs:** A and Neon. B does not change; C's nodes do not change.
-  - **Status: implemented for the demo** (2026-11-24; H0–H6 done), with the real `/queja` and
-    rating tests still pending. Tested through:
+  - **Status: implemented for the demo and tested in real** (2026-11-24; H0–H6 done). Tested
+    through:
     - the Node tests (complaint phrases 16/16 and 0/16);
     - 33 SQL tests on the test branch; `main` checked before and after (H3);
     - 20 pinned runs of A;
     - the Telegram test of a real handoff (R-U4RK): confirmation, message, the group post with its
-      reason and «Cerrar», the reply forwarded to the patient, closing, and a group message ignored.
+      reason and «Cerrar», the reply forwarded to the patient, closing, and a group message ignored;
+      `/queja` (Q-RHWR), an urgency passed to reception (R-NUJ5), and 👍.
 
-    **Pending:** `/queja` and 👍/👎 from Telegram (Gemini answered 503 during the test). The group's
-    1-week auto-delete is a known limitation; real patients stay blocked until DEP-04.
+    The group's 1-week auto-delete is a known limitation; real patients stay blocked until DEP-04.
   - [clarifications](./011-reception-handoff/clarifications.md), D1–D5 and P1–P15
   - [spec](./011-reception-handoff/spec.md), RH1–RH24
   - [plan](./011-reception-handoff/plan.md) — Steps 0–6

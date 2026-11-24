@@ -158,8 +158,18 @@ stale_after: null
     (closed and deleted), 0 handoffs, ratings 0/0, the group stored. A's executions 364, 367,
     369–375 and C's 366 are the SPEC-005 transient records.
   - With pinned data in H4: the 17 scenarios (20 runs).
-  - **Pending in real:** `/queja` and the complaint phrase, and 👍/👎 (Gemini was down). A consent
-    notice in the group from 13:18, before the new A was published, was not tapped.
+  - **Rest of the real test, 2026-11-24 (evening), by the human**, after B's Gemini node got one
+    retry (SPEC-001 Q12, changed that day) and answered again:
+    - `/queja` → Q-RHWR posted in the group, the reply reached the patient, closed;
+    - 👍 on an answered reply; an urgency passed to reception (R-NUJ5) and its reply after
+      closing;
+    - **checked read-only on `main`** (no chat id or group id printed): B 384 `answered` and 394
+      `urgency`, both receiving only `question`; `feedback_daily` 24/11 `answered` 1 up, 0 down.
+      Q-RHWR and R-NUJ5 were still open at the first check, because «Cerrar» had not been tapped
+      on them; the human tapped it (A's records 398–399, «Cerrar» in the group, 18:34 UTC) and
+      **both were deleted**: 0 handoffs left.
+  - A consent notice in the group from 13:18, before the new A was published, was not tapped.
+    **Nothing is pending.**
 - [x] H6: Exports and docs (plan Step 6).
   - Done 2026-11-24. A exported from its published version (`ba5413f3…`, equal to n8n's
     `workflow_history`), without `shared` and `pinData`; B and C byte for byte equal to git.

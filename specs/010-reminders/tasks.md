@@ -256,13 +256,12 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
     appointment (cleaning, Wednesday 25/11 16:00, `booked`, no «Iré»), and its reminder
     `pending`, due 24/11 16:00 (in the future), 0 attempts, chat id stored encrypted. It is the
     only reminder.
-  - **Pending:**
-    - the real reception of the reminder (due 24/11 16:00; with n8n off until 18:00, C sends it
-      at its first run after that, still inside the send window);
-    - «Iré», «Cambiar» and «Anular» tapped from the reminder itself.
-
-    When it arrives, the agent checks read-only that the row is `sent` with the chat id wiped,
-    and, after «Iré», that `attendance_confirmed_at` is set.
+  - **Real reminder, 2026-11-24 (evening), tested by the human:** the reminder arrived with no
+    appointment type, and «Iré» answered. **Checked read-only on `main`** (no subject or chat id
+    printed): the reminder `sent` on 24/11 at 19:26 Madrid at the first attempt, its chat id
+    wiped; the appointment (25/11 16:00, `booked`) with `attendance_confirmed_at` 24/11 19:30.
+    «Cambiar» and «Anular» from the reminder are the SPEC-008 steps, tested in real in SPEC-008
+    M5 and here with pinned data (N4). **Nothing is pending.**
   - **2026-11-24, first part (night):**
     - The human published C (`9b8ccecd…`) and A (`eb46a1e6…`), the versions checked in N4, and
       at 01:13 Madrid booked a cleaning for Wednesday 25/11 at 16:00 with a reminder.

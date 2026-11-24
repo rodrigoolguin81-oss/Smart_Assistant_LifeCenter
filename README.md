@@ -6,6 +6,26 @@ appointments on a project-owned schedule — offloading repetitive queries from 
 escalating anything clinical, urgent, or a complaint to a human. See `docs/01-charter.md` and
 `docs/03-prd.md` for the full charter and PRD.
 
+## Estado final (2026-11-24)
+
+The phases come from the project roadmap (Whiteboard).
+
+- **Phase 1, the assistant's base — implemented:** SPEC-002 (RAG retrieval), SPEC-001 (answers
+  with Gemini; tasks T8–T16 paused), CHG-001 (migration to n8n), SPEC-003 (urgencies; clinical
+  review U5 pending), SPEC-005 (pseudonymized log), SPEC-006 (consent).
+- **Phase 2, appointments — implemented:** SPEC-004 (agenda), SPEC-007 (booking), SPEC-008 (move
+  and cancel), SPEC-009 (reminders).
+- **Phase 3, reception — implemented:** SPEC-010 (handoff through a Telegram group, complaints and
+  ratings).
+- **Phase 4, quality — out of the bootcamp's scope:** evals of NFR-03, NFR-05, NFR-06, NFR-01 and
+  NFR-02, and a larger knowledge base.
+- **Phase 5, production — out of the bootcamp's scope:** a paid Gemini plan, a server, the
+  clinic's real data, and DEP-04.
+
+**Phases 1–3 are implemented and tested in real for the demo.** The bot stays **blocked for real
+patients** until DEP-04 (consent, pseudonymization and retention policy) and the clinical review
+(SPEC-003 U5). See [specs/index.md](specs/index.md) for each spec.
+
 ## How we work (Spec-Driven Development)
 
 This repo follows SDD:
