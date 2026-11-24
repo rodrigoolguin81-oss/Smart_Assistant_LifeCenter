@@ -81,7 +81,20 @@ stale_after: null
   - **Green:** 33 passed at the first run. **`tests/infra`: 244 passed.** Afterwards the test
     branch holds 0 handoffs, settings, ratings, appointments and reminders.
   - **Limitation recorded** (human): finding a patient decrypts every stored chat id.
-- [ ] H3 **[confirmación]**: `main` (plan Step 3).
+- [x] H3 **[confirmación]**: `main` (plan Step 3).
+  - Done 2026-11-24 at 12:30 Madrid (before the SPEC-009 reminder at 16:00, so its row could not
+    change between the checks), after the human saw the commands, the host
+    (`ep-steep-resonance-…`, `DIRECT_URL`), the warning that step 2 re-applies the schema, and
+    the read-only check, tried first on the test branch, and confirmed.
+  - **Before** (read-only): `kb_fragments` 9, `consent` 1, `consent_key` 1, `reminder_key` 1;
+    5 appointments, 1 reminder; 36 public functions; no reception tables or functions, and C's
+    claim did not purge handoffs.
+  - **Schema applied:** "Esquema aplicado en ep-steep-resonance-… (DIRECT_URL)."
+  - **After**, every check «sí»: `kb_fragments`, `consent`, both keys (digests, never read), the
+    whole agenda configuration, every column of the appointments and of the reminders, the trigger
+    and the other 35 public functions unchanged; `reception_settings`, `reception_handoffs` and
+    `feedback_daily` created and empty; the 19 new functions; `reminder_claim_due_at` changed and
+    purging the handoffs. The digest file was deleted.
 - [ ] H3b **[humano]**: the group id into `reception_settings` with a hidden prompt (plan
   Step 3b).
 - [ ] H4: A through the MCP, with pinned data (plan Step 4).
