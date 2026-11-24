@@ -95,8 +95,16 @@ stale_after: null
     and the other 35 public functions unchanged; `reception_settings`, `reception_handoffs` and
     `feedback_daily` created and empty; the 19 new functions; `reminder_claim_due_at` changed and
     purging the handoffs. The digest file was deleted.
-- [ ] H3b **[humano]**: the group id into `reception_settings` with a hidden prompt (plan
+- [x] H3b **[humano]**: the group id into `reception_settings` with a hidden prompt (plan
   Step 3b).
+  - Done 2026-11-24 by the human, at 13:22 Madrid, with the scratchpad script `h3b_grupo.py`
+    (asks twice with `getpass`, checks the `-100…` form, writes, reads back in memory). Its only
+    output: «guardado en reception_settings: sí | filas: 1».
+  - The human set up the group: a supergroup, not in public search, auto-delete 1 week,
+    restricted content, the bot as administrator. The Funnel is active again.
+  - **Checked read-only by the agent, without printing the id:** 1 row, the `-100…` form (14
+    characters), `reception_chat_id()` returns a value, 0 handoffs. The id is not in the repo, the
+    chat, a log or n8n.
 - [ ] H4: A through the MCP, with pinned data (plan Step 4).
 - [ ] H5 **[humano]**: the auto-delete timer (1 week), publish A, Telegram test (plan Step 5).
 - [ ] H6: Exports and docs (plan Step 6).
