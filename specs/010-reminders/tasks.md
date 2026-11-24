@@ -229,7 +229,31 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
     - no pinned data in A, B or C;
     - B intact;
     - the exact list of executions for the human to delete.
+- [x] N4b **[confirmación]**: `reminder_mark` accepting `failed` on `main` (decision of 2026-11-24).
+  - Done 2026-11-24, after the human saw the commands, the host (`ep-steep-resonance-…`,
+    `DIRECT_URL`) and the read-only check, and confirmed. The check was first tried on the test
+    branch, read-only, only to validate its queries.
+  - **Before** (read-only): `kb_fragments` 9, `consent` 1, `consent_key` 1, `reminder_key` 1;
+    4 appointments, none with «Iré»; `agenda_reminders` 0; 36 public functions;
+    `reminder_mark` did not accept `failed`.
+  - **Schema applied:** "Esquema aplicado en ep-steep-resonance-… (DIRECT_URL)."
+  - **After** (read-only), every check «sí»: `kb_fragments`, `consent`, both keys (digests, never
+    read), the whole agenda configuration and every column of the appointments unchanged;
+    `attendance_confirmed_at` and `agenda_reminders` still empty; the trigger and the other 35
+    public functions unchanged; `reminder_mark_at` the only function changed, now accepting
+    `failed`. The digest file was deleted.
 - [ ] N5 **[humano]**: Publish **C, then A**, and test from Telegram (plan Step 5; RM31).
+  - **2026-11-24, first part (night):**
+    - The human published C (`9b8ccecd…`) and A (`eb46a1e6…`), the versions checked in N4, and
+      at 01:13 Madrid booked a cleaning for Wednesday 25/11 at 16:00 with a reminder.
+    - Checked read-only at 01:18 (no subject or chat id printed): 5 appointments (2 `booked`,
+      3 `cancelled`), and 1 reminder `pending`, due 24/11 at 16:00, 0 attempts, with the chat
+      id stored encrypted.
+    - A left 4 production records (318–321, 01:14:54–01:15:34 Madrid). This is the known
+      SPEC-005 limitation: n8n keeps a temporary record for about 15 minutes even though A
+      saves no executions, then deletes it (as in SPEC-007 R7 and SPEC-008 M0). Checked
+      read-only at 01:31: **318–321 are gone, with no data left**, and A and C have no
+      execution. Nothing was deleted by hand.
   - In daytime (outside 21:00–9:00 Madrid), with n8n running, on an appointment booked more than
     3 hours ahead.
   - The agent checks, read-only with no subject or chat id printed, the reminder rows,
