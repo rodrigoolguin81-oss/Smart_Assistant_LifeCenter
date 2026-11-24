@@ -239,7 +239,7 @@ DECLARE
     a agenda_appointments;
     v_min interval;
 BEGIN
-    IF p_result NOT IN ('sent', 'blocked', 'retry') THEN
+    IF p_result NOT IN ('sent', 'blocked', 'retry', 'failed') THEN
         RAISE EXCEPTION 'reminder_mark: unknown result %', p_result;
     END IF;
     SELECT * INTO r FROM agenda_reminders x WHERE x.id = p_id AND x.status = 'sending' FOR UPDATE;
@@ -247,6 +247,11 @@ BEGIN
     IF p_result = 'sent' THEN
         UPDATE agenda_reminders x SET status = 'sent', sent_at = p_now, chat_id_enc = NULL WHERE x.id = p_id;
         RETURN 'sent';
+    END IF;
+    -- Human, 2026-11-24 (Q8): a 5xx or a network error may have been delivered: never retried.
+    IF p_result = 'failed' THEN
+        UPDATE agenda_reminders x SET status = 'failed', chat_id_enc = NULL WHERE x.id = p_id;
+        RETURN 'failed';
     END IF;
     IF p_result = 'blocked' THEN
         UPDATE agenda_reminders x SET status = 'blocked', chat_id_enc = NULL WHERE x.id = p_id;

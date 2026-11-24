@@ -174,7 +174,51 @@ Same pattern as SPEC-008. **Nothing is touched before the plan is approved.**
   - Run: the check before, the schema on `DIRECT_URL`, the check after.
   - **Stop if** `kb_fragments`, `consent`, `consent_key`, the agenda configuration or the
     appointments changed.
-- [ ] N4: C (new) and A, with pinned data (plan Step 4; RM1–RM23, RM30).
+- [x] N4: C (new) and A, with pinned data (plan Step 4; RM1–RM23, RM30).
+  - Done 2026-11-24 on drafts. **Nothing was published:** A is still published at `7c3d4100…`, C
+    (`SRwLvxYjPtnZwXfK`) has never been published, and **B was not touched** (`0b3cb06d…`).
+  - **Human decisions before N4** (recorded in the clarifications and the spec, RM17):
+    - only a 429 is retried; a 5xx, a network error or anything else becomes `failed`;
+    - «Enviar recordatorio» uses `continueRegularOutput`, and «Clasificar error» decides;
+    - `CONSENT_TEXT_VERSION` is in `recordatorios.js` too, checked against `consentimiento.js`.
+  - **Test first:**
+    - `recordatorios.test.js`: the new `classifySendError` cases (500, 502, network, other 400,
+      unknown → `failed`; «4290 ms» is not a 429) and the version check. **Red: 2 checks**,
+      then green. The sync check of C now also checks that the claim passes the version.
+    - `test_reminders_sql.py`: `reminder_mark(…, 'failed')` wipes the chat id and is never
+      claimed again, and an unknown result is rejected. **Red: 1 test**, because
+      `reminder_mark` rejected `failed`.
+  - **`006_reminders.sql`:** `reminder_mark` accepts `failed`. On the test branch it was applied
+    by the full `pytest` run (its re-apply tests call `apply_schema`). **Not yet on `main`.**
+  - **Queries tried first on the test branch** (fake ids `900971–900974`, cleaned up, then 0
+    appointments, 0 reminders, 0 consent rows): `has_reminder` in «Consultar agenda»;
+    «Recordatorio» (`set` twice, `confirmed`, `already`, `not_found` on an old start or another
+    patient, `cleared`), which sees its own write; `had_reminder` in «Cita tras retirar»; the claim
+    (0 rows in quiet hours; 1 row with the decrypted chat id; no consent → `skipped`) and the mark
+    (429 → `pending` and claimed again 15 minutes later, then `sent`, `ignored`, `blocked`).
+  - **Built through the MCP** from a script that generates the code from the repo files: C with
+    the Workflow SDK (6 nodes), A in 5 updates (41 nodes). A CLI export showed every Code node
+    identical to its module plus its wiring, the queries as tried, the connections as planned,
+    the other 33 nodes of A and its settings unchanged, and C saving no execution.
+  - **38 pinned runs** (A4 extension; A ids `900951–900976`, C chat ids `900981–900991`), all as
+    planned:
+    - **C (12):** nothing due; «mañana»; «hoy»; two at once; one returned after the other was
+      skipped for consent; 403 and «chat not found» → `blocked`; 429 → `retry`; 500 and
+      `ETIMEDOUT` → `failed`; a Neon failure in the claim (nothing sent) and in the mark. Every
+      message has no type and 4 buttons (callbacks of at most 10 bytes), and the mark never
+      carries the chat id.
+    - **A (26):** the offer at 3 h or more (5 rows) and none at 2 h 59; `bk:ry` (`set`,
+      `too_late`, old button); `bk:rn`; `bk:rq` (`cleared`, old button); `bk:i` (`confirmed`,
+      `already`, old appointment); `/micita` with a reminder, without one, and under 3 h; a Neon
+      failure in «Recordatorio» → D7; «Cambiar» and «Anular» from a reminder; without consent
+      `bk:ry`, `bk:rn`, `bk:rq` and `bk:i` → the notice, and «Anular» → confirmation; the
+      withdrawal with an appointment and a reminder («No te enviaré recordatorios.»), without a
+      reminder, without an appointment, and with the lookup failing. B was never called.
+  - **Afterwards:** `saveManualExecutions: false` in A and C, read back; no pinned data in A
+    (`null`), B (`{}`) or C (`null`); B equal to its git export.
+  - **Executions for the human to delete** (2026-11-23, 23:53:56–23:58:38 UTC), every execution
+    after 263: **C (12):** 275–286; **A (26):** 287–312. 264–274 do not exist; there are no
+    others.
   - Before changing anything, list the nodes to add, change and rewire, and wait.
   - Try the new queries on the test branch first, with fake ids and cleanup.
   - Build C with the Workflow SDK and change A, both through the MCP, from scripts that build the

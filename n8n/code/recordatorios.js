@@ -15,6 +15,10 @@ const CALLBACK_HANDOFF = 'handoff';
 const CLINIC_ADDRESS = 'Calle de Ejemplo 1, Madrid';
 const CLINIC_ADDRESS_IS_EXAMPLE = true;
 
+// --- The consent notice version (SPEC-006 C22): the same value as consentimiento.js, checked by a test.
+// C passes it to reminder_claim_due, which skips anyone without consent in force for this version.
+const CONSENT_TEXT_VERSION = '1';
+
 // --- Madrid dates: the same rules as citas.js (Q15 of SPEC-007), kept here so C needs no other module ---
 const WEEKDAYS_LONG = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre',
@@ -76,11 +80,15 @@ function composeReminder(row, now) {
   };
 }
 
-// --- Telegram errors (RM17): blocked (never retried) or retry (429, 5xx, network) ---
+// --- Telegram errors (RM17; human, 2026-11-24, Q8: better a missing reminder than a duplicate) ---
+// blocked: the patient blocked the bot or the chat is gone (never retried).
+// retry:   only a 429, the one error where Telegram surely did not deliver the message.
+// failed:  anything else (5xx, network, unknown): it may have been delivered, so it is never retried.
 function classifySendError(error) {
   const text = typeof error === 'string' ? error : JSON.stringify(error || {});
   if (/\b403\b|forbidden|blocked by the user|chat not found|user is deactivated/i.test(text)) return 'blocked';
-  return 'retry';
+  if (/(?<![0-9])429(?![0-9])|too many requests/i.test(text)) return 'retry';
+  return 'failed';
 }
 
 // --- The Telegram node's inlineKeyboard, from the rows (the same shape as citas.js) ---

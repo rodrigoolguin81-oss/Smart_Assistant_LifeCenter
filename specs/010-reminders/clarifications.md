@@ -117,6 +117,19 @@ number is 010.
   on an appointment booked **more than 3 hours ahead**. The plan must take this into account.
 - **A1–A4:** accepted as written.
 
+## Decisions (human, 2026-11-24, before N4)
+
+- **Only a 429 is retried** (consistent with Q8: better a missing reminder than a duplicate). A 429
+  is surely not delivered. A 5xx, a network error or any other error may have been delivered, so
+  the reminder becomes `failed`, with its chat id wiped, and is never retried. 403 and "chat not
+  found" stay `blocked`. `reminder_mark` accepts `failed` (006_reminders.sql), and
+  `classifySendError` returns `blocked`, `retry` or `failed`.
+- **«Enviar recordatorio» uses `continueRegularOutput`**, and «Clasificar error» decides `sent`,
+  `blocked`, `retry` or `failed`. Pinned data always leaves a node through its normal output, so
+  only this way can the 403 and 429 cases be tried with pinned data.
+- **`CONSENT_TEXT_VERSION` is in `recordatorios.js` too**, which C passes to `reminder_claim_due`.
+  A test checks that it equals the one of `consentimiento.js`.
+
 ## Questions, with the agent's proposals
 
 - **Q1: Id and folder.**

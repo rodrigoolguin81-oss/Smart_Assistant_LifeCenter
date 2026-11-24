@@ -323,6 +323,24 @@ def test_mark_blocked_wipes_the_chat_id(db):
     assert reminders(db, A)[0][0] == "blocked" and reminders(db, A)[0][3] is False
 
 
+def test_mark_failed_wipes_the_chat_id_and_is_never_claimed_again(db):
+    # Human, 2026-11-24 (Q8): a 5xx or a network error may have been delivered, so it is never retried.
+    book(db, "limpieza", at(MON, "09:00"), A)
+    rset(db, A, at(MON, "09:00"))
+    (rid, *_), = claim(db, at(SUN, "09:00"))
+    assert mark(db, rid, "failed", at(SUN, "09:01")) == "failed"
+    assert reminders(db, A)[0][:4] == ("failed", at(SUN, "09:00"), 1, False)
+    assert claim(db, at(SUN, "09:15")) == []
+
+
+def test_mark_rejects_an_unknown_result(db):
+    book(db, "limpieza", at(MON, "09:00"), A)
+    rset(db, A, at(MON, "09:00"))
+    (rid, *_), = claim(db, at(SUN, "09:00"))
+    with pytest.raises(psycopg.errors.RaiseException):
+        mark(db, rid, "lost", at(SUN, "09:01"))
+
+
 def test_retry_goes_back_to_pending_and_fails_after_three_attempts(db):
     book(db, "limpieza", at(MON, "09:00"), A)
     rset(db, A, at(MON, "09:00"))

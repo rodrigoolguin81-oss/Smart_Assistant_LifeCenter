@@ -167,8 +167,15 @@ as in SPEC-007.
 - RM17. `reminder_mark` SHALL record:
   - `sent`: `sent_at` set, chat id wiped;
   - `blocked`, for Telegram 403 or "chat not found": chat id wiped, no retry;
-  - `retry`, for Telegram 429 or a 5xx: back to `pending` while fewer than 3 attempts were made
-    and the send window is open, otherwise `failed` with the chat id wiped.
+  - `retry`, **only for Telegram 429** (surely not delivered): back to `pending` while fewer than
+    3 attempts were made and the send window is open, otherwise `failed` with the chat id wiped;
+  - `failed`, for a 5xx, a network error or any other error: chat id wiped, **no retry**, because
+    Telegram may have delivered the message (decision of 2026-11-24, consistent with Q8: better a
+    missing reminder than a duplicate).
+
+  C SHALL send through «Enviar recordatorio» with `continueRegularOutput`, so an error arrives as
+  `{error}` on the normal output and «Clasificar error» decides `sent`, `blocked`, `retry` or
+  `failed` (decision of 2026-11-24, so the 403 and 429 cases can be tried with pinned data).
 - RM18. The reminder SHALL use `REMINDER_TEXT`, with no appointment type, and its four buttons.
   It SHALL be sent by a Telegram node of C with 4 fixed rows and one expression per button field
   (SPEC-007 R6).
@@ -262,8 +269,8 @@ as in SPEC-007.
     one whose appointment is cancelled is `skipped` with no chat id;
   - **two claims at the same time** return each row once;
   - a `sending` row older than 1 hour becomes `failed` with no chat id;
-  - `reminder_mark` gives `sent`, `blocked`, `retry` → `pending`, and `failed` after 3 attempts,
-    with the chat id wiped when final;
+  - `reminder_mark` gives `sent`, `blocked`, `retry` → `pending`, `failed` after 3 attempts, and
+    `failed` at once for a 5xx or network error, with the chat id wiped when final;
   - cancelling the appointment deletes its reminder; moving it moves the reminder, with a new due
     time; withdrawing (`reminder_forget`) deletes it; a subject without consent is never claimed;
   - `reminder_confirm` sets `attendance_confirmed_at`, and a second call changes nothing;
@@ -274,7 +281,8 @@ as in SPEC-007.
   «Sí», «No», «No quiero recordatorio», the view lines, «Iré», an old reminder button, every step
   without consent, and the withdrawal with and without a reminder.
 - [ ] Pinned runs of C: nothing due; one due → sent and marked `sent`; 403 → `blocked`; 429 →
-  `retry`; a Neon failure in the claim or the mark. The message has no type and 4 buttons.
+  `retry`; 5xx and network error → `failed`; a Neon failure in the claim or the mark. The message
+  has no type and 4 buttons.
 
 **From Telegram, in daytime, with n8n running and a test account with consent:**
 

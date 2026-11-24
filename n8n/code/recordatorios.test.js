@@ -17,7 +17,7 @@ const LABELS = { ire: 'Iré', cambiar: 'Cambiar', anular: 'Anular', recepcion: '
 
 const source = fs.existsSync(SOURCE_PATH) ? fs.readFileSync(SOURCE_PATH, 'utf8').replace(/\r\n/g, '\n') : '';
 const EXPORTED = ['TEXTS', 'LABELS', 'CLINIC_ADDRESS', 'CLINIC_ADDRESS_IS_EXAMPLE', 'whenText', 'composeReminder',
-  'classifySendError'];
+  'classifySendError', 'CONSENT_TEXT_VERSION'];
 const M = new Function(
   source + '\nreturn {' + EXPORTED.map((n) => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') + '};',
 )();
@@ -106,10 +106,28 @@ check('classifySendError', () => {
   eq(k({ message: 'Bad Request: chat not found', httpCode: '400' }), 'blocked', 'chat not found');
   eq(k({ message: 'Forbidden: user is deactivated' }), 'blocked', 'deactivated');
   eq(k('403 - {"ok":false,"error_code":403,"description":"Forbidden: bot was blocked by the user"}'), 'blocked', 'n8n string form');
+  // Human, 2026-11-24 (Q8: better a missing reminder than a duplicate): only a 429 is surely not
+  // delivered, so only a 429 is retried. A 5xx or a network error may have been delivered: failed.
   eq(k({ message: 'Too Many Requests: retry after 5', httpCode: '429' }), 'retry', '429');
-  eq(k({ message: 'Internal Server Error', httpCode: '500' }), 'retry', '500');
-  eq(k({ message: 'connect ETIMEDOUT' }), 'retry', 'network');
-  eq(k(undefined), 'retry', 'unknown');
+  eq(k('429 - {"ok":false,"error_code":429,"description":"Too Many Requests: retry after 5"}'), 'retry', '429 string form');
+  eq(k({ message: 'Internal Server Error', httpCode: '500' }), 'failed', '500');
+  eq(k({ message: 'Bad Gateway', httpCode: '502' }), 'failed', '502');
+  eq(k({ message: 'connect ETIMEDOUT' }), 'failed', 'network timeout');
+  eq(k({ message: 'socket hang up' }), 'failed', 'network reset');
+  eq(k({ message: 'Bad Request: message text is empty', httpCode: '400' }), 'failed', 'other 400');
+  eq(k(undefined), 'failed', 'unknown');
+  eq(k({ message: 'Request timed out after 4290 ms' }), 'failed', 'a number containing 429 is not a 429');
+});
+
+// === Consent version (human, 2026-11-24): C passes it to reminder_claim_due ===
+
+check('CONSENT_TEXT_VERSION equals the one of consentimiento.js', () => {
+  const own = M.CONSENT_TEXT_VERSION;
+  if (typeof own !== 'string' || !own) throw new Error('CONSENT_TEXT_VERSION missing or not a string');
+  const consentSource = fs.readFileSync(path.join(__dirname, 'consentimiento.js'), 'utf8');
+  const m = consentSource.match(/^const CONSENT_TEXT_VERSION = '([^']*)';$/m);
+  if (!m) throw new Error('CONSENT_TEXT_VERSION not found in consentimiento.js');
+  eq(own, m[1], 'consent text version');
 });
 
 // === Sync with the exported workflow C (RM27) ===
@@ -123,6 +141,11 @@ check('n8n nodes of C carry this exact code', () => {
     if (!node.parameters.jsCode.startsWith(source)) throw new Error(`"${name}" jsCode does not start with recordatorios.js`);
     console.log(`sync check run: "${name}" in lifecenter-reminders.json`);
   }
+  // Human, 2026-11-24: the claim passes this module's CONSENT_TEXT_VERSION, which equals consentimiento.js.
+  const claim = nodes.find((n) => n.name === 'Reclamar recordatorios');
+  if (!claim) throw new Error('node "Reclamar recordatorios" missing in C\'s export');
+  eq(claim.parameters.options.queryReplacement, M.CONSENT_TEXT_VERSION, 'version passed to reminder_claim_due');
+  console.log('sync check run: "Reclamar recordatorios" passes CONSENT_TEXT_VERSION');
 });
 
 console.log(failures ? `\nRED: ${failures} check(s) failed` : '\nGREEN: all checks passed');

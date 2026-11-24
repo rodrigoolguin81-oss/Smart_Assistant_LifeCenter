@@ -45,10 +45,11 @@ C  lifecenter-reminders (new; saves NO executions; no webhook)
    Schedule Trigger (every 15 min)
      → Reclamar recordatorios (Postgres: reminder_claim_due(20); 0..n rows, chat id decrypted)
      → Componer recordatorio  (Code: recordatorios.js, text + 4 buttons)
-     → Enviar recordatorio    (Telegram, 4 fixed rows, error output)
-          ├─ ok    → Marcar recordatorio (Postgres: reminder_mark(id, 'sent'))
-          └─ error → Clasificar error (Code: 403 / chat not found → blocked; 429 / 5xx → retry)
-                     → Marcar recordatorio
+     → Enviar recordatorio    (Telegram, 4 fixed rows, continueRegularOutput: an error is {error})
+     → Clasificar error       (Code: no error → sent; 403 / chat not found → blocked;
+                               429 → retry; 5xx, network, anything else → failed)
+     → Marcar recordatorio    (Postgres: reminder_mark(id, result))
+   (changed by the human on 2026-11-24, before N4: see clarifications)
 
 Neon: 006_reminders.sql → agenda_reminders, reminder_key, attendance_confirmed_at,
       reminder_lead / quiet hours, reminder_* functions, the move/cancel trigger
@@ -89,7 +90,7 @@ callback query. C only sends.
 - `whenText(start, now)`: «mañana, martes 1 de diciembre», «hoy, …», or the full date;
 - `composeReminder(row, now)` → `{ text, rows }`, with the buttons «Iré» (`bk:i:<start>`),
   «Cambiar» (`bk:x:<start>`), «Anular» (`bk:a:<start>`) and «Hablar con recepción»;
-- `classifySendError(error)` → `blocked` (403, "chat not found") or `retry` (429, 5xx, network).
+- `classifySendError(error)` → `blocked` (403, "chat not found"), `retry` (429 only) or `failed` (5xx, network, anything else; 2026-11-24).
 
 It reuses no code from `citas.js`: it is a separate module with its own small date helper and
 its own sync check. It is simpler than splitting `citas.js`.
@@ -248,6 +249,7 @@ The read-only check before and after, as in SPEC-008 M3. It prints counts and ye
     - two due;
     - 403 → `blocked`;
     - 429 → `retry`;
+    - 5xx and a network error → `failed` (2026-11-24);
     - a Neon failure in the claim and in the mark;
     - the message checked for no type and 4 buttons.
 - **Afterwards:**
