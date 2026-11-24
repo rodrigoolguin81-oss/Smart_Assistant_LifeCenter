@@ -1,0 +1,73 @@
+# SPEC-010 (specs/011-reception-handoff) — complaint phrases for n8n/code/consentimiento.js
+# detectComplaintPhrase(). Texts are pseudonymized as A sees them after "Seudonimizar".
+# expected: complaint | none. A `complaint` match only opens the /queja confirmation (RH13); it never
+# posts anything by itself. Every `complaint` must match, and NO `none` may match. The booking and
+# change datasets must not match the complaint detector, and an urgency always wins (RH14).
+
+# --- Positives: the patient wants to complain ---
+- text: "quiero poner una queja"
+  expected: complaint
+- text: "quiero poner una queja por el trato recibido"
+  expected: complaint
+- text: "quiero hacer una reclamación"
+  expected: complaint
+- text: "quiero presentar una reclamación"
+  expected: complaint
+- text: "me quiero quejar"
+  expected: complaint
+- text: "quiero quejarme del trato"
+  expected: complaint
+- text: "quiero la hoja de reclamaciones"
+  expected: complaint
+- text: "¿dónde puedo poner una queja?"
+  expected: complaint
+- text: "tengo una queja"
+  expected: complaint
+- text: "queja"
+  expected: complaint
+- text: "reclamación"
+  expected: complaint
+- text: "quiero reclamar"
+  expected: complaint
+- text: "voy a poner una reclamación"
+  expected: complaint
+- text: "necesito hacer una queja formal"
+  expected: complaint
+- text: "quiero quejarme de la atención en recepción"
+  expected: complaint
+- text: "me gustaría poner una queja, [NOMBRE] me trató fatal"
+  expected: complaint
+
+# --- Negatives: not a complaint ---
+- text: "no tengo ninguna queja, todo muy bien"
+  expected: none
+- text: "sin quejas, gracias"
+  expected: none
+- text: "no me quejo"
+  expected: none
+- text: "mi madre se queja de que le duele una muela"
+  expected: none
+- text: "los pacientes se quejan de las esperas?"
+  expected: none
+- text: "¿la reclamación al seguro la tramitáis vosotros?"
+  expected: none
+- text: "¿cómo reclamo el reembolso a mi aseguradora?"
+  expected: none
+- text: "¿aceptáis el seguro de Sanitas?"
+  expected: none
+- text: "¿cuánto cuesta una limpieza?"
+  expected: none
+- text: "quiero pedir cita"
+  expected: none
+- text: "cancelar mi cita"
+  expected: none
+- text: "me cambiaron la cita"
+  expected: none
+- text: "gracias por la atención"
+  expected: none
+- text: "¿qué tal es el trato en la clínica?"
+  expected: none
+- text: "¿a qué hora abrís los sábados?"
+  expected: none
+- text: "quiero una cita para un blanqueamiento"
+  expected: none

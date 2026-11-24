@@ -32,7 +32,7 @@ const source = fs.readFileSync(SOURCE_PATH, 'utf8').replace(/\r\n/g, '\n');
 const EXPORTED = ['CONSENT_TEXT_VERSION', 'CONSENT_NOTICE', 'ACCEPTED_TEXT', 'REJECTED_TEXT', 'REVOKED_TEXT',
   'STATUS_ACCEPTED', 'STATUS_NONE', 'ERROR_TEXT', 'TEXT_ONLY_TEXT', 'BUTTON_LABELS', 'CALLBACK_HANDOFF',
   'CALLBACK_WITHDRAW', 'callbackAccept', 'callbackReject', 'parseCommand', 'parseCallback', 'classifyUpdate',
-  'isConsentInForce', 'formatDate', 'decide'];
+  'isConsentInForce', 'formatDate', 'decide', 'HANDOFF_NO_CONSENT_TEXT', 'COMPLAINT_NO_CONSENT_TEXT', 'detectComplaintPhrase'];
 const M = new Function(
   source + '\nreturn {' + EXPORTED.map((n) => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') + '};',
 )();
@@ -107,7 +107,7 @@ check('parseCommand', () => {
 // --- Buttons (C7–C13) ---
 check('parseCallback', () => {
   const p = requireFn('parseCallback');
-  eq(p('handoff'), { kind: 'handoff', version: null }, 'handoff');
+  eq(p('handoff'), { kind: 'handoff', version: null, reason: 'p' }, 'handoff'); // SPEC-010 RH2: a request
   eq(p(`consent:accept:${V}`), { kind: 'accept', version: V }, 'accept');
   eq(p(`consent:reject:${OLD}`), { kind: 'reject', version: OLD }, 'reject old');
   eq(p('consent:withdraw'), { kind: 'withdraw', version: null }, 'withdraw');
@@ -131,7 +131,8 @@ check('classifyUpdate', () => {
   eq(c(msg('/Privacidad')).kind, 'privacidad', '/Privacidad');
   eq(c(msg(undefined, { sticker: { file_id: 'x' } })), { kind: 'other', fromId: '900001', chatId: 900001, callbackQueryId: null, version: null }, 'sticker');
   eq(c(msg('')).kind, 'other', 'empty text counts as no text (D12)');
-  eq(c(cb('handoff')), { kind: 'handoff', fromId: '900002', chatId: 900002, callbackQueryId: 'cbq-1', version: null }, 'handoff');
+  // SPEC-010 RH2: the handoff button carries its reason; the old `handoff` reads as `p` (request).
+  eq(c(cb('handoff')), { kind: 'handoff', fromId: '900002', chatId: 900002, callbackQueryId: 'cbq-1', version: null, reason: 'p' }, 'handoff');
   eq(c(cb(`consent:accept:${V}`)), { kind: 'accept', fromId: '900002', chatId: 900002, callbackQueryId: 'cbq-1', version: V }, 'accept');
   eq(c(cb(`consent:reject:${V}`)).kind, 'reject', 'reject');
   eq(c(cb('consent:withdraw')).kind, 'withdraw', 'withdraw');
@@ -209,11 +210,12 @@ check('decide: decision table', () => {
   }
   if (wrong.length) throw new Error(`${wrong.length}/${CASES.length} cases wrong:\n${wrong.join('\n')}`);
 });
-check('decide: handoff never reaches decide (C12)', () => {
+// SPEC-010 RH1, RH7: the handoff button now goes through decide (consent check); C12's own branch is gone.
+check('decide: a group update never reaches decide (SPEC-010 RH12)', () => {
   const decide = requireFn('decide');
   let threw = false;
-  try { decide({ route: route('handoff'), urgency: null, consent: {} }); } catch (e) { threw = true; }
-  if (!threw) throw new Error('decide() must throw for the handoff route: it has its own branch');
+  try { decide({ route: { kind: 'group' }, urgency: null, consent: {} }); } catch (e) { threw = true; }
+  if (!threw) throw new Error('decide() must throw for a group update: it has its own branch');
 });
 check('decide: urgency reply never carries the notice (C2)', () => {
   const r = requireFn('decide')({ route: route('text'), urgency: URGENT, consent: {} });
@@ -346,6 +348,121 @@ check('urgency without consent: real detector → urgency reply, never B (C2)', 
   if (wrong.length) throw new Error(wrong.join('; '));
 });
 
+// --- SPEC-010: reception handoff, complaints, ratings and group updates (RH1–RH18) ---
+const SPEC_HANDOFF_NO_CONSENT = 'Ahora mismo no puedo pasar tu consulta automáticamente. Llama a recepción en horario de atención.'; // D8
+const SPEC_COMPLAINT_NO_CONSENT = 'Para pasar tu queja a recepción necesito tu consentimiento (/privacidad). También puedes llamar a recepción en horario de atención.';
+const COMPLAINT_DATASET_PATH = path.join(ROOT, 'evals', 'complaint_phrases.yaml');
+function readPhrases(file) {
+  const items = [];
+  fs.readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
+    if (/^\s*(#.*)?$/.test(line)) return;
+    let m;
+    if ((m = /^- text: "((?:[^"\\]|\\.)*)"$/.exec(line))) items.push({ text: m[1] });
+    else if ((m = /^ {2}expected: (complaint|booking|change|none)$/.exec(line)) && items.length) items[items.length - 1].expected = m[1];
+    else if (/^ {2}type: /.test(line)) { /* booking dataset field */ } else throw new Error(`${path.basename(file)}:${i + 1}: unexpected line: ${line}`);
+  });
+  return items;
+}
+const complaintSet = readPhrases(COMPLAINT_DATASET_PATH);
+const complaintPositives = complaintSet.filter((d) => d.expected === 'complaint');
+const complaintNegatives = complaintSet.filter((d) => d.expected === 'none');
+
+check('SPEC-010: fixed texts', () => {
+  eq(M.HANDOFF_NO_CONSENT_TEXT, SPEC_HANDOFF_NO_CONSENT, 'HANDOFF_NO_CONSENT_TEXT');
+  eq(M.COMPLAINT_NO_CONSENT_TEXT, SPEC_COMPLAINT_NO_CONSENT, 'COMPLAINT_NO_CONSENT_TEXT');
+});
+check('SPEC-010: /queja is a command, in any case', () => {
+  const p = requireFn('parseCommand');
+  eq(p('/queja'), 'queja', '/queja');
+  eq(p('/Queja@LifeCenterBot'), 'queja', '/Queja@bot');
+  eq(p('/quejas'), null, '/quejas');
+  eq(requireFn('classifyUpdate')(msg('/queja')).kind, 'complaint_command', 'route kind');
+});
+check('SPEC-010: parseCallback — handoff:a/u/p/q, hs, hn, rt', () => {
+  const p = requireFn('parseCallback');
+  eq(p('handoff'), { kind: 'handoff', version: null, reason: 'p' }, 'old handoff');
+  for (const r of ['a', 'u', 'p', 'q']) eq(p(`handoff:${r}`), { kind: 'handoff', version: null, reason: r }, `handoff:${r}`);
+  for (const r of ['a', 'u', 'p', 'q']) eq(p(`hs:${r}`), { kind: 'handoff_confirm', version: null, reason: r }, `hs:${r}`);
+  eq(p('hn'), { kind: 'handoff_cancel', version: null }, 'hn');
+  eq(p('rt:u'), { kind: 'rating', version: null, value: 'up' }, 'rt:u');
+  eq(p('rt:d'), { kind: 'rating', version: null, value: 'down' }, 'rt:d');
+  for (const bad of ['handoff:x', 'handoff:', 'hs:', 'hs:z', 'rt:x', 'rt:', 'hn:1']) eq(p(bad).kind, 'unknown_button', bad);
+});
+const gmsg = (o) => ({ update_id: 3, message: { message_id: 50, from: { id: 777001, first_name: 'Recepción' }, chat: { id: -1001234567890, type: 'supergroup', title: 'LifeCenter Recepción' }, date: 0, text: 'hola', ...o } });
+check('SPEC-010: classifyUpdate — any non-private chat is a group update, with no sender id (RH12, A3)', () => {
+  const c = requireFn('classifyUpdate');
+  eq(c(gmsg({})), { kind: 'group', chatId: '-1001234567890', messageId: 50, replyToMessageId: null, replyToBot: false, text: 'hola', callbackData: null, callbackQueryId: null }, 'a staff message');
+  eq(c(gmsg({ text: 'Sí, aceptamos Sanitas.', reply_to_message: { message_id: 41, from: { id: 5, is_bot: true } } })),
+    { kind: 'group', chatId: '-1001234567890', messageId: 50, replyToMessageId: 41, replyToBot: true, text: 'Sí, aceptamos Sanitas.', callbackData: null, callbackQueryId: null }, 'a reply to the bot');
+  eq(c(gmsg({ text: undefined, sticker: { file_id: 'x' }, reply_to_message: { message_id: 41, from: { id: 5, is_bot: true } } })).text, null, 'a sticker as reply');
+  eq(c(gmsg({ text: '/start' })).kind, 'group', 'a command in a group is a group update');
+  eq(c(gmsg({ text: 'Acepto', chat: { id: -400, type: 'group' } })).kind, 'group', 'a basic group');
+  eq(c({ update_id: 4, callback_query: { id: 'cq-9', from: { id: 777001 }, data: 'hc:R-7KQ3', message: { message_id: 52, chat: { id: -1001234567890, type: 'supergroup' } } } }),
+    { kind: 'group', chatId: '-1001234567890', messageId: 52, replyToMessageId: null, replyToBot: false, text: null, callbackData: 'hc:R-7KQ3', callbackQueryId: 'cq-9' }, '«Cerrar»');
+  const g = c(gmsg({}));
+  if ('fromId' in g) throw new Error('a group update must not carry the sender id');
+  eq(c(msg('hola')).kind, 'text', 'a private chat is unchanged');
+});
+
+check('SPEC-010: the complaint dataset', () => {
+  if (complaintPositives.length < 15 || complaintNegatives.length < 15) throw new Error(`${complaintPositives.length} positives, ${complaintNegatives.length} negatives`);
+});
+check('SPEC-010: detectComplaintPhrase over its dataset (every positive, 0 negatives)', () => {
+  const d = requireFn('detectComplaintPhrase');
+  const fn = complaintPositives.filter((x) => !d(x.text));
+  const fp = complaintNegatives.filter((x) => d(x.text));
+  const msgs = [];
+  if (fn.length) msgs.push(`missed: ${fn.map((x) => x.text).join(' | ')}`);
+  if (fp.length) msgs.push(`false positives: ${fp.map((x) => x.text).join(' | ')}`);
+  if (msgs.length) throw new Error(msgs.join('; '));
+});
+check('SPEC-010: the complaint detector never matches the booking or change datasets', () => {
+  const d = requireFn('detectComplaintPhrase');
+  const others = [...readPhrases(path.join(ROOT, 'evals', 'booking_phrases.yaml')), ...readPhrases(path.join(ROOT, 'evals', 'change_phrases.yaml'))];
+  const hit = others.filter((x) => d(x.text));
+  if (hit.length) throw new Error(hit.map((x) => x.text).join(' | '));
+});
+
+const H = (step, reason, extra = {}) => ({ action: 'handoff', text: null, keyboard: null, step, reason, ...extra });
+const r10 = (kind, extra = {}) => ({ kind, fromId: '900010', chatId: 900010, callbackQueryId: 'cq', version: null, ...extra });
+const HANDOFF_CASES = [
+  ['«Hablar con recepción» with consent → ask, with its reason (RH1, RH2)', { route: r10('handoff', { reason: 'a' }), urgency: null, consent: accepted() }, H('ask', 'a')],
+  ['old «Hablar con recepción» → ask, request', { route: r10('handoff', { reason: 'p' }), urgency: null, consent: accepted() }, H('ask', 'p')],
+  ['«Hablar con recepción» without consent → the D8 text, nothing stored (RH7)', { route: r10('handoff', { reason: 'u' }), urgency: null, consent: {} }, { action: 'reply', text: SPEC_HANDOFF_NO_CONSENT, keyboard: 'none' }],
+  ['«Hablar con recepción», lookup failed → the D8 text', { route: r10('handoff', { reason: 'a' }), urgency: null, consent: null, lookupFailed: true }, { action: 'reply', text: SPEC_HANDOFF_NO_CONSENT, keyboard: 'none' }],
+  ['«Sí, pasar a recepción» with consent → confirm (RH3)', { route: r10('handoff_confirm', { reason: 'q' }), urgency: null, consent: accepted() }, H('confirm', 'q')],
+  ['«Sí, pasar a recepción» without consent → the D8 text', { route: r10('handoff_confirm', { reason: 'a' }), urgency: null, consent: {} }, { action: 'reply', text: SPEC_HANDOFF_NO_CONSENT, keyboard: 'none' }],
+  ['«No» → cancel, with or without consent (RH6)', { route: r10('handoff_cancel'), urgency: null, consent: {} }, H('cancel', null)],
+  ['/queja with consent → ask, complaint (RH13)', { route: r10('complaint_command', { callbackQueryId: null, data: 'queja' }), urgency: null, consent: accepted() }, H('ask', 'q')],
+  ['/queja without consent → the complaint no-consent text (RH15)', { route: r10('complaint_command', { callbackQueryId: null, data: 'queja' }), urgency: null, consent: {} }, { action: 'reply', text: SPEC_COMPLAINT_NO_CONSENT, keyboard: 'none' }],
+  ['a complaint phrase with consent → ask, complaint (RH13)', { route: r10('text', { callbackQueryId: null }), urgency: NONE, consent: accepted(), question: 'quiero poner una queja por el trato recibido' }, H('ask', 'q')],
+  ['a complaint phrase without consent → the complaint no-consent text (RH15)', { route: r10('text', { callbackQueryId: null }), urgency: NONE, consent: {}, question: 'quiero hacer una reclamación' }, { action: 'reply', text: SPEC_COMPLAINT_NO_CONSENT, keyboard: 'none' }],
+  ['a complaint phrase with an urgency, with consent → B, the urgency wins (RH14)', { route: r10('text', { callbackQueryId: null }), urgency: URGENT, consent: accepted(), question: 'quiero poner una queja, me sangra mucho la encía' }, { action: 'core', text: null, keyboard: null }],
+  ['a complaint phrase with an urgency, without consent → the urgency reply', { route: r10('text', { callbackQueryId: null }), urgency: URGENT, consent: {}, question: 'quiero poner una queja, me sangra mucho la encía' }, { action: 'reply', text: URGENT.text, keyboard: 'handoff' }],
+  ['a text while a handoff waits for it → text (RH4)', { route: r10('text', { callbackQueryId: null }), urgency: NONE, consent: accepted(), question: '¿aceptáis Sanitas?', handoffAwaiting: true }, H('text', null, { urgent: false })],
+  ['a text that is an urgency while a handoff waits → text, urgent (RH5)', { route: r10('text', { callbackQueryId: null }), urgency: URGENT, consent: accepted(), question: 'me sangra mucho la encía', handoffAwaiting: true }, H('text', null, { urgent: true })],
+  ['a complaint phrase while a handoff waits → the text for reception, not a new handoff', { route: r10('text', { callbackQueryId: null }), urgency: NONE, consent: accepted(), question: 'quiero poner una queja', handoffAwaiting: true }, H('text', null, { urgent: false })],
+  ['an ordinary text with consent → B, unchanged', { route: r10('text', { callbackQueryId: null }), urgency: NONE, consent: accepted(), question: '¿cuánto cuesta una limpieza?' }, { action: 'core', text: null, keyboard: null }],
+  ['👍 with consent → rating up (RH17)', { route: r10('rating', { value: 'up' }), urgency: null, consent: accepted() }, { action: 'rating', text: null, keyboard: null, value: 'up' }],
+  ['👎 with consent → rating down', { route: r10('rating', { value: 'down' }), urgency: null, consent: accepted() }, { action: 'rating', text: null, keyboard: null, value: 'down' }],
+  ['👍 without consent → the notice, nothing counted (RH18)', { route: r10('rating', { value: 'up' }), urgency: null, consent: {} }, NOTICE],
+];
+check('SPEC-010: decide — handoff, complaint, rating', () => {
+  const decide = requireFn('decide');
+  const wrong = [];
+  for (const [name, input, expected] of HANDOFF_CASES) {
+    let got;
+    try { got = decide(input); } catch (e) { got = `throws: ${e.message}`; }
+    if (JSON.stringify(got) !== JSON.stringify(expected)) wrong.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    got      ${JSON.stringify(got)}`);
+  }
+  if (wrong.length) throw new Error(`${wrong.length}/${HANDOFF_CASES.length} cases wrong:\n${wrong.join('\n')}`);
+});
+check('SPEC-010: every new callback fits in 64 bytes', () => {
+  for (const d of ['handoff:a', 'handoff:u', 'handoff:p', 'handoff:q', 'hs:q', 'hn', 'rt:u', 'rt:d', 'hc:R-7KQ3']) {
+    if (Buffer.byteLength(d) > 64) throw new Error(d);
+  }
+});
+
 // --- Sync with the exported workflow A (C23, C25) ---
 check('n8n nodes of A carry this exact code', () => {
   if (!fs.existsSync(EXPORT_PATH)) { console.log('SKIP sync check: no export of A'); return; }
@@ -358,6 +475,11 @@ check('n8n nodes of A carry this exact code', () => {
     console.log("SKIP sync check: A's export has no SPEC-008 nodes yet; consentimiento.js is checked against it from SPEC-008 M4 (hasta M4)");
     return;
   }
+  // SPEC-010: the module gains the handoff, complaint, rating and group routes in H1; A gets them in H4.
+  if (!nodes.some((n) => n.name === 'Grupo de recepción')) {
+    console.log("SKIP sync check: A's export has no SPEC-010 nodes yet; consentimiento.js is checked against it from SPEC-010 H4 (hasta H4)");
+    return;
+  }
   for (const name of NODE_NAMES) {
     const node = nodes.find((n) => n.name === name);
     if (!node) { console.log(`SKIP sync check: node "${name}" not in A's export yet`); continue; }
@@ -366,6 +488,8 @@ check('n8n nodes of A carry this exact code', () => {
   }
 });
 
+console.log(`
+== SPEC-010 complaint report: ${complaintPositives.length} positives, ${complaintNegatives.length} negatives | handoff cases: ${HANDOFF_CASES.length}`);
 console.log(`\n== SPEC-006 consent report\ndecision cases: ${CASES.length} | SPEC-007 booking cases: ${BOOKING_CASES.length} | SPEC-008 change cases: ${CHANGE_CASES.length}`);
 console.log(failures ? `\nRED: ${failures} check(s) failed` : '\nGREEN: all checks passed');
 process.exit(failures ? 1 : 0);
