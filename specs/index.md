@@ -222,8 +222,26 @@ stale_after: null
     and C, [`n8n/workflows/lifecenter-reminders.json`](../n8n/workflows/lifecenter-reminders.json);
     B unchanged
 
-Pending (not yet scaffolded): the remaining PRD stories (US-007 and US-008, and the reception
-panel, RF-007) per `docs/03-prd.md` §11.
+- **011-reception-handoff**: passing a conversation to reception through a private Telegram group,
+  complaints and ratings (Phase 3). PRD `RF-007`, `RF-009`, `US-008`, `US-002`, `US-003`, `R-07`;
+  traceability row **SPEC-010**.
+  - **Handoff:** «Hablar con recepción» → a confirmation → the patient writes the message → it is
+    posted pseudonymized in «LifeCenter Recepción» with the reason and a short code; reception
+    replies to it, and the bot forwards the reply. «Cerrar», or 48 h.
+  - **Complaints:** `/queja` and a strict phrase list open the same path, marked as a complaint.
+  - **Ratings:** 👍/👎 after B's answers, kept only as counts per day and reason.
+  - **Data:** the chat id encrypted with the SPEC-009 key in its own table, with no message text;
+    the group id only in Neon (`reception_settings`); the group's auto-delete at 1 week.
+  - **Where it runs:** A and Neon. B does not change; C's nodes do not change.
+  - **Status: specified** (2026-11-24; clarifications, spec, plan and tasks verified by the
+    human; H0–H6 pending).
+  - [clarifications](./011-reception-handoff/clarifications.md), D1–D5 and P1–P15
+  - [spec](./011-reception-handoff/spec.md), RH1–RH24
+  - [plan](./011-reception-handoff/plan.md) — Steps 0–6
+  - [tasks](./011-reception-handoff/tasks.md) — H0–H6
+
+Pending (not yet scaffolded): US-007's remaining parts and RF-008 (reception marks answers for the
+evals), per `docs/03-prd.md` §11.
 
 Future improvements (not specified yet):
 

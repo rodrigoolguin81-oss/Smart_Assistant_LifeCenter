@@ -153,6 +153,12 @@ hold no keys: they only reference three n8n credentials by name.
   `kb_fragments` and keeps the existing key.
   - **Never regenerate or delete the key in `consent_key`.** Every consent record is an HMAC
     under it, so a new key would make every stored consent unrecognizable.
+- The reception group (SPEC-010, [specs/011-reception-handoff](specs/011-reception-handoff/spec.md)):
+  a private Telegram group «LifeCenter Recepción» with the bot as administrator, and its
+  **auto-delete timer set to 1 week** (group settings → Auto-delete messages). The messages the
+  bot posts there are pseudonymized, but they stay in the group until then, outside the 30-day
+  purge: a known limitation. The group id is stored only in Neon (`reception_settings`), never in
+  the repo.
 
 ### Start
 
