@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-23T23:58:50.069Z",
+    "updatedAt": "2026-11-24T12:54:56.609Z",
     "createdAt": "2026-11-18T18:28:42.757Z",
     "id": "q3f5dVrl8OUsXJrG",
     "name": "lifecenter-telegram-demo",
@@ -47,7 +47,7 @@
             "values": [
               {
                 "renameOutput": true,
-                "outputKey": "Recepción",
+                "outputKey": "Grupo",
                 "conditions": {
                   "options": {
                     "caseSensitive": true,
@@ -56,7 +56,7 @@
                   },
                   "conditions": [
                     {
-                      "leftValue": "={{ $json.route.kind === 'handoff' }}",
+                      "leftValue": "={{ $json.route.kind === 'group' }}",
                       "operator": {
                         "type": "boolean",
                         "operation": "true",
@@ -78,7 +78,7 @@
                   },
                   "conditions": [
                     {
-                      "leftValue": "={{ ['accept', 'reject', 'withdraw', 'unknown_button', 'booking_button'].includes($json.route.kind) }}",
+                      "leftValue": "={{ ['accept', 'reject', 'withdraw', 'unknown_button', 'booking_button', 'handoff', 'handoff_confirm', 'handoff_cancel', 'rating'].includes($json.route.kind) }}",
                       "operator": {
                         "type": "boolean",
                         "operation": "true",
@@ -100,7 +100,7 @@
                   },
                   "conditions": [
                     {
-                      "leftValue": "={{ ['start', 'privacidad', 'booking_command'].includes($json.route.kind) }}",
+                      "leftValue": "={{ ['start', 'privacidad', 'booking_command', 'complaint_command'].includes($json.route.kind) }}",
                       "operator": {
                         "type": "boolean",
                         "operation": "true",
@@ -228,55 +228,6 @@
         "webhookId": "31d33ea1-c847-4eb8-9c2c-a48faa7c5600"
       },
       {
-        "id": "22bee2c9-4073-4d30-8cc8-4becdc44135d",
-        "name": "Confirmar botón",
-        "type": "n8n-nodes-base.telegram",
-        "typeVersion": 1.2,
-        "position": [
-          672,
-          -240
-        ],
-        "parameters": {
-          "resource": "callback",
-          "operation": "answerQuery",
-          "queryId": "={{ $json.callback_query.id }}",
-          "additionalFields": {}
-        },
-        "credentials": {
-          "telegramApi": {
-            "id": "VzY1vvAFNqi3JSKT",
-            "name": "Telegram LifeCenter Bot"
-          }
-        },
-        "webhookId": "7ff6e3d8-4fd2-431e-9405-145ef11c8ba1"
-      },
-      {
-        "id": "1fc8b4ab-5edf-4286-bd35-999d0b58d350",
-        "name": "Responder recepción",
-        "type": "n8n-nodes-base.telegram",
-        "typeVersion": 1.2,
-        "position": [
-          896,
-          -240
-        ],
-        "parameters": {
-          "resource": "message",
-          "operation": "sendMessage",
-          "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
-          "text": "Ahora mismo no puedo pasar tu consulta automáticamente. Llama a recepción en horario de atención.",
-          "additionalFields": {
-            "appendAttribution": false
-          }
-        },
-        "credentials": {
-          "telegramApi": {
-            "id": "VzY1vvAFNqi3JSKT",
-            "name": "Telegram LifeCenter Bot"
-          }
-        },
-        "webhookId": "30aea96f-9f33-4b0a-9c42-f1dc3a59548c"
-      },
-      {
         "id": "cfdf6a52-bd6a-458b-86c5-db3354fd3a65",
         "name": "Llamar al núcleo",
         "type": "n8n-nodes-base.executeWorkflow",
@@ -332,7 +283,7 @@
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "// SPEC-005 P6: B returns no identifier; A attaches its own chat id to B's reply fields.\n// SPEC-006: also sets the keyboard for \"¿Qué teclado?\". SPEC-007 BK5: «Pedir cita» when offer_booking.\nreturn { json: { ...$json, chatId: $('Seudonimizar').item.json.chatId,\n  keyboard: $json.handoff ? 'handoff' : ($json.offer_booking === true ? 'offer' : 'none') } };\n"
+          "jsCode": "// SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de\n// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact\n// code followed only by their wiring. No require, no network, no state: the handoff rows live\n// in Neon (007_reception.sql), and no message text is ever stored.\n\n// --- Fixed texts (spec \"Fixed texts\", verified by the human 2026-11-24) ---\nconst TEXTS = {\n  HANDOFF_CONFIRM: '¿Quieres que pase tu consulta a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  HANDOFF_WRITE: 'Escribe en un mensaje lo que quieres que lea recepción. No incluyas datos personales.',\n  HANDOFF_SENT: 'Hecho. He pasado tu consulta a recepción (código {codigo}). Te responderán por aquí en horario de la clínica.',\n  HANDOFF_CANCELLED: 'De acuerdo, no paso nada a recepción.',\n  HANDOFF_FAILED: 'Ahora mismo no puedo pasar tu consulta. Llama a recepción en horario de atención.',\n  GROUP_HEADER: '[{codigo}] Motivo: {motivo}',\n  GROUP_FOOTER: 'Responde a este mensaje para contestar al paciente.',\n  RECEPTION_REPLY: 'Recepción de LifeCenter ({codigo}): {texto}',\n  HANDOFF_CLOSED: 'Esta consulta ya está cerrada.',\n  COMPLAINT_CONFIRM: 'Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  RATING_THANKS: 'Gracias por tu valoración.',\n};\nconst LABELS = { si: 'Sí, pasar a recepción', no: 'No', cerrar: 'Cerrar', cerrada: 'Cerrada', up: '👍', down: '👎' };\n// The existing labels and callbacks this module reuses (CHG-001 D8, SPEC-007).\nconst HANDOFF_LABEL = 'Hablar con recepción';\nconst BOOKING_LABEL = 'Pedir cita';\nconst BOOKING_MENU = 'bk:menu';\n\n// --- Reasons (RH2, RH13): the code in the callback, and what reception reads ---\nconst REASONS = { a: 'abstención', u: 'urgencia', p: 'petición', q: 'queja' };\n\n// --- Codes (P3): R- (handoff) or Q- (complaint) + 4 characters with no look-alikes (no 0, O, 1, I, L).\n// The database generates them (unique among open handoffs); this only recognizes them.\nconst CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';\nconst CODE_PATTERN = /^[RQ]-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/;\n\n// --- The reason of «Hablar con recepción» under a reply of B (RH2). B does not change. ---\nconst ABSTENTION_REASONS = ['below_threshold', 'model_abstained', 'validation_failed'];\nfunction handoffReasonFor(result) {\n  const reason = result && result.reason;\n  if (reason === 'urgency') return 'u';\n  if (ABSTENTION_REASONS.includes(reason)) return 'a';\n  return 'p';\n}\n\nconst fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);\n\n// --- The confirmation (RH1, RH13): «Sí, pasar a recepción» keeps the reason; «No» needs nothing ---\nfunction confirmView(reason) {\n  return {\n    text: reason === 'q' ? TEXTS.COMPLAINT_CONFIRM : TEXTS.HANDOFF_CONFIRM,\n    rows: [[{ text: LABELS.si, data: `hs:${reason}` }], [{ text: LABELS.no, data: 'hn' }]],\n  };\n}\n\n// --- The message posted in the reception group (RH4, RH5, P4): code, reason, the pseudonymized text,\n// and «Cerrar». No name, phone, Telegram user or appointment. An urgency is always marked as one. ---\nfunction groupMessage({ code, reason, text, urgent }) {\n  const motivo = REASONS[urgent ? 'u' : reason] || REASONS.p;\n  return {\n    text: `${fill(TEXTS.GROUP_HEADER, { codigo: code, motivo })}\\n\\n${text}\\n\\n${TEXTS.GROUP_FOOTER}`,\n    rows: [[{ text: LABELS.cerrar, data: `hc:${code}` }]],\n  };\n}\n\n// --- What the patient reads (RH4, RH9) ---\nconst sentText = (code) => fill(TEXTS.HANDOFF_SENT, { codigo: code });\nconst receptionReply = (code, text) => fill(TEXTS.RECEPTION_REPLY, { codigo: code, texto: text });\n\n// --- An update from a group (RH9–RH12): only a text reply to a bot message, or «Cerrar», in the\n// registered reception group. Everything else, from any group, is ignored with no reply. ---\nfunction groupAction(route, receptionChatId) {\n  const ignore = { action: 'ignore' };\n  if (!route || route.kind !== 'group' || !receptionChatId || String(route.chatId) !== String(receptionChatId)) return ignore;\n  if (route.callbackData) {\n    const m = /^hc:(.+)$/.exec(route.callbackData);\n    return m && CODE_PATTERN.test(m[1])\n      ? { action: 'close', code: m[1], callbackQueryId: route.callbackQueryId, messageId: route.messageId } : ignore;\n  }\n  if (route.replyToMessageId && route.replyToBot && typeof route.text === 'string' && route.text.trim()) {\n    return { action: 'forward', replyToMessageId: route.replyToMessageId, text: route.text };\n  }\n  return ignore;\n}\n\n// --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»\n// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva\n// (n)» nodes have one button per row (human, 2026-11-24). ---\nfunction answerRows(result) {\n  const rows = [];\n  if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);\n  if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);\n  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);\n  return rows;\n}\n\n// --- The Telegram node's inlineKeyboard parameter, built from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring (\"Componer respuesta\", SPEC-005 P6, SPEC-006, SPEC-007 BK5, SPEC-010 RH2, RH16) ---\n// B returns no identifier; A attaches its own chat id. The buttons: «Hablar con recepción» with its reason,\n// «Pedir cita», and 👍/👎 under an answered reply, sent by «¿Cuántos botones?».\nconst rows = answerRows($json);\nreturn { json: { ...$json, chatId: $('Seudonimizar').item.json.chatId,\n  keyboard: rows.length ? 'booking' : 'none', inlineKeyboard: toTelegramKeyboard(rows) } };\n"
         }
       },
       {
@@ -347,7 +298,7 @@
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "// SPEC-006 consent module (specs/006-consent/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes \"Clasificar\" and \"Decidir\" of lifecenter-telegram-demo carry this\n// exact code followed only by their input/output wiring (C23). No require, no network, no state.\n\n// --- Configuration (C22). Change the version whenever CONSENT_NOTICE changes: everyone is asked again.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-21) ---\nconst CONSENT_NOTICE =\n  'Hola, soy el asistente de LifeCenter. Para responderte: quito tu nombre, teléfono, DNI y email ' +\n  'de los mensajes antes de procesarlos; envío la consulta a un modelo de IA externo (Gemini, de ' +\n  'Google), y guardo el recorrido de cada consulta, sin tus datos, durante 30 días. Si me cuentas un ' +\n  'síntoma te daré siempre el teléfono de la clínica. Esto es una demostración: no escribas datos ' +\n  'reales. ¿Aceptas?';\nconst ACCEPTED_TEXT = 'Gracias. Ya puedes escribirme tu consulta.';\nconst REJECTED_TEXT =\n  'De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.';\nconst REVOKED_TEXT =\n  'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';\nconst STATUS_ACCEPTED = 'Estado: aceptaste este aviso el {fecha}.';\nconst STATUS_NONE = 'Estado: no has aceptado este aviso.';\n// Copies of CHG-001 texts this module now composes: D7 (error) and D12 (no text).\nconst ERROR_TEXT = 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?';\nconst TEXT_ONLY_TEXT = 'Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?';\n\n// --- Buttons (C7): labels and callback_data, each at most 64 bytes ---\nconst BUTTON_LABELS = {\n  handoff: 'Hablar con recepción',\n  accept: 'Acepto',\n  reject: 'No acepto',\n  withdraw: 'Retirar consentimiento',\n};\nconst CALLBACK_HANDOFF = 'handoff';\nconst CALLBACK_WITHDRAW = 'consent:withdraw';\nconst callbackAccept = (version = CONSENT_TEXT_VERSION) => `consent:accept:${version}`;\nconst callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${version}`;\n\n// --- Commands (spec \"Command\"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,\n// in any letter case (phone keyboards capitalize the first letter) ---\n// SPEC-007: /cita and /micita are booking commands (any letter case, like the others).\nconst COMMAND = /^\\s*\\/(start|privacidad|cita|micita)(?:@[A-Za-z0-9_]+)?\\s*$/i;\nconst BOOKING_COMMANDS = ['cita', 'micita'];\nfunction parseCommand(text) {\n  const m = COMMAND.exec(typeof text === 'string' ? text : '');\n  return m ? m[1].toLowerCase() : null;\n}\n\n// --- Buttons: callback_data → { kind, version } ---\nconst CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;\nfunction parseCallback(data) {\n  if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null };\n  if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };\n  if (typeof data === 'string' && data.startsWith('bk:')) return { kind: 'booking_button', version: null }; // SPEC-007\n  const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');\n  return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };\n}\n\n// --- A Telegram update → route. fromId is a string: it is only ever passed to Neon as $1 (C18). ---\nfunction classifyUpdate(update) {\n  const asId = (v) => (v === undefined || v === null ? null : String(v));\n  const cq = update && update.callback_query;\n  if (cq) {\n    const { kind, version } = parseCallback(cq.data);\n    const route = {\n      kind,\n      fromId: asId(cq.from && cq.from.id),\n      chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,\n      callbackQueryId: cq.id === undefined ? null : cq.id,\n      version,\n    };\n    return kind === 'booking_button' ? { ...route, data: cq.data } : route; // SPEC-007\n  }\n  const m = (update && update.message) || {};\n  const hasText = typeof m.text === 'string' && m.text !== '';\n  const command = hasText ? parseCommand(m.text) : null;\n  const booking = BOOKING_COMMANDS.includes(command);\n  const route = {\n    kind: booking ? 'booking_command' : command || (hasText ? 'text' : 'other'),\n    fromId: asId(m.from && m.from.id),\n    chatId: m.chat ? m.chat.id : null,\n    callbackQueryId: null,\n    version: null,\n  };\n  return booking ? { ...route, data: command } : route; // SPEC-007: /cita, /micita\n}\n\n// --- SPEC-008 MC10: the only booking buttons allowed without consent (one start code each) ---\nconst CANCEL_WITHOUT_CONSENT = /^bk:(?:a|ac|v):[0-9a-z]{1,8}$/;\n\n// --- Consent in force (C22): accepted with the current version; anything else is no consent ---\nfunction isConsentInForce(row) {\n  return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;\n}\n\n// --- dd/mm/aaaa in Europe/Madrid ---\nfunction formatDate(decidedAt) {\n  const parts = new Intl.DateTimeFormat('es-ES', {\n    timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric',\n  }).formatToParts(new Date(decidedAt));\n  const get = (type) => parts.find((p) => p.type === type).value;\n  return `${get('day')}/${get('month')}/${get('year')}`;\n}\n\n// --- What to do with an update (plan Step 1, decision table; C2–C16) ---\n// urgency: the output of \"Detectar urgencia\" (B's wiring), or null if it did not run.\n// consent: the row from consent_get ({} when there is none); lookupFailed: the lookup errored.\nfunction decide({ route, urgency, consent, lookupFailed }) {\n  const reply = (text, keyboard) => ({ action: 'reply', text, keyboard });\n  const notice = reply(CONSENT_NOTICE, 'consent');\n  const inForce = !lookupFailed && isConsentInForce(consent);\n  const kind = route && route.kind;\n\n  if (kind === 'handoff') throw new Error('decide(): the handoff button has its own branch (C12)');\n  if (kind === 'text') {\n    if (inForce) return { action: 'core', text: null, keyboard: null };\n    if (urgency && urgency.urgency_level && urgency.urgency_level !== 'none') return reply(urgency.text, 'handoff');\n    return lookupFailed ? reply(ERROR_TEXT, 'handoff') : notice;\n  }\n  if (lookupFailed) return reply(ERROR_TEXT, 'handoff');\n\n  const withStatus = (status, keyboard) => reply(`${CONSENT_NOTICE}\\n\\n${status}`, keyboard);\n  switch (kind) {\n    case 'other':\n      return inForce ? reply(TEXT_ONLY_TEXT, 'none') : notice;\n    case 'start':\n    case 'privacidad':\n      if (inForce) return withStatus(STATUS_ACCEPTED.replace('{fecha}', formatDate(consent.decided_at)), 'withdraw');\n      return kind === 'start' ? notice : withStatus(STATUS_NONE, 'consent');\n    case 'accept':\n      return route.version === CONSENT_TEXT_VERSION ? { action: 'accept', text: ACCEPTED_TEXT, keyboard: 'none' } : notice;\n    case 'reject':\n      return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;\n    case 'withdraw':\n      return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };\n    case 'booking_command': // SPEC-007 BK8: every booking step needs consent in force\n    case 'booking_button':\n      if (inForce) return { action: 'booking', text: null, keyboard: null, consent: true };\n      // SPEC-008 MC10: without consent, only «Anular» (bk:a), «Sí, anular» (bk:ac) and the «Mantener\n      // mi cita» of the cancel confirmation (bk:v with a start) go through, flagged consent: false.\n      if (kind === 'booking_button' && CANCEL_WITHOUT_CONSENT.test(route.data || '')) {\n        return { action: 'booking', text: null, keyboard: null, consent: false };\n      }\n      return notice;\n    case 'unknown_button':\n      return notice;\n    default:\n      throw new Error(`decide(): unknown route kind \"${kind}\"`);\n  }\n}\n\n// --- n8n wiring (\"Clasificar\", SPEC-006 C23): keep the update as it is and add the route ---\nreturn { json: { ...$json, route: classifyUpdate($json) } };\n"
+          "jsCode": "// SPEC-006 consent module (specs/006-consent/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes \"Clasificar\" and \"Decidir\" of lifecenter-telegram-demo carry this\n// exact code followed only by their input/output wiring (C23). No require, no network, no state.\n\n// --- Configuration (C22). Change the version whenever CONSENT_NOTICE changes: everyone is asked again.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-21) ---\nconst CONSENT_NOTICE =\n  'Hola, soy el asistente de LifeCenter. Para responderte: quito tu nombre, teléfono, DNI y email ' +\n  'de los mensajes antes de procesarlos; envío la consulta a un modelo de IA externo (Gemini, de ' +\n  'Google), y guardo el recorrido de cada consulta, sin tus datos, durante 30 días. Si me cuentas un ' +\n  'síntoma te daré siempre el teléfono de la clínica. Esto es una demostración: no escribas datos ' +\n  'reales. ¿Aceptas?';\nconst ACCEPTED_TEXT = 'Gracias. Ya puedes escribirme tu consulta.';\nconst REJECTED_TEXT =\n  'De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.';\nconst REVOKED_TEXT =\n  'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';\nconst STATUS_ACCEPTED = 'Estado: aceptaste este aviso el {fecha}.';\nconst STATUS_NONE = 'Estado: no has aceptado este aviso.';\n// Copies of CHG-001 texts this module now composes: D7 (error) and D12 (no text).\nconst ERROR_TEXT = 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?';\nconst TEXT_ONLY_TEXT = 'Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?';\n// SPEC-010 (spec \"Fixed texts\", verified 2026-11-24): the D8 text, now chosen here, for a handoff without\n// consent; and the reply to a complaint without consent.\nconst HANDOFF_NO_CONSENT_TEXT = 'Ahora mismo no puedo pasar tu consulta automáticamente. Llama a recepción en horario de atención.';\nconst COMPLAINT_NO_CONSENT_TEXT =\n  'Para pasar tu queja a recepción necesito tu consentimiento (/privacidad). También puedes llamar a recepción en horario de atención.';\n\n// --- Buttons (C7): labels and callback_data, each at most 64 bytes ---\nconst BUTTON_LABELS = {\n  handoff: 'Hablar con recepción',\n  accept: 'Acepto',\n  reject: 'No acepto',\n  withdraw: 'Retirar consentimiento',\n};\nconst CALLBACK_HANDOFF = 'handoff';\nconst CALLBACK_WITHDRAW = 'consent:withdraw';\nconst callbackAccept = (version = CONSENT_TEXT_VERSION) => `consent:accept:${version}`;\nconst callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${version}`;\n\n// --- Commands (spec \"Command\"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,\n// in any letter case (phone keyboards capitalize the first letter) ---\n// SPEC-007: /cita and /micita are booking commands (any letter case, like the others).\n// SPEC-010: /queja opens the complaint path (RH13).\nconst COMMAND = /^\\s*\\/(start|privacidad|cita|micita|queja)(?:@[A-Za-z0-9_]+)?\\s*$/i;\nconst BOOKING_COMMANDS = ['cita', 'micita'];\nfunction parseCommand(text) {\n  const m = COMMAND.exec(typeof text === 'string' ? text : '');\n  return m ? m[1].toLowerCase() : null;\n}\n\n// --- Buttons: callback_data → { kind, version } ---\nconst CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;\n// SPEC-010 RH2, RH3, RH6, RH17: handoff:<reason> (the old `handoff` is a request), «Sí, pasar a\n// recepción» (hs:<reason>), «No» (hn), and the ratings (rt:u / rt:d). «Cerrar» (hc:) only exists in groups.\nconst HANDOFF_CALLBACK = /^(handoff|hs):([aupq])$/;\nconst RATING_CALLBACK = /^rt:([ud])$/;\nfunction parseCallback(data) {\n  if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null, reason: 'p' };\n  const h = HANDOFF_CALLBACK.exec(typeof data === 'string' ? data : '');\n  if (h) return { kind: h[1] === 'hs' ? 'handoff_confirm' : 'handoff', version: null, reason: h[2] };\n  if (data === 'hn') return { kind: 'handoff_cancel', version: null };\n  const rt = RATING_CALLBACK.exec(typeof data === 'string' ? data : '');\n  if (rt) return { kind: 'rating', version: null, value: rt[1] === 'u' ? 'up' : 'down' };\n  if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };\n  if (typeof data === 'string' && data.startsWith('bk:')) return { kind: 'booking_button', version: null }; // SPEC-007\n  const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');\n  return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };\n}\n\n// --- A Telegram update → route. fromId is a string: it is only ever passed to Neon as $1 (C18). ---\nfunction classifyUpdate(update) {\n  const asId = (v) => (v === undefined || v === null ? null : String(v));\n  const cq = update && update.callback_query;\n  // SPEC-010 RH12, A3: anything from a chat that is not private is a group update. It never carries the\n  // sender's id, and never reaches the consent logic.\n  const chatOf = cq ? cq.message && cq.message.chat : update && update.message && update.message.chat;\n  if (chatOf && chatOf.type && chatOf.type !== 'private') {\n    const gm = cq ? cq.message : update.message;\n    const reply = !cq && gm.reply_to_message;\n    return {\n      kind: 'group',\n      chatId: asId(chatOf.id),\n      messageId: gm && gm.message_id !== undefined ? gm.message_id : null,\n      replyToMessageId: reply ? reply.message_id : null,\n      replyToBot: !!(reply && reply.from && reply.from.is_bot),\n      text: !cq && typeof gm.text === 'string' ? gm.text : null,\n      callbackData: cq ? cq.data : null,\n      callbackQueryId: cq && cq.id !== undefined ? cq.id : null,\n    };\n  }\n  if (cq) {\n    const parsed = parseCallback(cq.data);\n    const route = {\n      kind: parsed.kind,\n      fromId: asId(cq.from && cq.from.id),\n      chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,\n      callbackQueryId: cq.id === undefined ? null : cq.id,\n      version: parsed.version,\n    };\n    if (parsed.kind === 'booking_button') return { ...route, data: cq.data }; // SPEC-007\n    if ('reason' in parsed) return { ...route, reason: parsed.reason }; // SPEC-010\n    if ('value' in parsed) return { ...route, value: parsed.value };\n    return route;\n  }\n  const m = (update && update.message) || {};\n  const hasText = typeof m.text === 'string' && m.text !== '';\n  const command = hasText ? parseCommand(m.text) : null;\n  const booking = BOOKING_COMMANDS.includes(command);\n  const complaint = command === 'queja'; // SPEC-010 RH13\n  const route = {\n    kind: booking ? 'booking_command' : complaint ? 'complaint_command' : command || (hasText ? 'text' : 'other'),\n    fromId: asId(m.from && m.from.id),\n    chatId: m.chat ? m.chat.id : null,\n    callbackQueryId: null,\n    version: null,\n  };\n  return booking || complaint ? { ...route, data: command } : route; // SPEC-007: /cita, /micita; SPEC-010: /queja\n}\n\n// --- SPEC-010 RH13, RH14: complaint phrases, a strict list (evals/complaint_phrases.yaml) ---\n// Works on the pseudonymized text. A match only opens the /queja confirmation; it never posts anything.\nfunction normalizeComplaintText(text) {\n  return String(text ?? '')\n    .toLowerCase()\n    .normalize('NFD').replace(/\\p{M}+/gu, '')\n    .replace(/\\[(nombre|telefono|dni|email)\\]/g, ' ')\n    .replace(/[^\\p{L}\\p{N}\\s]+/gu, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\nconst COMPLAINT_WORDS = /\\b(?:queja|quejas|quejar|quejarme|reclamacion|reclamaciones|reclamar)\\b/;\n// Not a complaint: no complaint, someone else complaining, or an insurance claim.\nconst COMPLAINT_BLOCKERS = [\n  /\\b(?:no tengo|sin) (?:ninguna )?quejas?\\b/,\n  /\\bno me quejo\\b/,\n  /\\bse (?:queja|quejan|quejaba|quejo)\\b/,\n  /\\b(?:seguro|aseguradora|reembolso|mutua|tramit\\w*)\\b/,\n];\nfunction detectComplaintPhrase(text) {\n  const t = normalizeComplaintText(text);\n  return COMPLAINT_WORDS.test(t) && !COMPLAINT_BLOCKERS.some((re) => re.test(t));\n}\n\n// --- SPEC-008 MC10: the only booking buttons allowed without consent (one start code each) ---\nconst CANCEL_WITHOUT_CONSENT = /^bk:(?:a|ac|v):[0-9a-z]{1,8}$/;\n\n// --- Consent in force (C22): accepted with the current version; anything else is no consent ---\nfunction isConsentInForce(row) {\n  return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;\n}\n\n// --- dd/mm/aaaa in Europe/Madrid ---\nfunction formatDate(decidedAt) {\n  const parts = new Intl.DateTimeFormat('es-ES', {\n    timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric',\n  }).formatToParts(new Date(decidedAt));\n  const get = (type) => parts.find((p) => p.type === type).value;\n  return `${get('day')}/${get('month')}/${get('year')}`;\n}\n\n// --- What to do with an update (plan Step 1, decision table; C2–C16) ---\n// urgency: the output of \"Detectar urgencia\" (B's wiring), or null if it did not run.\n// consent: the row from consent_get ({} when there is none); lookupFailed: the lookup errored.\n// SPEC-010: question is the pseudonymized text (for the complaint phrases); handoffAwaiting says whether a\n// handoff of this patient waits for the text for reception (from the consent lookup).\nfunction decide({ route, urgency, consent, lookupFailed, question = null, handoffAwaiting = false }) {\n  const reply = (text, keyboard) => ({ action: 'reply', text, keyboard });\n  const notice = reply(CONSENT_NOTICE, 'consent');\n  const inForce = !lookupFailed && isConsentInForce(consent);\n  const kind = route && route.kind;\n\n  const urgent = !!(urgency && urgency.urgency_level && urgency.urgency_level !== 'none');\n  const handoff = (step, reason, extra = {}) => ({ action: 'handoff', text: null, keyboard: null, step, reason, ...extra });\n  if (kind === 'group') throw new Error('decide(): a group update has its own branch (SPEC-010 RH12)');\n  if (kind === 'text') {\n    // SPEC-010 RH4, RH5: the text a handoff waits for goes to reception (an urgency is answered first).\n    if (inForce && handoffAwaiting) return handoff('text', null, { urgent });\n    // SPEC-010 RH13–RH15: a complaint phrase opens the /queja confirmation; an urgency always wins.\n    if (!urgent && detectComplaintPhrase(question)) {\n      if (inForce) return handoff('ask', 'q');\n      return reply(COMPLAINT_NO_CONSENT_TEXT, 'none');\n    }\n    if (inForce) return { action: 'core', text: null, keyboard: null };\n    if (urgent) return reply(urgency.text, 'handoff');\n    return lookupFailed ? reply(ERROR_TEXT, 'handoff') : notice;\n  }\n  // SPEC-010 RH1, RH3, RH6, RH7: the handoff steps; «No» needs nothing.\n  if (kind === 'handoff_cancel') return handoff('cancel', null);\n  if (kind === 'handoff' || kind === 'handoff_confirm') {\n    return inForce ? handoff(kind === 'handoff' ? 'ask' : 'confirm', route.reason) : reply(HANDOFF_NO_CONSENT_TEXT, 'none');\n  }\n  if (lookupFailed) return reply(ERROR_TEXT, 'handoff');\n\n  const withStatus = (status, keyboard) => reply(`${CONSENT_NOTICE}\\n\\n${status}`, keyboard);\n  switch (kind) {\n    case 'other':\n      return inForce ? reply(TEXT_ONLY_TEXT, 'none') : notice;\n    case 'start':\n    case 'privacidad':\n      if (inForce) return withStatus(STATUS_ACCEPTED.replace('{fecha}', formatDate(consent.decided_at)), 'withdraw');\n      return kind === 'start' ? notice : withStatus(STATUS_NONE, 'consent');\n    case 'accept':\n      return route.version === CONSENT_TEXT_VERSION ? { action: 'accept', text: ACCEPTED_TEXT, keyboard: 'none' } : notice;\n    case 'reject':\n      return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;\n    case 'withdraw':\n      return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };\n    case 'booking_command': // SPEC-007 BK8: every booking step needs consent in force\n    case 'booking_button':\n      if (inForce) return { action: 'booking', text: null, keyboard: null, consent: true };\n      // SPEC-008 MC10: without consent, only «Anular» (bk:a), «Sí, anular» (bk:ac) and the «Mantener\n      // mi cita» of the cancel confirmation (bk:v with a start) go through, flagged consent: false.\n      if (kind === 'booking_button' && CANCEL_WITHOUT_CONSENT.test(route.data || '')) {\n        return { action: 'booking', text: null, keyboard: null, consent: false };\n      }\n      return notice;\n    case 'complaint_command': // SPEC-010 RH13, RH15\n      return inForce ? handoff('ask', 'q') : reply(COMPLAINT_NO_CONSENT_TEXT, 'none');\n    case 'rating': // SPEC-010 RH17, RH18\n      return inForce ? { action: 'rating', text: null, keyboard: null, value: route.value } : notice;\n    case 'unknown_button':\n      return notice;\n    default:\n      throw new Error(`decide(): unknown route kind \"${kind}\"`);\n  }\n}\n\n// --- n8n wiring (\"Clasificar\", SPEC-006 C23): keep the update as it is and add the route ---\nreturn { json: { ...$json, route: classifyUpdate($json) } };\n"
         }
       },
       {
@@ -399,9 +350,9 @@
         ],
         "parameters": {
           "operation": "executeQuery",
-          "query": "SELECT g.status, g.text_version, g.decided_at FROM (SELECT 1) AS one LEFT JOIN consent_get($1) AS g ON true",
+          "query": "SELECT g.status, g.text_version, g.decided_at, handoff_awaiting($2) AS handoff_awaiting FROM (SELECT 1) AS one LEFT JOIN consent_get($1) AS g ON true",
           "options": {
-            "queryReplacement": "={{ $('Clasificar').item.json.route.fromId }}"
+            "queryReplacement": "={{ [ $('Clasificar').item.json.route.fromId, String($('Clasificar').item.json.route.chatId ?? '') ] }}"
           }
         },
         "credentials": {
@@ -424,7 +375,7 @@
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "// SPEC-006 consent module (specs/006-consent/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes \"Clasificar\" and \"Decidir\" of lifecenter-telegram-demo carry this\n// exact code followed only by their input/output wiring (C23). No require, no network, no state.\n\n// --- Configuration (C22). Change the version whenever CONSENT_NOTICE changes: everyone is asked again.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-21) ---\nconst CONSENT_NOTICE =\n  'Hola, soy el asistente de LifeCenter. Para responderte: quito tu nombre, teléfono, DNI y email ' +\n  'de los mensajes antes de procesarlos; envío la consulta a un modelo de IA externo (Gemini, de ' +\n  'Google), y guardo el recorrido de cada consulta, sin tus datos, durante 30 días. Si me cuentas un ' +\n  'síntoma te daré siempre el teléfono de la clínica. Esto es una demostración: no escribas datos ' +\n  'reales. ¿Aceptas?';\nconst ACCEPTED_TEXT = 'Gracias. Ya puedes escribirme tu consulta.';\nconst REJECTED_TEXT =\n  'De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.';\nconst REVOKED_TEXT =\n  'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';\nconst STATUS_ACCEPTED = 'Estado: aceptaste este aviso el {fecha}.';\nconst STATUS_NONE = 'Estado: no has aceptado este aviso.';\n// Copies of CHG-001 texts this module now composes: D7 (error) and D12 (no text).\nconst ERROR_TEXT = 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?';\nconst TEXT_ONLY_TEXT = 'Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?';\n\n// --- Buttons (C7): labels and callback_data, each at most 64 bytes ---\nconst BUTTON_LABELS = {\n  handoff: 'Hablar con recepción',\n  accept: 'Acepto',\n  reject: 'No acepto',\n  withdraw: 'Retirar consentimiento',\n};\nconst CALLBACK_HANDOFF = 'handoff';\nconst CALLBACK_WITHDRAW = 'consent:withdraw';\nconst callbackAccept = (version = CONSENT_TEXT_VERSION) => `consent:accept:${version}`;\nconst callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${version}`;\n\n// --- Commands (spec \"Command\"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,\n// in any letter case (phone keyboards capitalize the first letter) ---\n// SPEC-007: /cita and /micita are booking commands (any letter case, like the others).\nconst COMMAND = /^\\s*\\/(start|privacidad|cita|micita)(?:@[A-Za-z0-9_]+)?\\s*$/i;\nconst BOOKING_COMMANDS = ['cita', 'micita'];\nfunction parseCommand(text) {\n  const m = COMMAND.exec(typeof text === 'string' ? text : '');\n  return m ? m[1].toLowerCase() : null;\n}\n\n// --- Buttons: callback_data → { kind, version } ---\nconst CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;\nfunction parseCallback(data) {\n  if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null };\n  if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };\n  if (typeof data === 'string' && data.startsWith('bk:')) return { kind: 'booking_button', version: null }; // SPEC-007\n  const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');\n  return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };\n}\n\n// --- A Telegram update → route. fromId is a string: it is only ever passed to Neon as $1 (C18). ---\nfunction classifyUpdate(update) {\n  const asId = (v) => (v === undefined || v === null ? null : String(v));\n  const cq = update && update.callback_query;\n  if (cq) {\n    const { kind, version } = parseCallback(cq.data);\n    const route = {\n      kind,\n      fromId: asId(cq.from && cq.from.id),\n      chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,\n      callbackQueryId: cq.id === undefined ? null : cq.id,\n      version,\n    };\n    return kind === 'booking_button' ? { ...route, data: cq.data } : route; // SPEC-007\n  }\n  const m = (update && update.message) || {};\n  const hasText = typeof m.text === 'string' && m.text !== '';\n  const command = hasText ? parseCommand(m.text) : null;\n  const booking = BOOKING_COMMANDS.includes(command);\n  const route = {\n    kind: booking ? 'booking_command' : command || (hasText ? 'text' : 'other'),\n    fromId: asId(m.from && m.from.id),\n    chatId: m.chat ? m.chat.id : null,\n    callbackQueryId: null,\n    version: null,\n  };\n  return booking ? { ...route, data: command } : route; // SPEC-007: /cita, /micita\n}\n\n// --- SPEC-008 MC10: the only booking buttons allowed without consent (one start code each) ---\nconst CANCEL_WITHOUT_CONSENT = /^bk:(?:a|ac|v):[0-9a-z]{1,8}$/;\n\n// --- Consent in force (C22): accepted with the current version; anything else is no consent ---\nfunction isConsentInForce(row) {\n  return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;\n}\n\n// --- dd/mm/aaaa in Europe/Madrid ---\nfunction formatDate(decidedAt) {\n  const parts = new Intl.DateTimeFormat('es-ES', {\n    timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric',\n  }).formatToParts(new Date(decidedAt));\n  const get = (type) => parts.find((p) => p.type === type).value;\n  return `${get('day')}/${get('month')}/${get('year')}`;\n}\n\n// --- What to do with an update (plan Step 1, decision table; C2–C16) ---\n// urgency: the output of \"Detectar urgencia\" (B's wiring), or null if it did not run.\n// consent: the row from consent_get ({} when there is none); lookupFailed: the lookup errored.\nfunction decide({ route, urgency, consent, lookupFailed }) {\n  const reply = (text, keyboard) => ({ action: 'reply', text, keyboard });\n  const notice = reply(CONSENT_NOTICE, 'consent');\n  const inForce = !lookupFailed && isConsentInForce(consent);\n  const kind = route && route.kind;\n\n  if (kind === 'handoff') throw new Error('decide(): the handoff button has its own branch (C12)');\n  if (kind === 'text') {\n    if (inForce) return { action: 'core', text: null, keyboard: null };\n    if (urgency && urgency.urgency_level && urgency.urgency_level !== 'none') return reply(urgency.text, 'handoff');\n    return lookupFailed ? reply(ERROR_TEXT, 'handoff') : notice;\n  }\n  if (lookupFailed) return reply(ERROR_TEXT, 'handoff');\n\n  const withStatus = (status, keyboard) => reply(`${CONSENT_NOTICE}\\n\\n${status}`, keyboard);\n  switch (kind) {\n    case 'other':\n      return inForce ? reply(TEXT_ONLY_TEXT, 'none') : notice;\n    case 'start':\n    case 'privacidad':\n      if (inForce) return withStatus(STATUS_ACCEPTED.replace('{fecha}', formatDate(consent.decided_at)), 'withdraw');\n      return kind === 'start' ? notice : withStatus(STATUS_NONE, 'consent');\n    case 'accept':\n      return route.version === CONSENT_TEXT_VERSION ? { action: 'accept', text: ACCEPTED_TEXT, keyboard: 'none' } : notice;\n    case 'reject':\n      return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;\n    case 'withdraw':\n      return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };\n    case 'booking_command': // SPEC-007 BK8: every booking step needs consent in force\n    case 'booking_button':\n      if (inForce) return { action: 'booking', text: null, keyboard: null, consent: true };\n      // SPEC-008 MC10: without consent, only «Anular» (bk:a), «Sí, anular» (bk:ac) and the «Mantener\n      // mi cita» of the cancel confirmation (bk:v with a start) go through, flagged consent: false.\n      if (kind === 'booking_button' && CANCEL_WITHOUT_CONSENT.test(route.data || '')) {\n        return { action: 'booking', text: null, keyboard: null, consent: false };\n      }\n      return notice;\n    case 'unknown_button':\n      return notice;\n    default:\n      throw new Error(`decide(): unknown route kind \"${kind}\"`);\n  }\n}\n\n// --- n8n wiring (\"Decidir\", SPEC-006 C23) ---\nconst route = $('Clasificar').item.json.route;\nconst urgency = $('Detectar urgencia').isExecuted ? $('Detectar urgencia').item.json : null;\nconst lookupFailed = !!$json.error; // error output of \"Consultar consentimiento\" (C6)\nconst d = decide({ route, urgency, consent: lookupFailed ? null : $json, lookupFailed });\nreturn { json: {\n  ...d, chatId: route.chatId,\n  callbackAccept: callbackAccept(), callbackReject: callbackReject(),\n  onWriteError: { action: 'reply', text: ERROR_TEXT, keyboard: 'handoff' },\n} };\n"
+          "jsCode": "// SPEC-006 consent module (specs/006-consent/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes \"Clasificar\" and \"Decidir\" of lifecenter-telegram-demo carry this\n// exact code followed only by their input/output wiring (C23). No require, no network, no state.\n\n// --- Configuration (C22). Change the version whenever CONSENT_NOTICE changes: everyone is asked again.\nconst CONSENT_TEXT_VERSION = '1';\n\n// --- Fixed texts (spec \"Fixed texts\", approved by the human 2026-11-21) ---\nconst CONSENT_NOTICE =\n  'Hola, soy el asistente de LifeCenter. Para responderte: quito tu nombre, teléfono, DNI y email ' +\n  'de los mensajes antes de procesarlos; envío la consulta a un modelo de IA externo (Gemini, de ' +\n  'Google), y guardo el recorrido de cada consulta, sin tus datos, durante 30 días. Si me cuentas un ' +\n  'síntoma te daré siempre el teléfono de la clínica. Esto es una demostración: no escribas datos ' +\n  'reales. ¿Aceptas?';\nconst ACCEPTED_TEXT = 'Gracias. Ya puedes escribirme tu consulta.';\nconst REJECTED_TEXT =\n  'De acuerdo, no procesaré tus consultas. Puedes llamar a recepción. Si cambias de opinión, escribe /privacidad.';\nconst REVOKED_TEXT =\n  'He retirado tu consentimiento. No procesaré más consultas tuyas. Si cambias de opinión, escribe /privacidad.';\nconst STATUS_ACCEPTED = 'Estado: aceptaste este aviso el {fecha}.';\nconst STATUS_NONE = 'Estado: no has aceptado este aviso.';\n// Copies of CHG-001 texts this module now composes: D7 (error) and D12 (no text).\nconst ERROR_TEXT = 'Ahora mismo no puedo responder. ¿Quieres que pase tu consulta a recepción?';\nconst TEXT_ONLY_TEXT = 'Solo puedo leer mensajes de texto. ¿Me escribes tu consulta?';\n// SPEC-010 (spec \"Fixed texts\", verified 2026-11-24): the D8 text, now chosen here, for a handoff without\n// consent; and the reply to a complaint without consent.\nconst HANDOFF_NO_CONSENT_TEXT = 'Ahora mismo no puedo pasar tu consulta automáticamente. Llama a recepción en horario de atención.';\nconst COMPLAINT_NO_CONSENT_TEXT =\n  'Para pasar tu queja a recepción necesito tu consentimiento (/privacidad). También puedes llamar a recepción en horario de atención.';\n\n// --- Buttons (C7): labels and callback_data, each at most 64 bytes ---\nconst BUTTON_LABELS = {\n  handoff: 'Hablar con recepción',\n  accept: 'Acepto',\n  reject: 'No acepto',\n  withdraw: 'Retirar consentimiento',\n};\nconst CALLBACK_HANDOFF = 'handoff';\nconst CALLBACK_WITHDRAW = 'consent:withdraw';\nconst callbackAccept = (version = CONSENT_TEXT_VERSION) => `consent:accept:${version}`;\nconst callbackReject = (version = CONSENT_TEXT_VERSION) => `consent:reject:${version}`;\n\n// --- Commands (spec \"Command\"): exactly /start or /privacidad, optionally @<bot>, spaces ignored,\n// in any letter case (phone keyboards capitalize the first letter) ---\n// SPEC-007: /cita and /micita are booking commands (any letter case, like the others).\n// SPEC-010: /queja opens the complaint path (RH13).\nconst COMMAND = /^\\s*\\/(start|privacidad|cita|micita|queja)(?:@[A-Za-z0-9_]+)?\\s*$/i;\nconst BOOKING_COMMANDS = ['cita', 'micita'];\nfunction parseCommand(text) {\n  const m = COMMAND.exec(typeof text === 'string' ? text : '');\n  return m ? m[1].toLowerCase() : null;\n}\n\n// --- Buttons: callback_data → { kind, version } ---\nconst CONSENT_CALLBACK = /^consent:(accept|reject):(.+)$/;\n// SPEC-010 RH2, RH3, RH6, RH17: handoff:<reason> (the old `handoff` is a request), «Sí, pasar a\n// recepción» (hs:<reason>), «No» (hn), and the ratings (rt:u / rt:d). «Cerrar» (hc:) only exists in groups.\nconst HANDOFF_CALLBACK = /^(handoff|hs):([aupq])$/;\nconst RATING_CALLBACK = /^rt:([ud])$/;\nfunction parseCallback(data) {\n  if (data === CALLBACK_HANDOFF) return { kind: 'handoff', version: null, reason: 'p' };\n  const h = HANDOFF_CALLBACK.exec(typeof data === 'string' ? data : '');\n  if (h) return { kind: h[1] === 'hs' ? 'handoff_confirm' : 'handoff', version: null, reason: h[2] };\n  if (data === 'hn') return { kind: 'handoff_cancel', version: null };\n  const rt = RATING_CALLBACK.exec(typeof data === 'string' ? data : '');\n  if (rt) return { kind: 'rating', version: null, value: rt[1] === 'u' ? 'up' : 'down' };\n  if (data === CALLBACK_WITHDRAW) return { kind: 'withdraw', version: null };\n  if (typeof data === 'string' && data.startsWith('bk:')) return { kind: 'booking_button', version: null }; // SPEC-007\n  const m = CONSENT_CALLBACK.exec(typeof data === 'string' ? data : '');\n  return m ? { kind: m[1], version: m[2] } : { kind: 'unknown_button', version: null };\n}\n\n// --- A Telegram update → route. fromId is a string: it is only ever passed to Neon as $1 (C18). ---\nfunction classifyUpdate(update) {\n  const asId = (v) => (v === undefined || v === null ? null : String(v));\n  const cq = update && update.callback_query;\n  // SPEC-010 RH12, A3: anything from a chat that is not private is a group update. It never carries the\n  // sender's id, and never reaches the consent logic.\n  const chatOf = cq ? cq.message && cq.message.chat : update && update.message && update.message.chat;\n  if (chatOf && chatOf.type && chatOf.type !== 'private') {\n    const gm = cq ? cq.message : update.message;\n    const reply = !cq && gm.reply_to_message;\n    return {\n      kind: 'group',\n      chatId: asId(chatOf.id),\n      messageId: gm && gm.message_id !== undefined ? gm.message_id : null,\n      replyToMessageId: reply ? reply.message_id : null,\n      replyToBot: !!(reply && reply.from && reply.from.is_bot),\n      text: !cq && typeof gm.text === 'string' ? gm.text : null,\n      callbackData: cq ? cq.data : null,\n      callbackQueryId: cq && cq.id !== undefined ? cq.id : null,\n    };\n  }\n  if (cq) {\n    const parsed = parseCallback(cq.data);\n    const route = {\n      kind: parsed.kind,\n      fromId: asId(cq.from && cq.from.id),\n      chatId: cq.message && cq.message.chat ? cq.message.chat.id : null,\n      callbackQueryId: cq.id === undefined ? null : cq.id,\n      version: parsed.version,\n    };\n    if (parsed.kind === 'booking_button') return { ...route, data: cq.data }; // SPEC-007\n    if ('reason' in parsed) return { ...route, reason: parsed.reason }; // SPEC-010\n    if ('value' in parsed) return { ...route, value: parsed.value };\n    return route;\n  }\n  const m = (update && update.message) || {};\n  const hasText = typeof m.text === 'string' && m.text !== '';\n  const command = hasText ? parseCommand(m.text) : null;\n  const booking = BOOKING_COMMANDS.includes(command);\n  const complaint = command === 'queja'; // SPEC-010 RH13\n  const route = {\n    kind: booking ? 'booking_command' : complaint ? 'complaint_command' : command || (hasText ? 'text' : 'other'),\n    fromId: asId(m.from && m.from.id),\n    chatId: m.chat ? m.chat.id : null,\n    callbackQueryId: null,\n    version: null,\n  };\n  return booking || complaint ? { ...route, data: command } : route; // SPEC-007: /cita, /micita; SPEC-010: /queja\n}\n\n// --- SPEC-010 RH13, RH14: complaint phrases, a strict list (evals/complaint_phrases.yaml) ---\n// Works on the pseudonymized text. A match only opens the /queja confirmation; it never posts anything.\nfunction normalizeComplaintText(text) {\n  return String(text ?? '')\n    .toLowerCase()\n    .normalize('NFD').replace(/\\p{M}+/gu, '')\n    .replace(/\\[(nombre|telefono|dni|email)\\]/g, ' ')\n    .replace(/[^\\p{L}\\p{N}\\s]+/gu, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\nconst COMPLAINT_WORDS = /\\b(?:queja|quejas|quejar|quejarme|reclamacion|reclamaciones|reclamar)\\b/;\n// Not a complaint: no complaint, someone else complaining, or an insurance claim.\nconst COMPLAINT_BLOCKERS = [\n  /\\b(?:no tengo|sin) (?:ninguna )?quejas?\\b/,\n  /\\bno me quejo\\b/,\n  /\\bse (?:queja|quejan|quejaba|quejo)\\b/,\n  /\\b(?:seguro|aseguradora|reembolso|mutua|tramit\\w*)\\b/,\n];\nfunction detectComplaintPhrase(text) {\n  const t = normalizeComplaintText(text);\n  return COMPLAINT_WORDS.test(t) && !COMPLAINT_BLOCKERS.some((re) => re.test(t));\n}\n\n// --- SPEC-008 MC10: the only booking buttons allowed without consent (one start code each) ---\nconst CANCEL_WITHOUT_CONSENT = /^bk:(?:a|ac|v):[0-9a-z]{1,8}$/;\n\n// --- Consent in force (C22): accepted with the current version; anything else is no consent ---\nfunction isConsentInForce(row) {\n  return !!row && row.status === 'accepted' && row.text_version === CONSENT_TEXT_VERSION;\n}\n\n// --- dd/mm/aaaa in Europe/Madrid ---\nfunction formatDate(decidedAt) {\n  const parts = new Intl.DateTimeFormat('es-ES', {\n    timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric',\n  }).formatToParts(new Date(decidedAt));\n  const get = (type) => parts.find((p) => p.type === type).value;\n  return `${get('day')}/${get('month')}/${get('year')}`;\n}\n\n// --- What to do with an update (plan Step 1, decision table; C2–C16) ---\n// urgency: the output of \"Detectar urgencia\" (B's wiring), or null if it did not run.\n// consent: the row from consent_get ({} when there is none); lookupFailed: the lookup errored.\n// SPEC-010: question is the pseudonymized text (for the complaint phrases); handoffAwaiting says whether a\n// handoff of this patient waits for the text for reception (from the consent lookup).\nfunction decide({ route, urgency, consent, lookupFailed, question = null, handoffAwaiting = false }) {\n  const reply = (text, keyboard) => ({ action: 'reply', text, keyboard });\n  const notice = reply(CONSENT_NOTICE, 'consent');\n  const inForce = !lookupFailed && isConsentInForce(consent);\n  const kind = route && route.kind;\n\n  const urgent = !!(urgency && urgency.urgency_level && urgency.urgency_level !== 'none');\n  const handoff = (step, reason, extra = {}) => ({ action: 'handoff', text: null, keyboard: null, step, reason, ...extra });\n  if (kind === 'group') throw new Error('decide(): a group update has its own branch (SPEC-010 RH12)');\n  if (kind === 'text') {\n    // SPEC-010 RH4, RH5: the text a handoff waits for goes to reception (an urgency is answered first).\n    if (inForce && handoffAwaiting) return handoff('text', null, { urgent });\n    // SPEC-010 RH13–RH15: a complaint phrase opens the /queja confirmation; an urgency always wins.\n    if (!urgent && detectComplaintPhrase(question)) {\n      if (inForce) return handoff('ask', 'q');\n      return reply(COMPLAINT_NO_CONSENT_TEXT, 'none');\n    }\n    if (inForce) return { action: 'core', text: null, keyboard: null };\n    if (urgent) return reply(urgency.text, 'handoff');\n    return lookupFailed ? reply(ERROR_TEXT, 'handoff') : notice;\n  }\n  // SPEC-010 RH1, RH3, RH6, RH7: the handoff steps; «No» needs nothing.\n  if (kind === 'handoff_cancel') return handoff('cancel', null);\n  if (kind === 'handoff' || kind === 'handoff_confirm') {\n    return inForce ? handoff(kind === 'handoff' ? 'ask' : 'confirm', route.reason) : reply(HANDOFF_NO_CONSENT_TEXT, 'none');\n  }\n  if (lookupFailed) return reply(ERROR_TEXT, 'handoff');\n\n  const withStatus = (status, keyboard) => reply(`${CONSENT_NOTICE}\\n\\n${status}`, keyboard);\n  switch (kind) {\n    case 'other':\n      return inForce ? reply(TEXT_ONLY_TEXT, 'none') : notice;\n    case 'start':\n    case 'privacidad':\n      if (inForce) return withStatus(STATUS_ACCEPTED.replace('{fecha}', formatDate(consent.decided_at)), 'withdraw');\n      return kind === 'start' ? notice : withStatus(STATUS_NONE, 'consent');\n    case 'accept':\n      return route.version === CONSENT_TEXT_VERSION ? { action: 'accept', text: ACCEPTED_TEXT, keyboard: 'none' } : notice;\n    case 'reject':\n      return route.version === CONSENT_TEXT_VERSION ? reply(REJECTED_TEXT, 'none') : notice;\n    case 'withdraw':\n      return { action: 'withdraw', text: REVOKED_TEXT, keyboard: 'none' };\n    case 'booking_command': // SPEC-007 BK8: every booking step needs consent in force\n    case 'booking_button':\n      if (inForce) return { action: 'booking', text: null, keyboard: null, consent: true };\n      // SPEC-008 MC10: without consent, only «Anular» (bk:a), «Sí, anular» (bk:ac) and the «Mantener\n      // mi cita» of the cancel confirmation (bk:v with a start) go through, flagged consent: false.\n      if (kind === 'booking_button' && CANCEL_WITHOUT_CONSENT.test(route.data || '')) {\n        return { action: 'booking', text: null, keyboard: null, consent: false };\n      }\n      return notice;\n    case 'complaint_command': // SPEC-010 RH13, RH15\n      return inForce ? handoff('ask', 'q') : reply(COMPLAINT_NO_CONSENT_TEXT, 'none');\n    case 'rating': // SPEC-010 RH17, RH18\n      return inForce ? { action: 'rating', text: null, keyboard: null, value: route.value } : notice;\n    case 'unknown_button':\n      return notice;\n    default:\n      throw new Error(`decide(): unknown route kind \"${kind}\"`);\n  }\n}\n\n// --- n8n wiring (\"Decidir\", SPEC-006 C23, SPEC-010) ---\nconst route = $('Clasificar').item.json.route;\nconst urgency = $('Detectar urgencia').isExecuted ? $('Detectar urgencia').item.json : null;\nconst question = $('Seudonimizar').isExecuted ? $('Seudonimizar').item.json.question : null; // SPEC-010: complaint phrases\nconst lookupFailed = !!$json.error; // error output of \"Consultar consentimiento\" (C6)\nconst handoffAwaiting = !lookupFailed && $json.handoff_awaiting === true; // SPEC-010 RH4\nconst d = decide({ route, urgency, consent: lookupFailed ? null : $json, lookupFailed, question, handoffAwaiting });\nreturn { json: {\n  ...d, chatId: route.chatId,\n  callbackAccept: callbackAccept(), callbackReject: callbackReject(),\n  onWriteError: { action: 'reply', text: ERROR_TEXT, keyboard: 'handoff' },\n} };\n"
         }
       },
       {
@@ -540,6 +491,50 @@
                   "conditions": [
                     {
                       "leftValue": "={{ $json.action === 'booking' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "handoff",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'handoff' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "rating",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'rating' }}",
                       "operator": {
                         "type": "boolean",
                         "operation": "true",
@@ -1731,9 +1726,9 @@
         ],
         "parameters": {
           "operation": "executeQuery",
-          "query": "WITH f AS MATERIALIZED (SELECT reminder_forget($1) AS had_reminder)\nSELECT (SELECT row_to_json(m) FROM agenda_my_next($1) m) AS my_next, f.had_reminder FROM f",
+          "query": "WITH f AS MATERIALIZED (SELECT reminder_forget($1) AS had_reminder, handoff_forget($2) AS had_handoff)\nSELECT (SELECT row_to_json(m) FROM agenda_my_next($1) m) AS my_next, f.had_reminder, f.had_handoff FROM f",
           "options": {
-            "queryReplacement": "={{ $('Clasificar').item.json.route.fromId }}"
+            "queryReplacement": "={{ [ $('Clasificar').item.json.route.fromId, String($('Clasificar').item.json.route.chatId ?? '') ] }}"
           }
         },
         "credentials": {
@@ -1886,6 +1881,662 @@
           }
         },
         "onError": "continueErrorOutput"
+      },
+      {
+        "id": "f9cdd013-a089-4121-b700-bcc78d719430",
+        "name": "¿Paso de recepción?",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.5,
+        "position": [
+          3924,
+          1600
+        ],
+        "parameters": {
+          "mode": "rules",
+          "options": {},
+          "rules": {
+            "values": [
+              {
+                "renameOutput": true,
+                "outputKey": "reply",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.step === 'reply' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "confirm",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.step === 'confirm' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "text",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.step === 'text' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "rating",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.step === 'rating' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "eea90173-2944-4a6f-9472-bf1fc18ed8dd",
+        "name": "Abrir derivación",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          4148,
+          1504
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT handoff_start($1, $2) AS code",
+          "options": {
+            "queryReplacement": "={{ [ String($json.chatId), $json.reason ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "0cbd7f2d-2e3e-4d99-a4ab-187499a87058",
+        "name": "Derivación pendiente",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          4148,
+          1696
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT p.id, p.code, p.reason, reception_chat_id() AS group_chat_id FROM (SELECT 1) AS one LEFT JOIN handoff_pending($1) AS p ON true",
+          "options": {
+            "queryReplacement": "={{ [ String($json.chatId) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "7264e48e-9f15-4730-9669-23cf59434b1d",
+        "name": "¿Hay derivación?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.4,
+        "position": [
+          4372,
+          1696
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && !!$json.id && !!$json.group_chat_id }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "bd485c1f-e416-4664-a26c-79c5b691b0d2",
+        "name": "Publicar en el grupo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          4820,
+          1696
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "sendMessage",
+          "chatId": "={{ $json.groupChatId }}",
+          "text": "={{ ($json.text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": {
+            "rows": [
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "={{ $json.inlineKeyboard.rows[0].row.buttons[0].text }}",
+                      "additionalFields": {
+                        "callback_data": "={{ $json.inlineKeyboard.rows[0].row.buttons[0].additionalFields.callback_data }}"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "additionalFields": {
+            "appendAttribution": false,
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "8547079b-cb01-4cde-a861-bce834b8fea6",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "03ee6b0f-abdc-4229-9dbb-7c9ad863eb33",
+        "name": "¿Publicado?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.4,
+        "position": [
+          5044,
+          1696
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "44f67d02-b82e-450d-a765-cc2a8b52772c",
+        "name": "Abrir en el grupo",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          5268,
+          1600
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT handoff_open($1::uuid, $2::bigint) AS result",
+          "options": {
+            "queryReplacement": "={{ [ $('Mensaje del grupo').item.json.id, String(($json.result && $json.result.message_id) || $json.message_id) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "9eae7571-d04a-4a3b-86ea-10a934a3b858",
+        "name": "Fallo al publicar",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          5268,
+          1792
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT handoff_fail($1::uuid) AS result",
+          "options": {
+            "queryReplacement": "={{ [ $('Mensaje del grupo').item.json.id ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "7825ed5e-0ea8-45c2-afc8-881fc0e68750",
+        "name": "Valorar",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          3700,
+          1904
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT feedback_add('answered', $1) AS result",
+          "options": {
+            "queryReplacement": "={{ [ $json.value ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "a63c1f35-bb24-49e6-a81d-d7b1b7e82632",
+        "name": "Quitar valoración",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          4148,
+          1904
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "editMessageText",
+          "messageType": "message",
+          "chatId": "={{ $json.chatId }}",
+          "messageId": "={{ $json.messageId }}",
+          "text": "={{ ($json.originalText).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "replyMarkup": "none",
+          "additionalFields": {
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "afa99fa0-e702-41c3-804b-9547b4f1bdae",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "68aeb776-eb1c-4091-b108-1ca75adf1567",
+        "name": "Id del grupo",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          672,
+          -400
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT reception_chat_id() AS group_chat_id",
+          "options": {}
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "2694d724-d92d-4151-bba8-19e0bed9b075",
+        "name": "¿Qué hace recepción?",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.5,
+        "position": [
+          1120,
+          -400
+        ],
+        "parameters": {
+          "mode": "rules",
+          "options": {},
+          "rules": {
+            "values": [
+              {
+                "renameOutput": true,
+                "outputKey": "forward",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'forward' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "renameOutput": true,
+                "outputKey": "close",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.action === 'close' }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "cde2dec4-a5b8-444e-9ddf-a2364eff3056",
+        "name": "Buscar derivación",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          1344,
+          -496
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT r.code, r.chat_id FROM (SELECT 1) AS one LEFT JOIN handoff_reply($1::bigint) AS r ON true",
+          "options": {
+            "queryReplacement": "={{ [ String($json.replyToMessageId) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "2114f5c9-2041-428c-bd71-3f442bf0218c",
+        "name": "Enviar respuesta de recepción",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          1792,
+          -496
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "sendMessage",
+          "chatId": "={{ $json.chatId }}",
+          "text": "={{ ($json.text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "0e9c579a-2427-4870-b9c5-1196dcc804b3",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "2f50261f-2a6b-4cab-9109-f7e0bc9d79f4",
+        "name": "Cerrar derivación",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.8,
+        "position": [
+          1344,
+          -304
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT handoff_close($1) AS result",
+          "options": {
+            "queryReplacement": "={{ [ $json.code ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "QvG6Gru4fDSLvtzu",
+            "name": "Neon main"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "f07fcf5e-8e7f-47b8-a4b8-e4d5d14fcf08",
+        "name": "Marcar cerrada",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          1568,
+          -304
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "editMessageText",
+          "messageType": "message",
+          "chatId": "={{ $('Grupo de recepción').item.json.groupChatId }}",
+          "messageId": "={{ $('Grupo de recepción').item.json.messageId }}",
+          "text": "={{ ($('Grupo de recepción').item.json.closedText).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') }}",
+          "replyMarkup": "none",
+          "additionalFields": {
+            "parse_mode": "HTML"
+          }
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "c3be3b42-6e89-4306-815e-56bac0829154",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "0a64605f-7bb4-4715-a5b9-fe2055e2906b",
+        "name": "Confirmar cierre",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          1344,
+          -160
+        ],
+        "parameters": {
+          "resource": "callback",
+          "operation": "answerQuery",
+          "queryId": "={{ $json.callbackQueryId }}",
+          "additionalFields": {}
+        },
+        "credentials": {
+          "telegramApi": {
+            "id": "VzY1vvAFNqi3JSKT",
+            "name": "Telegram LifeCenter Bot"
+          }
+        },
+        "webhookId": "df9ea015-d7e8-4637-8392-3137b1b1c77f",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "f1c87747-0648-42ea-a6a9-8b2f22a01491",
+        "name": "Recepción",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3700,
+          1600
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de\n// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact\n// code followed only by their wiring. No require, no network, no state: the handoff rows live\n// in Neon (007_reception.sql), and no message text is ever stored.\n\n// --- Fixed texts (spec \"Fixed texts\", verified by the human 2026-11-24) ---\nconst TEXTS = {\n  HANDOFF_CONFIRM: '¿Quieres que pase tu consulta a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  HANDOFF_WRITE: 'Escribe en un mensaje lo que quieres que lea recepción. No incluyas datos personales.',\n  HANDOFF_SENT: 'Hecho. He pasado tu consulta a recepción (código {codigo}). Te responderán por aquí en horario de la clínica.',\n  HANDOFF_CANCELLED: 'De acuerdo, no paso nada a recepción.',\n  HANDOFF_FAILED: 'Ahora mismo no puedo pasar tu consulta. Llama a recepción en horario de atención.',\n  GROUP_HEADER: '[{codigo}] Motivo: {motivo}',\n  GROUP_FOOTER: 'Responde a este mensaje para contestar al paciente.',\n  RECEPTION_REPLY: 'Recepción de LifeCenter ({codigo}): {texto}',\n  HANDOFF_CLOSED: 'Esta consulta ya está cerrada.',\n  COMPLAINT_CONFIRM: 'Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  RATING_THANKS: 'Gracias por tu valoración.',\n};\nconst LABELS = { si: 'Sí, pasar a recepción', no: 'No', cerrar: 'Cerrar', cerrada: 'Cerrada', up: '👍', down: '👎' };\n// The existing labels and callbacks this module reuses (CHG-001 D8, SPEC-007).\nconst HANDOFF_LABEL = 'Hablar con recepción';\nconst BOOKING_LABEL = 'Pedir cita';\nconst BOOKING_MENU = 'bk:menu';\n\n// --- Reasons (RH2, RH13): the code in the callback, and what reception reads ---\nconst REASONS = { a: 'abstención', u: 'urgencia', p: 'petición', q: 'queja' };\n\n// --- Codes (P3): R- (handoff) or Q- (complaint) + 4 characters with no look-alikes (no 0, O, 1, I, L).\n// The database generates them (unique among open handoffs); this only recognizes them.\nconst CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';\nconst CODE_PATTERN = /^[RQ]-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/;\n\n// --- The reason of «Hablar con recepción» under a reply of B (RH2). B does not change. ---\nconst ABSTENTION_REASONS = ['below_threshold', 'model_abstained', 'validation_failed'];\nfunction handoffReasonFor(result) {\n  const reason = result && result.reason;\n  if (reason === 'urgency') return 'u';\n  if (ABSTENTION_REASONS.includes(reason)) return 'a';\n  return 'p';\n}\n\nconst fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);\n\n// --- The confirmation (RH1, RH13): «Sí, pasar a recepción» keeps the reason; «No» needs nothing ---\nfunction confirmView(reason) {\n  return {\n    text: reason === 'q' ? TEXTS.COMPLAINT_CONFIRM : TEXTS.HANDOFF_CONFIRM,\n    rows: [[{ text: LABELS.si, data: `hs:${reason}` }], [{ text: LABELS.no, data: 'hn' }]],\n  };\n}\n\n// --- The message posted in the reception group (RH4, RH5, P4): code, reason, the pseudonymized text,\n// and «Cerrar». No name, phone, Telegram user or appointment. An urgency is always marked as one. ---\nfunction groupMessage({ code, reason, text, urgent }) {\n  const motivo = REASONS[urgent ? 'u' : reason] || REASONS.p;\n  return {\n    text: `${fill(TEXTS.GROUP_HEADER, { codigo: code, motivo })}\\n\\n${text}\\n\\n${TEXTS.GROUP_FOOTER}`,\n    rows: [[{ text: LABELS.cerrar, data: `hc:${code}` }]],\n  };\n}\n\n// --- What the patient reads (RH4, RH9) ---\nconst sentText = (code) => fill(TEXTS.HANDOFF_SENT, { codigo: code });\nconst receptionReply = (code, text) => fill(TEXTS.RECEPTION_REPLY, { codigo: code, texto: text });\n\n// --- An update from a group (RH9–RH12): only a text reply to a bot message, or «Cerrar», in the\n// registered reception group. Everything else, from any group, is ignored with no reply. ---\nfunction groupAction(route, receptionChatId) {\n  const ignore = { action: 'ignore' };\n  if (!route || route.kind !== 'group' || !receptionChatId || String(route.chatId) !== String(receptionChatId)) return ignore;\n  if (route.callbackData) {\n    const m = /^hc:(.+)$/.exec(route.callbackData);\n    return m && CODE_PATTERN.test(m[1])\n      ? { action: 'close', code: m[1], callbackQueryId: route.callbackQueryId, messageId: route.messageId } : ignore;\n  }\n  if (route.replyToMessageId && route.replyToBot && typeof route.text === 'string' && route.text.trim()) {\n    return { action: 'forward', replyToMessageId: route.replyToMessageId, text: route.text };\n  }\n  return ignore;\n}\n\n// --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»\n// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva\n// (n)» nodes have one button per row (human, 2026-11-24). ---\nfunction answerRows(result) {\n  const rows = [];\n  if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);\n  if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);\n  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);\n  return rows;\n}\n\n// --- The Telegram node's inlineKeyboard parameter, built from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Recepción», SPEC-010 RH1, RH3, RH6, RH17): the reply, or the next step ---\nconst d = $('Decidir').item.json;\nconst chatId = d.chatId;\nif (d.action === 'rating') { // after «Valorar»: thank, and take the buttons off the rated message\n  const m = ($('Clasificar').item.json.callback_query || {}).message || {};\n  return { json: { step: 'rating', text: TEXTS.RATING_THANKS, keyboard: 'none', chatId, messageId: m.message_id, originalText: m.text || '' } };\n}\nif (d.step === 'ask') {\n  const v = confirmView(d.reason);\n  return { json: { step: 'reply', text: v.text, keyboard: 'booking', inlineKeyboard: toTelegramKeyboard(v.rows), chatId } };\n}\nif (d.step === 'cancel') return { json: { step: 'reply', text: TEXTS.HANDOFF_CANCELLED, keyboard: 'none', chatId } };\nreturn { json: { step: d.step, reason: d.reason, urgent: !!d.urgent, chatId } }; // confirm | text\n"
+        }
+      },
+      {
+        "id": "4927348c-d6a4-4578-b021-2169d4b282fe",
+        "name": "Mensaje del grupo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4596,
+          1696
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de\n// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact\n// code followed only by their wiring. No require, no network, no state: the handoff rows live\n// in Neon (007_reception.sql), and no message text is ever stored.\n\n// --- Fixed texts (spec \"Fixed texts\", verified by the human 2026-11-24) ---\nconst TEXTS = {\n  HANDOFF_CONFIRM: '¿Quieres que pase tu consulta a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  HANDOFF_WRITE: 'Escribe en un mensaje lo que quieres que lea recepción. No incluyas datos personales.',\n  HANDOFF_SENT: 'Hecho. He pasado tu consulta a recepción (código {codigo}). Te responderán por aquí en horario de la clínica.',\n  HANDOFF_CANCELLED: 'De acuerdo, no paso nada a recepción.',\n  HANDOFF_FAILED: 'Ahora mismo no puedo pasar tu consulta. Llama a recepción en horario de atención.',\n  GROUP_HEADER: '[{codigo}] Motivo: {motivo}',\n  GROUP_FOOTER: 'Responde a este mensaje para contestar al paciente.',\n  RECEPTION_REPLY: 'Recepción de LifeCenter ({codigo}): {texto}',\n  HANDOFF_CLOSED: 'Esta consulta ya está cerrada.',\n  COMPLAINT_CONFIRM: 'Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  RATING_THANKS: 'Gracias por tu valoración.',\n};\nconst LABELS = { si: 'Sí, pasar a recepción', no: 'No', cerrar: 'Cerrar', cerrada: 'Cerrada', up: '👍', down: '👎' };\n// The existing labels and callbacks this module reuses (CHG-001 D8, SPEC-007).\nconst HANDOFF_LABEL = 'Hablar con recepción';\nconst BOOKING_LABEL = 'Pedir cita';\nconst BOOKING_MENU = 'bk:menu';\n\n// --- Reasons (RH2, RH13): the code in the callback, and what reception reads ---\nconst REASONS = { a: 'abstención', u: 'urgencia', p: 'petición', q: 'queja' };\n\n// --- Codes (P3): R- (handoff) or Q- (complaint) + 4 characters with no look-alikes (no 0, O, 1, I, L).\n// The database generates them (unique among open handoffs); this only recognizes them.\nconst CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';\nconst CODE_PATTERN = /^[RQ]-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/;\n\n// --- The reason of «Hablar con recepción» under a reply of B (RH2). B does not change. ---\nconst ABSTENTION_REASONS = ['below_threshold', 'model_abstained', 'validation_failed'];\nfunction handoffReasonFor(result) {\n  const reason = result && result.reason;\n  if (reason === 'urgency') return 'u';\n  if (ABSTENTION_REASONS.includes(reason)) return 'a';\n  return 'p';\n}\n\nconst fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);\n\n// --- The confirmation (RH1, RH13): «Sí, pasar a recepción» keeps the reason; «No» needs nothing ---\nfunction confirmView(reason) {\n  return {\n    text: reason === 'q' ? TEXTS.COMPLAINT_CONFIRM : TEXTS.HANDOFF_CONFIRM,\n    rows: [[{ text: LABELS.si, data: `hs:${reason}` }], [{ text: LABELS.no, data: 'hn' }]],\n  };\n}\n\n// --- The message posted in the reception group (RH4, RH5, P4): code, reason, the pseudonymized text,\n// and «Cerrar». No name, phone, Telegram user or appointment. An urgency is always marked as one. ---\nfunction groupMessage({ code, reason, text, urgent }) {\n  const motivo = REASONS[urgent ? 'u' : reason] || REASONS.p;\n  return {\n    text: `${fill(TEXTS.GROUP_HEADER, { codigo: code, motivo })}\\n\\n${text}\\n\\n${TEXTS.GROUP_FOOTER}`,\n    rows: [[{ text: LABELS.cerrar, data: `hc:${code}` }]],\n  };\n}\n\n// --- What the patient reads (RH4, RH9) ---\nconst sentText = (code) => fill(TEXTS.HANDOFF_SENT, { codigo: code });\nconst receptionReply = (code, text) => fill(TEXTS.RECEPTION_REPLY, { codigo: code, texto: text });\n\n// --- An update from a group (RH9–RH12): only a text reply to a bot message, or «Cerrar», in the\n// registered reception group. Everything else, from any group, is ignored with no reply. ---\nfunction groupAction(route, receptionChatId) {\n  const ignore = { action: 'ignore' };\n  if (!route || route.kind !== 'group' || !receptionChatId || String(route.chatId) !== String(receptionChatId)) return ignore;\n  if (route.callbackData) {\n    const m = /^hc:(.+)$/.exec(route.callbackData);\n    return m && CODE_PATTERN.test(m[1])\n      ? { action: 'close', code: m[1], callbackQueryId: route.callbackQueryId, messageId: route.messageId } : ignore;\n  }\n  if (route.replyToMessageId && route.replyToBot && typeof route.text === 'string' && route.text.trim()) {\n    return { action: 'forward', replyToMessageId: route.replyToMessageId, text: route.text };\n  }\n  return ignore;\n}\n\n// --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»\n// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva\n// (n)» nodes have one button per row (human, 2026-11-24). ---\nfunction answerRows(result) {\n  const rows = [];\n  if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);\n  if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);\n  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);\n  return rows;\n}\n\n// --- The Telegram node's inlineKeyboard parameter, built from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Mensaje del grupo», SPEC-010 RH4, RH5): the pseudonymized text, never stored ---\nconst p = $('Recepción').item.json;\nconst g = groupMessage({ code: $json.code, reason: $json.reason, text: $('Seudonimizar').item.json.question, urgent: p.urgent });\nreturn { json: { id: $json.id, code: $json.code, groupChatId: $json.group_chat_id, text: g.text, inlineKeyboard: toTelegramKeyboard(g.rows) } };\n"
+        }
+      },
+      {
+        "id": "2dd8d5ee-c09c-4b18-a4fc-fe4a27db4875",
+        "name": "Componer recepción",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5492,
+          1600
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de\n// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact\n// code followed only by their wiring. No require, no network, no state: the handoff rows live\n// in Neon (007_reception.sql), and no message text is ever stored.\n\n// --- Fixed texts (spec \"Fixed texts\", verified by the human 2026-11-24) ---\nconst TEXTS = {\n  HANDOFF_CONFIRM: '¿Quieres que pase tu consulta a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  HANDOFF_WRITE: 'Escribe en un mensaje lo que quieres que lea recepción. No incluyas datos personales.',\n  HANDOFF_SENT: 'Hecho. He pasado tu consulta a recepción (código {codigo}). Te responderán por aquí en horario de la clínica.',\n  HANDOFF_CANCELLED: 'De acuerdo, no paso nada a recepción.',\n  HANDOFF_FAILED: 'Ahora mismo no puedo pasar tu consulta. Llama a recepción en horario de atención.',\n  GROUP_HEADER: '[{codigo}] Motivo: {motivo}',\n  GROUP_FOOTER: 'Responde a este mensaje para contestar al paciente.',\n  RECEPTION_REPLY: 'Recepción de LifeCenter ({codigo}): {texto}',\n  HANDOFF_CLOSED: 'Esta consulta ya está cerrada.',\n  COMPLAINT_CONFIRM: 'Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  RATING_THANKS: 'Gracias por tu valoración.',\n};\nconst LABELS = { si: 'Sí, pasar a recepción', no: 'No', cerrar: 'Cerrar', cerrada: 'Cerrada', up: '👍', down: '👎' };\n// The existing labels and callbacks this module reuses (CHG-001 D8, SPEC-007).\nconst HANDOFF_LABEL = 'Hablar con recepción';\nconst BOOKING_LABEL = 'Pedir cita';\nconst BOOKING_MENU = 'bk:menu';\n\n// --- Reasons (RH2, RH13): the code in the callback, and what reception reads ---\nconst REASONS = { a: 'abstención', u: 'urgencia', p: 'petición', q: 'queja' };\n\n// --- Codes (P3): R- (handoff) or Q- (complaint) + 4 characters with no look-alikes (no 0, O, 1, I, L).\n// The database generates them (unique among open handoffs); this only recognizes them.\nconst CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';\nconst CODE_PATTERN = /^[RQ]-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/;\n\n// --- The reason of «Hablar con recepción» under a reply of B (RH2). B does not change. ---\nconst ABSTENTION_REASONS = ['below_threshold', 'model_abstained', 'validation_failed'];\nfunction handoffReasonFor(result) {\n  const reason = result && result.reason;\n  if (reason === 'urgency') return 'u';\n  if (ABSTENTION_REASONS.includes(reason)) return 'a';\n  return 'p';\n}\n\nconst fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);\n\n// --- The confirmation (RH1, RH13): «Sí, pasar a recepción» keeps the reason; «No» needs nothing ---\nfunction confirmView(reason) {\n  return {\n    text: reason === 'q' ? TEXTS.COMPLAINT_CONFIRM : TEXTS.HANDOFF_CONFIRM,\n    rows: [[{ text: LABELS.si, data: `hs:${reason}` }], [{ text: LABELS.no, data: 'hn' }]],\n  };\n}\n\n// --- The message posted in the reception group (RH4, RH5, P4): code, reason, the pseudonymized text,\n// and «Cerrar». No name, phone, Telegram user or appointment. An urgency is always marked as one. ---\nfunction groupMessage({ code, reason, text, urgent }) {\n  const motivo = REASONS[urgent ? 'u' : reason] || REASONS.p;\n  return {\n    text: `${fill(TEXTS.GROUP_HEADER, { codigo: code, motivo })}\\n\\n${text}\\n\\n${TEXTS.GROUP_FOOTER}`,\n    rows: [[{ text: LABELS.cerrar, data: `hc:${code}` }]],\n  };\n}\n\n// --- What the patient reads (RH4, RH9) ---\nconst sentText = (code) => fill(TEXTS.HANDOFF_SENT, { codigo: code });\nconst receptionReply = (code, text) => fill(TEXTS.RECEPTION_REPLY, { codigo: code, texto: text });\n\n// --- An update from a group (RH9–RH12): only a text reply to a bot message, or «Cerrar», in the\n// registered reception group. Everything else, from any group, is ignored with no reply. ---\nfunction groupAction(route, receptionChatId) {\n  const ignore = { action: 'ignore' };\n  if (!route || route.kind !== 'group' || !receptionChatId || String(route.chatId) !== String(receptionChatId)) return ignore;\n  if (route.callbackData) {\n    const m = /^hc:(.+)$/.exec(route.callbackData);\n    return m && CODE_PATTERN.test(m[1])\n      ? { action: 'close', code: m[1], callbackQueryId: route.callbackQueryId, messageId: route.messageId } : ignore;\n  }\n  if (route.replyToMessageId && route.replyToBot && typeof route.text === 'string' && route.text.trim()) {\n    return { action: 'forward', replyToMessageId: route.replyToMessageId, text: route.text };\n  }\n  return ignore;\n}\n\n// --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»\n// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva\n// (n)» nodes have one button per row (human, 2026-11-24). ---\nfunction answerRows(result) {\n  const rows = [];\n  if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);\n  if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);\n  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);\n  return rows;\n}\n\n// --- The Telegram node's inlineKeyboard parameter, built from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Componer recepción», SPEC-010 RH3–RH5, RH8): what the patient reads ---\nconst p = $('Recepción').item.json;\nlet text;\nif (p.step === 'confirm') {\n  text = !$json.error && $json.code ? TEXTS.HANDOFF_WRITE : TEXTS.HANDOFF_FAILED;\n} else {\n  text = $json.result === 'open' ? sentText($('Mensaje del grupo').item.json.code) : TEXTS.HANDOFF_FAILED;\n  if (p.urgent) text = `${$('Detectar urgencia').item.json.text}\\n\\n${text}`; // RH5: the urgency reply first\n}\nreturn { json: { text, keyboard: 'none', chatId: p.chatId } };\n"
+        }
+      },
+      {
+        "id": "de79a725-c5ea-49d6-bbec-7caed3072994",
+        "name": "Grupo de recepción",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          -400
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de\n// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact\n// code followed only by their wiring. No require, no network, no state: the handoff rows live\n// in Neon (007_reception.sql), and no message text is ever stored.\n\n// --- Fixed texts (spec \"Fixed texts\", verified by the human 2026-11-24) ---\nconst TEXTS = {\n  HANDOFF_CONFIRM: '¿Quieres que pase tu consulta a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  HANDOFF_WRITE: 'Escribe en un mensaje lo que quieres que lea recepción. No incluyas datos personales.',\n  HANDOFF_SENT: 'Hecho. He pasado tu consulta a recepción (código {codigo}). Te responderán por aquí en horario de la clínica.',\n  HANDOFF_CANCELLED: 'De acuerdo, no paso nada a recepción.',\n  HANDOFF_FAILED: 'Ahora mismo no puedo pasar tu consulta. Llama a recepción en horario de atención.',\n  GROUP_HEADER: '[{codigo}] Motivo: {motivo}',\n  GROUP_FOOTER: 'Responde a este mensaje para contestar al paciente.',\n  RECEPTION_REPLY: 'Recepción de LifeCenter ({codigo}): {texto}',\n  HANDOFF_CLOSED: 'Esta consulta ya está cerrada.',\n  COMPLAINT_CONFIRM: 'Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  RATING_THANKS: 'Gracias por tu valoración.',\n};\nconst LABELS = { si: 'Sí, pasar a recepción', no: 'No', cerrar: 'Cerrar', cerrada: 'Cerrada', up: '👍', down: '👎' };\n// The existing labels and callbacks this module reuses (CHG-001 D8, SPEC-007).\nconst HANDOFF_LABEL = 'Hablar con recepción';\nconst BOOKING_LABEL = 'Pedir cita';\nconst BOOKING_MENU = 'bk:menu';\n\n// --- Reasons (RH2, RH13): the code in the callback, and what reception reads ---\nconst REASONS = { a: 'abstención', u: 'urgencia', p: 'petición', q: 'queja' };\n\n// --- Codes (P3): R- (handoff) or Q- (complaint) + 4 characters with no look-alikes (no 0, O, 1, I, L).\n// The database generates them (unique among open handoffs); this only recognizes them.\nconst CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';\nconst CODE_PATTERN = /^[RQ]-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/;\n\n// --- The reason of «Hablar con recepción» under a reply of B (RH2). B does not change. ---\nconst ABSTENTION_REASONS = ['below_threshold', 'model_abstained', 'validation_failed'];\nfunction handoffReasonFor(result) {\n  const reason = result && result.reason;\n  if (reason === 'urgency') return 'u';\n  if (ABSTENTION_REASONS.includes(reason)) return 'a';\n  return 'p';\n}\n\nconst fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);\n\n// --- The confirmation (RH1, RH13): «Sí, pasar a recepción» keeps the reason; «No» needs nothing ---\nfunction confirmView(reason) {\n  return {\n    text: reason === 'q' ? TEXTS.COMPLAINT_CONFIRM : TEXTS.HANDOFF_CONFIRM,\n    rows: [[{ text: LABELS.si, data: `hs:${reason}` }], [{ text: LABELS.no, data: 'hn' }]],\n  };\n}\n\n// --- The message posted in the reception group (RH4, RH5, P4): code, reason, the pseudonymized text,\n// and «Cerrar». No name, phone, Telegram user or appointment. An urgency is always marked as one. ---\nfunction groupMessage({ code, reason, text, urgent }) {\n  const motivo = REASONS[urgent ? 'u' : reason] || REASONS.p;\n  return {\n    text: `${fill(TEXTS.GROUP_HEADER, { codigo: code, motivo })}\\n\\n${text}\\n\\n${TEXTS.GROUP_FOOTER}`,\n    rows: [[{ text: LABELS.cerrar, data: `hc:${code}` }]],\n  };\n}\n\n// --- What the patient reads (RH4, RH9) ---\nconst sentText = (code) => fill(TEXTS.HANDOFF_SENT, { codigo: code });\nconst receptionReply = (code, text) => fill(TEXTS.RECEPTION_REPLY, { codigo: code, texto: text });\n\n// --- An update from a group (RH9–RH12): only a text reply to a bot message, or «Cerrar», in the\n// registered reception group. Everything else, from any group, is ignored with no reply. ---\nfunction groupAction(route, receptionChatId) {\n  const ignore = { action: 'ignore' };\n  if (!route || route.kind !== 'group' || !receptionChatId || String(route.chatId) !== String(receptionChatId)) return ignore;\n  if (route.callbackData) {\n    const m = /^hc:(.+)$/.exec(route.callbackData);\n    return m && CODE_PATTERN.test(m[1])\n      ? { action: 'close', code: m[1], callbackQueryId: route.callbackQueryId, messageId: route.messageId } : ignore;\n  }\n  if (route.replyToMessageId && route.replyToBot && typeof route.text === 'string' && route.text.trim()) {\n    return { action: 'forward', replyToMessageId: route.replyToMessageId, text: route.text };\n  }\n  return ignore;\n}\n\n// --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»\n// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva\n// (n)» nodes have one button per row (human, 2026-11-24). ---\nfunction answerRows(result) {\n  const rows = [];\n  if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);\n  if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);\n  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);\n  return rows;\n}\n\n// --- The Telegram node's inlineKeyboard parameter, built from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Grupo de recepción», SPEC-010 RH9–RH12): only replies to the bot and «Cerrar» ---\nconst route = $('Clasificar').item.json.route;\nconst a = $json.error ? { action: 'ignore' } : groupAction(route, $json.group_chat_id);\nconst m = (($('Clasificar').item.json.callback_query || {}).message) || {};\nreturn { json: { ...a, groupChatId: $json.group_chat_id, closedText: `${m.text || ''}\\n\\n${LABELS.cerrada}` } };\n"
+        }
+      },
+      {
+        "id": "1b57157c-5f04-4ebd-b6cf-22d2ca69c64b",
+        "name": "Respuesta de recepción",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1568,
+          -496
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).\n// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de\n// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact\n// code followed only by their wiring. No require, no network, no state: the handoff rows live\n// in Neon (007_reception.sql), and no message text is ever stored.\n\n// --- Fixed texts (spec \"Fixed texts\", verified by the human 2026-11-24) ---\nconst TEXTS = {\n  HANDOFF_CONFIRM: '¿Quieres que pase tu consulta a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  HANDOFF_WRITE: 'Escribe en un mensaje lo que quieres que lea recepción. No incluyas datos personales.',\n  HANDOFF_SENT: 'Hecho. He pasado tu consulta a recepción (código {codigo}). Te responderán por aquí en horario de la clínica.',\n  HANDOFF_CANCELLED: 'De acuerdo, no paso nada a recepción.',\n  HANDOFF_FAILED: 'Ahora mismo no puedo pasar tu consulta. Llama a recepción en horario de atención.',\n  GROUP_HEADER: '[{codigo}] Motivo: {motivo}',\n  GROUP_FOOTER: 'Responde a este mensaje para contestar al paciente.',\n  RECEPTION_REPLY: 'Recepción de LifeCenter ({codigo}): {texto}',\n  HANDOFF_CLOSED: 'Esta consulta ya está cerrada.',\n  COMPLAINT_CONFIRM: 'Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? Te pediré que la escribas en un mensaje; la leerán sin tu nombre ni tu teléfono.',\n  RATING_THANKS: 'Gracias por tu valoración.',\n};\nconst LABELS = { si: 'Sí, pasar a recepción', no: 'No', cerrar: 'Cerrar', cerrada: 'Cerrada', up: '👍', down: '👎' };\n// The existing labels and callbacks this module reuses (CHG-001 D8, SPEC-007).\nconst HANDOFF_LABEL = 'Hablar con recepción';\nconst BOOKING_LABEL = 'Pedir cita';\nconst BOOKING_MENU = 'bk:menu';\n\n// --- Reasons (RH2, RH13): the code in the callback, and what reception reads ---\nconst REASONS = { a: 'abstención', u: 'urgencia', p: 'petición', q: 'queja' };\n\n// --- Codes (P3): R- (handoff) or Q- (complaint) + 4 characters with no look-alikes (no 0, O, 1, I, L).\n// The database generates them (unique among open handoffs); this only recognizes them.\nconst CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';\nconst CODE_PATTERN = /^[RQ]-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/;\n\n// --- The reason of «Hablar con recepción» under a reply of B (RH2). B does not change. ---\nconst ABSTENTION_REASONS = ['below_threshold', 'model_abstained', 'validation_failed'];\nfunction handoffReasonFor(result) {\n  const reason = result && result.reason;\n  if (reason === 'urgency') return 'u';\n  if (ABSTENTION_REASONS.includes(reason)) return 'a';\n  return 'p';\n}\n\nconst fill = (t, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t);\n\n// --- The confirmation (RH1, RH13): «Sí, pasar a recepción» keeps the reason; «No» needs nothing ---\nfunction confirmView(reason) {\n  return {\n    text: reason === 'q' ? TEXTS.COMPLAINT_CONFIRM : TEXTS.HANDOFF_CONFIRM,\n    rows: [[{ text: LABELS.si, data: `hs:${reason}` }], [{ text: LABELS.no, data: 'hn' }]],\n  };\n}\n\n// --- The message posted in the reception group (RH4, RH5, P4): code, reason, the pseudonymized text,\n// and «Cerrar». No name, phone, Telegram user or appointment. An urgency is always marked as one. ---\nfunction groupMessage({ code, reason, text, urgent }) {\n  const motivo = REASONS[urgent ? 'u' : reason] || REASONS.p;\n  return {\n    text: `${fill(TEXTS.GROUP_HEADER, { codigo: code, motivo })}\\n\\n${text}\\n\\n${TEXTS.GROUP_FOOTER}`,\n    rows: [[{ text: LABELS.cerrar, data: `hc:${code}` }]],\n  };\n}\n\n// --- What the patient reads (RH4, RH9) ---\nconst sentText = (code) => fill(TEXTS.HANDOFF_SENT, { codigo: code });\nconst receptionReply = (code, text) => fill(TEXTS.RECEPTION_REPLY, { codigo: code, texto: text });\n\n// --- An update from a group (RH9–RH12): only a text reply to a bot message, or «Cerrar», in the\n// registered reception group. Everything else, from any group, is ignored with no reply. ---\nfunction groupAction(route, receptionChatId) {\n  const ignore = { action: 'ignore' };\n  if (!route || route.kind !== 'group' || !receptionChatId || String(route.chatId) !== String(receptionChatId)) return ignore;\n  if (route.callbackData) {\n    const m = /^hc:(.+)$/.exec(route.callbackData);\n    return m && CODE_PATTERN.test(m[1])\n      ? { action: 'close', code: m[1], callbackQueryId: route.callbackQueryId, messageId: route.messageId } : ignore;\n  }\n  if (route.replyToMessageId && route.replyToBot && typeof route.text === 'string' && route.text.trim()) {\n    return { action: 'forward', replyToMessageId: route.replyToMessageId, text: route.text };\n  }\n  return ignore;\n}\n\n// --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»\n// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva\n// (n)» nodes have one button per row (human, 2026-11-24). ---\nfunction answerRows(result) {\n  const rows = [];\n  if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);\n  if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);\n  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);\n  return rows;\n}\n\n// --- The Telegram node's inlineKeyboard parameter, built from the rows (the same shape as citas.js) ---\nfunction toTelegramKeyboard(rows) {\n  return {\n    rows: rows.map((r) => ({ row: { buttons: r.map((b) => ({ text: b.text, additionalFields: { callback_data: b.data } })) } })),\n  };\n}\n\n// --- n8n wiring («Respuesta de recepción», SPEC-010 RH9, RH11): to the patient, or «cerrada» in the group ---\nconst g = $('Grupo de recepción').item.json;\nif (!$json.error && $json.code && $json.chat_id) return { json: { chatId: $json.chat_id, text: receptionReply($json.code, g.text) } };\nreturn { json: { chatId: g.groupChatId, text: TEXTS.HANDOFF_CLOSED } };\n"
+        }
       }
     ],
     "connections": {
@@ -1893,7 +2544,7 @@
         "main": [
           [
             {
-              "node": "Confirmar botón",
+              "node": "Id del grupo",
               "type": "main",
               "index": 0
             }
@@ -1922,17 +2573,6 @@
           [
             {
               "node": "Consultar consentimiento",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Confirmar botón": {
-        "main": [
-          [
-            {
-              "node": "Responder recepción",
               "type": "main",
               "index": 0
             }
@@ -2067,6 +2707,20 @@
           [
             {
               "node": "Preparar reserva",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Recepción",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Valorar",
               "type": "main",
               "index": 0
             }
@@ -2438,6 +3092,298 @@
             }
           ]
         ]
+      },
+      "Recepción": {
+        "main": [
+          [
+            {
+              "node": "¿Paso de recepción?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Paso de recepción?": {
+        "main": [
+          [
+            {
+              "node": "¿Qué teclado?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Abrir derivación",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Derivación pendiente",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Quitar valoración",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "¿Qué teclado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Abrir derivación": {
+        "main": [
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Derivación pendiente": {
+        "main": [
+          [
+            {
+              "node": "¿Hay derivación?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Hay derivación?": {
+        "main": [
+          [
+            {
+              "node": "Mensaje del grupo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Mensaje del grupo": {
+        "main": [
+          [
+            {
+              "node": "Publicar en el grupo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Publicar en el grupo": {
+        "main": [
+          [
+            {
+              "node": "¿Publicado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Publicado?": {
+        "main": [
+          [
+            {
+              "node": "Abrir en el grupo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallo al publicar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Abrir en el grupo": {
+        "main": [
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fallo al publicar": {
+        "main": [
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Componer recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Componer recepción": {
+        "main": [
+          [
+            {
+              "node": "¿Qué teclado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Valorar": {
+        "main": [
+          [
+            {
+              "node": "Recepción",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Id del grupo": {
+        "main": [
+          [
+            {
+              "node": "Grupo de recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Grupo de recepción": {
+        "main": [
+          [
+            {
+              "node": "¿Qué hace recepción?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Qué hace recepción?": {
+        "main": [
+          [
+            {
+              "node": "Buscar derivación",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Cerrar derivación",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Confirmar cierre",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar derivación": {
+        "main": [
+          [
+            {
+              "node": "Respuesta de recepción",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respuesta de recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Respuesta de recepción": {
+        "main": [
+          [
+            {
+              "node": "Enviar respuesta de recepción",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cerrar derivación": {
+        "main": [
+          [
+            {
+              "node": "Marcar cerrada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "settings": {
@@ -2454,15 +3400,15 @@
       "builderVariant": "mcp"
     },
     "nodeGroups": [],
-    "versionId": "eb46a1e6-6b1a-44cf-9116-fc33453a84e3",
-    "activeVersionId": "eb46a1e6-6b1a-44cf-9116-fc33453a84e3",
-    "versionCounter": 40,
+    "versionId": "ba5413f3-4d92-4b0b-9796-62034e3cd6a3",
+    "activeVersionId": "ba5413f3-4d92-4b0b-9796-62034e3cd6a3",
+    "versionCounter": 50,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],
     "versionMetadata": {
-      "name": "SPEC-009 N4: nodo Recordatorio, consultas con recordatorio",
-      "description": "Added nodes: Recordatorio\nUpdated nodes: ¿Qué consulta?, Consultar agenda, Cita tras retirar\nConnections: 3 added, 0 removed"
+      "name": "SPEC-010 H4: conexiones de recepción, grupo y valoración",
+      "description": "Updated nodes: Abrir derivación, Derivación pendiente, Publicar en el grupo, Abrir en el grupo, Fallo al publicar and 8 more\nConnections: 35 added, 0 removed"
     }
   }
 ]

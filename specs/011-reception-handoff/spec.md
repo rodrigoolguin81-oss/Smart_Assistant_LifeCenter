@@ -4,7 +4,7 @@ spec_id: SPEC-010
 title: reception handoff, complaints and ratings — Functional Spec
 description: Requirements for passing a conversation to reception through a private Telegram group (RF-007, US-002, US-003), complaints by /queja and a strict phrase list (RF-009, US-008), and 👍/👎 ratings after B's answers kept only as daily counts — consent required, urgency first, the chat id encrypted in its own table and deleted at closing or after 48 h, no message text stored, B unchanged. EARS notation.
 tags: [spec, reception, handoff, complaints, ratings, SPEC-010, RF-007, RF-009, US-008, SPEC-005, SPEC-006, SPEC-009]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../010-reminders/spec.md, ../006-consent/spec.md, ../005-pseudonymized-log/spec.md, ../004-urgencies/spec.md, ../constitution.md]
 generated: { by: claude-code, at: 2026-11-24T00:00:00Z }
 verified: { by: human, at: 2026-11-24T00:00:00Z }

@@ -97,7 +97,8 @@ SPEC-006, [specs/006-consent](specs/006-consent/plan.md)):
   - with consent, it calls B with the pseudonymized text only, and replies.
 
   It handles `/start`, `/privacidad` (status and «Retirar consentimiento»), the buttons,
-  stickers and photos on its own. It **saves no executions**.
+  stickers and photos on its own. It **saves no executions**. Since SPEC-010 it also passes
+  conversations to the reception group and back (see [Reception](#reception-handoff-complaints-and-ratings-spec-010)).
 - **`lifecenter-demo-core` (B, core).** It runs the SPEC-003 urgency detector
   ([specs/004-urgencies](specs/004-urgencies/plan.md)), the SPEC-002 retrieval and the SPEC-001
   answer rules. It receives **only** the pseudonymized `question`, with no chat id and no Telegram
@@ -290,6 +291,18 @@ Reminders, with consent (SPEC-009; see [Reminders](#reminders-spec-009)):
 | The reminder (from C, the day before, 9:00–21:00) | «Recordatorio de LifeCenter: tienes una cita mañana, …, a las …, en …», with «Iré», «Cambiar», «Anular» and «Hablar con recepción» |
 | «Iré» | «Gracias, te esperamos.» with «Cambiar», «Anular» and «Hablar con recepción» |
 | «Retirar consentimiento» with a reminder | The withdrawal text, and «No te enviaré recordatorios.» |
+
+Reception, complaints and ratings, with consent (SPEC-010; see [Reception](#reception-handoff-complaints-and-ratings-spec-010)):
+
+| Message | Expected reply |
+|---|---|
+| «Hablar con recepción» (under an abstention, an urgency or D7) | «¿Quieres que pase tu consulta a recepción? …» with «Sí, pasar a recepción» and «No» |
+| «Sí, pasar a recepción», then a message | «Escribe en un mensaje…», then «Hecho. He pasado tu consulta a recepción (código R-…)…». The group gets «[R-…] Motivo: …», the pseudonymized message and «Cerrar» |
+| In the group, a reply to that message | The patient gets «Recepción de LifeCenter (R-…): …» |
+| «Cerrar» in the group | The group message shows «Cerrada»; a later reply gets «Esta consulta ya está cerrada.» |
+| `/queja` · quiero poner una queja | «Siento lo ocurrido. ¿Quieres que pase tu queja a recepción? …» (code Q-…) |
+| An answered question | The answer with «👍» and «👎»; a tap answers «Gracias por tu valoración.» and removes them |
+| Without consent: «Hablar con recepción» · `/queja` | The D8 text · «Para pasar tu queja a recepción necesito tu consentimiento…» |
 
 To set the clinic's real urgency phone, change `URGENCY_PHONE` (and set `URGENCY_PHONE_IS_EXAMPLE`
 to `false`) at the top of `n8n/code/urgencias.js`. Then paste the file into the "Detectar
@@ -568,6 +581,42 @@ the appointment moves its reminder, and cancelling deletes it (a deferred trigge
 - The reminder settings are example values (DEP-03). The legal basis is pending DEP-04, so real
   patients stay blocked.
 
+### Reception handoff, complaints and ratings (SPEC-010)
+
+Patients can pass a question or a complaint to a person, and rate the bot's answers. See
+[specs/011-reception-handoff](specs/011-reception-handoff/spec.md) and the [Try it](#try-it) rows.
+
+**Handoff:** «Hablar con recepción» (its reason: abstention, urgency or request) → a confirmation
+→ the patient writes the message → A posts it **pseudonymized** in the private group «LifeCenter
+Recepción» with the reason, a short code (`R-…`, `Q-…` for complaints) and «Cerrar». Reception
+answers by **replying** to that message; A forwards the reply to the patient. «Cerrar», or 48 hours,
+ends it. An urgency is always answered first. A ignores every other group, and every group message
+that is not a reply to the bot.
+
+**Complaints:** `/queja` and a strict phrase list ([`evals/complaint_phrases.yaml`](evals/complaint_phrases.yaml))
+open the same path. The bot never argues with or answers a complaint.
+
+**Ratings:** 👍 and 👎 under the answered replies, kept only as counts per day in `feedback_daily`.
+
+**Data:** `reception_handoffs` holds the code, the reason, the chat id encrypted with the SPEC-009 key,
+and the group message id; **no message text and no subject**. Rows go at closing, after 30 minutes
+without the patient's text, after 48 hours (C's claim also purges them), or on withdrawal. The
+group id is only in `reception_settings` in Neon, stored by the human with a hidden prompt.
+
+**Where it runs:** A and Neon, with the SQL in [`app/infra/sql/007_reception.sql`](app/infra/sql/007_reception.sql),
+tested by `tests/infra/test_reception_sql.py` (test branch only), and the code in
+[`n8n/code/recepcion.js`](n8n/code/recepcion.js) and `consentimiento.js`. B does not change; C's nodes do
+not change.
+
+**Limitations:**
+- The group keeps the pseudonymized messages until its **auto-delete (1 week)**, outside the 30-day
+  purge, and shows reception's members to each other.
+- Finding a patient's handoff decrypts every stored chat id: fine with few rows, all gone within
+  48 hours.
+- The ratings do not say which answer was rated.
+- A's transient window (SPEC-005) also applies here; the encryption key is in the same database.
+- Real patients stay blocked until DEP-04.
+
 ### Export after changing the workflow
 
 ```bash
@@ -582,19 +631,21 @@ done
 grep -niE "AIza|postgres(ql)?://|password|secret|bearer|@[a-z0-9.-]+\.[a-z]{2,}" n8n/workflows/*.json
 # The urgency test checks that "Detectar urgencia" in B and in A carries n8n/code/urgencias.js,
 # the consent test that A's "Clasificar" and "Decidir" carry n8n/code/consentimiento.js, and the
-# booking test that A's four booking Code nodes carry n8n/code/citas.js, and the reminder test
-# that C's two Code nodes carry n8n/code/recordatorios.js:
+# booking test that A's four booking Code nodes carry n8n/code/citas.js, the reminder test that C's
+# two Code nodes carry n8n/code/recordatorios.js, and the reception test that A's six reception Code
+# nodes carry n8n/code/recepcion.js:
 node n8n/code/urgencias.test.js
 node n8n/code/consentimiento.test.js
 node n8n/code/citas.test.js
 node n8n/code/recordatorios.test.js
+node n8n/code/recepcion.test.js
 ```
 
 Export only after **publishing**, and check that the draft is the published version: the
 exports in git are the rollback copy.
 
 The consent and booking SQL is tested against the Neon test branch only:
-`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py tests/infra/test_move_cancel_sql.py tests/infra/test_reminders_sql.py`.
+`python -m pytest tests/infra/test_consent_sql.py tests/infra/test_booking_sql.py tests/infra/test_move_cancel_sql.py tests/infra/test_reminders_sql.py tests/infra/test_reception_sql.py`.
 Some of these tests re-apply the whole schema to the test branch.
 
 ## Git rule

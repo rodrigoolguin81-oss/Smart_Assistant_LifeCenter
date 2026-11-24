@@ -233,12 +233,27 @@ stale_after: null
   - **Data:** the chat id encrypted with the SPEC-009 key in its own table, with no message text;
     the group id only in Neon (`reception_settings`); the group's auto-delete at 1 week.
   - **Where it runs:** A and Neon. B does not change; C's nodes do not change.
-  - **Status: specified** (2026-11-24; clarifications, spec, plan and tasks verified by the
-    human; H0–H6 pending).
+  - **Status: implemented for the demo** (2026-11-24; H0–H6 done), with the real `/queja` and
+    rating tests still pending. Tested through:
+    - the Node tests (complaint phrases 16/16 and 0/16);
+    - 33 SQL tests on the test branch; `main` checked before and after (H3);
+    - 20 pinned runs of A;
+    - the Telegram test of a real handoff (R-U4RK): confirmation, message, the group post with its
+      reason and «Cerrar», the reply forwarded to the patient, closing, and a group message ignored.
+
+    **Pending:** `/queja` and 👍/👎 from Telegram (Gemini answered 503 during the test). The group's
+    1-week auto-delete is a known limitation; real patients stay blocked until DEP-04.
   - [clarifications](./011-reception-handoff/clarifications.md), D1–D5 and P1–P15
   - [spec](./011-reception-handoff/spec.md), RH1–RH24
   - [plan](./011-reception-handoff/plan.md) — Steps 0–6
-  - [tasks](./011-reception-handoff/tasks.md) — H0–H6
+  - [tasks](./011-reception-handoff/tasks.md) — H0–H6 (and H3b)
+  - Code: [`n8n/code/recepcion.js`](../n8n/code/recepcion.js) and
+    [`n8n/code/consentimiento.js`](../n8n/code/consentimiento.js) · phrases
+    [`evals/complaint_phrases.yaml`](../evals/complaint_phrases.yaml) · SQL
+    [`app/infra/sql/007_reception.sql`](../app/infra/sql/007_reception.sql), tested by
+    `tests/infra/test_reception_sql.py` (test branch only)
+  - Workflow: A, [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json);
+    B and C unchanged
 
 Pending (not yet scaffolded): US-007's remaining parts and RF-008 (reception marks answers for the
 evals), per `docs/03-prd.md` §11.

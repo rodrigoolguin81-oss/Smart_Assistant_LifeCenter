@@ -4,7 +4,7 @@ spec_id: SPEC-010
 title: reception handoff, complaints and ratings — Task Breakdown
 description: Ordered, test-first tasks for the reception handoff — read-only preflight, the JS modules, 007_reception.sql on the test branch and main, the group id stored by the human, A through the MCP with pinned data, the Telegram test, and exports and docs.
 tags: [tasks, reception, handoff, complaints, ratings, SPEC-010]
-status: verified
+status: implemented
 sources: [./plan.md]
 generated: { by: claude-code, at: 2026-11-24T00:00:00Z }
 verified: { by: human, at: 2026-11-24T00:00:00Z }
@@ -144,5 +144,28 @@ stale_after: null
     (`{}`) or C (`null`); B and C equal to their git exports; nothing published.
   - **Executions for the human to delete** (2026-11-24, 12:47:43–12:51:59 UTC): **A (20):**
     342–361. There are no others after 341 (341 is C's transient record).
-- [ ] H5 **[humano]**: the auto-delete timer (1 week), publish A, Telegram test (plan Step 5).
-- [ ] H6: Exports and docs (plan Step 6).
+- [x] H5 **[humano]**: the auto-delete timer (1 week), publish A, Telegram test (plan Step 5).
+  - Closed 2026-11-24 by the human, with `/queja` and the ratings still pending in real.
+  - The human set the group's auto-delete to 1 week (H3b) and published **A only** (`ba5413f3…`);
+    B and C were not republished.
+  - **From Telegram:** «cuánto cuesta una limpieza» got D7, because **Gemini answered 503 (high
+    demand)**: B 365 and 376 returned `llm_error`, receiving only `question`. A was fine. From that
+    D7, «Hablar con recepción» (`handoff:p`) → the confirmation → the message → «Hecho… R-U4RK» →
+    in the group «[R-U4RK] Motivo: petición» with «Cerrar» → a reply in the group → the patient got
+    «Recepción de LifeCenter (R-U4RK): solo por las mañanas, de 10 a 14.» → «Cerrar». A group
+    message that was not a reply was ignored.
+  - **Checked read-only on `main`** (no chat id or group id printed): R-U4RK no longer exists
+    (closed and deleted), 0 handoffs, ratings 0/0, the group stored. A's executions 364, 367,
+    369–375 and C's 366 are the SPEC-005 transient records.
+  - With pinned data in H4: the 17 scenarios (20 runs).
+  - **Pending in real:** `/queja` and the complaint phrase, and 👍/👎 (Gemini was down). A consent
+    notice in the group from 13:18, before the new A was published, was not tapped.
+- [x] H6: Exports and docs (plan Step 6).
+  - Done 2026-11-24. A exported from its published version (`ba5413f3…`, equal to n8n's
+    `workflow_history`), without `shared` and `pinData`; B and C byte for byte equal to git.
+  - Every Node test is green, and every sync check runs (no skip left). `pytest`: **413 passed**,
+    with the 12 tests that re-apply the schema left out (human rule of 2026-11-24).
+  - Scan of the diff and of the pending commits: no full Neon host, no real group id, no real chat
+    id (checked against `main` in memory).
+  - README (A, the reception section, Try it, the export and the tests), `specs/index.md`, and
+    spec, plan and tasks implemented.

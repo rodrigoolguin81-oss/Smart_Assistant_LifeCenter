@@ -4,7 +4,7 @@ spec_id: SPEC-010
 title: reception handoff, complaints and ratings — Technical Plan
 description: How to build the reception handoff, complaints and ratings — read-only preflight, recepcion.js and the consentimiento.js routing test-first, 007_reception.sql on the test branch then main, the group id stored by the human with a hidden prompt, A's changes through the MCP with pinned data, the Telegram test, and exports and docs. B and C's nodes do not change.
 tags: [plan, reception, handoff, complaints, ratings, SPEC-010, n8n, neon]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md, ../010-reminders/plan.md]
 generated: { by: claude-code, at: 2026-11-24T00:00:00Z }
 verified: { by: human, at: 2026-11-24T00:00:00Z }
