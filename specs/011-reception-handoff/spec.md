@@ -75,7 +75,8 @@ Written with the agent's proposals (clarifications P1–P15) and the human's dec
 
 ### Ratings (R-07)
 
-- RH16. A SHALL add «👍» and «👎» under B's replies with `reason: answered`, and only those.
+- RH16. A SHALL add «👍» and «👎» under B's replies with `reason: answered`, and only those, on two
+  rows (human, 2026-11-24).
 - RH17. WHEN one is tapped, A SHALL add 1 to `feedback_daily(day Madrid, reason, up, down)`,
   reply with `RATING_THANKS_TEXT`, and remove the two buttons from that message. Nothing else
   SHALL be stored: no subject, no chat id, no text.

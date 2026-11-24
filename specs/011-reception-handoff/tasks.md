@@ -105,6 +105,44 @@ stale_after: null
   - **Checked read-only by the agent, without printing the id:** 1 row, the `-100…` form (14
     characters), `reception_chat_id()` returns a value, 0 handoffs. The id is not in the repo, the
     chat, a log or n8n.
-- [ ] H4: A through the MCP, with pinned data (plan Step 4).
+- [x] H4: A through the MCP, with pinned data (plan Step 4).
+  - Done 2026-11-24 on A's draft. **Nothing was published:** A is still published at `eb46a1e6…`;
+    **B (`0b3cb06d…`) and C (`9b8ccecd…`) were not touched** (C's purge is in its SQL since H3).
+  - **Decision (human):** 👍 and 👎 on two rows; `answerRows` and its H1 test changed first (red,
+    then green), recorded in the clarifications and RH16.
+  - **Queries first on the test branch** (fake chat ids `901101–901103`, a fake group
+    `-1009011000001`; everything cleaned): the consent lookup with `handoff_awaiting`, open,
+    pending (with the group id from Neon, and with no row), open in the group, reply by message id
+    (found, unknown, after closing), a complaint code `Q-`, a failed post, close twice, ratings
+    counted, and the withdrawal with `handoff_forget`.
+  - **Built through the MCP** from a script that generates the code from the repo files, in 8
+    updates. A has **61 nodes**: 41 − 2 («Confirmar botón», «Responder recepción») + 22. One more
+    than proposed, because «¿Hay derivación?» (no waiting row or no group id → the failure text)
+    and «¿Publicado?» (Telegram's error, with `continueRegularOutput`, so it can be pinned) were
+    added, and the rating reply was folded into «Recepción». A CLI export showed: the 8 Code
+    nodes identical to `consentimiento.js` or `recepcion.js` plus their wiring; the queries as
+    tried, each with its error output and «Neon main»; no group id in the workflow (it is read
+    from Neon); the other 32 nodes, their connections and A's settings unchanged; 35 new
+    connections, all to or from the new nodes.
+  - **20 pinned runs** (A4 extension; fake ids `901101–901120`; «Llamar al núcleo» pinned, so B
+    was never called: B still has 21 executions, the last 263), all as planned:
+    - `handoff:a` with consent → the 2-row confirmation; `handoff:p` without → D8; `hs:a` →
+      «Escribe…»; `hn` → «De acuerdo, no paso nada…»;
+    - a waiting text → posted «[R-7KQ3] Motivo: abstención» with «Cerrar» → «Hecho… (código
+      R-7KQ3)»; an urgent one → the urgency reply first and «Motivo: urgencia»; a failed post →
+      `handoff_fail` → «Ahora mismo no puedo pasar tu consulta…»;
+    - `/queja` with consent → the complaint confirmation (`hs:q`); without → the no-consent text;
+      «quiero poner una queja por el trato recibido» → the complaint confirmation, without B;
+    - a reply in the reception group → «Recepción de LifeCenter (R-7KQ3): …» to the patient; to a
+      closed handoff → «Esta consulta ya está cerrada.» in the group; «Cerrar» → closed, the
+      message edited with «Cerrada», the button answered; another group and a staff message
+      that is not a reply → nothing sent, and no consent lookup for any group update;
+    - B answered → «Pedir cita», 👍, 👎; B abstained → «Hablar con recepción» `handoff:a`, no
+      rating; 👍 with consent → counted, the buttons removed, «Gracias por tu valoración.»; 👎
+      without → the notice; the withdrawal → `Cita tras retirar` with `handoff_forget`.
+  - **Afterwards:** `saveManualExecutions: false`, read back; no pinned data in A (`null`), B
+    (`{}`) or C (`null`); B and C equal to their git exports; nothing published.
+  - **Executions for the human to delete** (2026-11-24, 12:47:43–12:51:59 UTC): **A (20):**
+    342–361. There are no others after 341 (341 is C's transient record).
 - [ ] H5 **[humano]**: the auto-delete timer (1 week), publish A, Telegram test (plan Step 5).
 - [ ] H6: Exports and docs (plan Step 6).

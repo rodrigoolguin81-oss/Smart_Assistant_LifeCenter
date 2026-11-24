@@ -7,7 +7,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const SOURCE_PATH = path.join(__dirname, 'recepcion.js');
 const EXPORT_PATH = path.join(ROOT, 'n8n', 'workflows', 'lifecenter-telegram-demo.json');
-const NODE_NAMES = ['Recepción', 'Grupo de recepción'];
+const NODE_NAMES = ['Recepción', 'Mensaje del grupo', 'Componer recepción', 'Grupo de recepción', 'Respuesta de recepción', 'Componer respuesta'];
 
 // Spec texts (spec.md "Fixed texts", verified 2026-11-24), typed here independently of the source.
 const T = {
@@ -118,9 +118,9 @@ check('groupAction', () => {
 // === The keyboard under B's replies (RH2, RH16): reason in «Hablar con recepción», 👍/👎 only under `answered` ===
 check('answerRows', () => {
   const f = requireFn('answerRows');
-  eq(f({ reason: 'answered', handoff: false, offer_booking: false }), [[{ text: '👍', data: 'rt:u' }, { text: '👎', data: 'rt:d' }]], 'answered');
+  eq(f({ reason: 'answered', handoff: false, offer_booking: false }), [[{ text: '👍', data: 'rt:u' }], [{ text: '👎', data: 'rt:d' }]], 'answered (two rows, human 2026-11-24)');
   eq(f({ reason: 'answered', handoff: false, offer_booking: true }),
-    [[{ text: 'Pedir cita', data: 'bk:menu' }], [{ text: '👍', data: 'rt:u' }, { text: '👎', data: 'rt:d' }]], 'answered with a price');
+    [[{ text: 'Pedir cita', data: 'bk:menu' }], [{ text: '👍', data: 'rt:u' }], [{ text: '👎', data: 'rt:d' }]], 'answered with a price');
   eq(f({ reason: 'model_abstained', handoff: true, offer_booking: false }), [[{ text: 'Hablar con recepción', data: 'handoff:a' }]], 'abstention');
   eq(f({ reason: 'urgency', handoff: true, offer_booking: false }), [[{ text: 'Hablar con recepción', data: 'handoff:u' }]], 'urgency');
   eq(f({ reason: 'llm_error', handoff: true, offer_booking: false }), [[{ text: 'Hablar con recepción', data: 'handoff:p' }]], 'error');

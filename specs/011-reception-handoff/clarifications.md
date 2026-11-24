@@ -114,6 +114,9 @@ reception's working hours.
 - P1–P15 are accepted as written. The human will not write in the group until this spec is
   implemented.
 
+- **H4 (2026-11-24): 👍 and 👎 go on two rows**, one under the other, because A's «Responder reserva
+  (n)» nodes have one button per row. The H1 test changed accordingly.
+
 ## Decisions asked (for the record)
 
 - **D1. What reaches reception:** (a) the patient writes a new message after confirming

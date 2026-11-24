@@ -1,6 +1,7 @@
 // SPEC-010 reception module (specs/011-reception-handoff/spec.md, plan.md Step 1).
-// Paste-ready: the n8n Code nodes «Recepción» and «Grupo de recepción» of lifecenter-telegram-demo carry
-// this exact code followed only by their wiring. No require, no network, no state: the handoff rows live
+// Paste-ready: the n8n Code nodes «Recepción», «Mensaje del grupo», «Componer recepción», «Grupo de
+// recepción», «Respuesta de recepción» and «Componer respuesta» of lifecenter-telegram-demo carry this exact
+// code followed only by their wiring. No require, no network, no state: the handoff rows live
 // in Neon (007_reception.sql), and no message text is ever stored.
 
 // --- Fixed texts (spec "Fixed texts", verified by the human 2026-11-24) ---
@@ -81,12 +82,13 @@ function groupAction(route, receptionChatId) {
 }
 
 // --- The keyboard under B's replies (RH2, RH16): «Hablar con recepción» with its reason, «Pedir cita»
-// (SPEC-007), and 👍/👎 only under an answered reply. ---
+// (SPEC-007), and 👍/👎 only under an answered reply. One button per row, because A's «Responder reserva
+// (n)» nodes have one button per row (human, 2026-11-24). ---
 function answerRows(result) {
   const rows = [];
   if (result && result.handoff) rows.push([{ text: HANDOFF_LABEL, data: `handoff:${handoffReasonFor(result)}` }]);
   if (result && result.offer_booking === true) rows.push([{ text: BOOKING_LABEL, data: BOOKING_MENU }]);
-  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }, { text: LABELS.down, data: 'rt:d' }]);
+  if (result && result.reason === 'answered') rows.push([{ text: LABELS.up, data: 'rt:u' }], [{ text: LABELS.down, data: 'rt:d' }]);
   return rows;
 }
 
