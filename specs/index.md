@@ -280,8 +280,11 @@ patients** until DEP-04 (consent, pseudonymization and retention policy) and the
     fact), 50 unanswerable (traps included), 3 urgency.
   - **Run:** each question through the published B with only its trigger pinned; B only reads
     `kb_fragments`. Deterministic scoring, no LLM judge; a Spanish report in `evals/reports/`.
-  - **Status: specified** (2026-11-28; clarifications, spec, plan and tasks verified by the human;
-    E0–E3 pending).
+  - **Status: implemented** (2026-11-28; E0–E3 done). Result over the published B: NFR-03 98 %
+    (49/50; the one miss is a symptom question from `abstention_dataset.yaml` that the urgency
+    detector routes to urgency out of prudence: the safe behaviour, not a model error), 20/20
+    correct answers, 0 false abstentions, 0 invented answers, NFR-06 100 %, 3/3 urgencies, 0 `llm_error`, 49 Gemini calls.
+    [Report](../evals/reports/answers-2026-11-28.md).
   - [clarifications](./012-answer-eval/clarifications.md), D1–D3 and P1–P6
   - [spec](./012-answer-eval/spec.md), RE1–RE12
   - [plan](./012-answer-eval/plan.md) — Steps 0–3

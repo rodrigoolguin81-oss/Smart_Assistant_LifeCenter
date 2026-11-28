@@ -4,7 +4,7 @@ spec_id: SPEC-011
 title: answer quality eval — Functional Spec
 description: Requirements for a minimal eval of B's answers (Phase 4) — a 40-question dataset, a script that runs each question through the published flow B with only its trigger pinned and scores the results deterministically (NFR-03 abstention, correct cited answers, invented answers = 0, NFR-06), with pauses for the Gemini free tier, retries only for llm_error, and a Spanish report in evals/. No change to A, B, C or Neon main. EARS notation.
 tags: [spec, evals, quality, SPEC-011, NFR-03, NFR-06, RF-003]
-status: verified
+status: implemented
 sources: [./clarifications.md, ../../docs/03-prd.md, ../002-answer-generation/spec.md, ../004-urgencies/spec.md]
 generated: { by: claude-code, at: 2026-11-28T00:00:00Z }
 verified: { by: human, at: 2026-11-28T00:00:00Z }
@@ -69,11 +69,11 @@ D1 (a) deterministic scoring, D2 (b) 50 unanswerable questions, D3 (a) the publi
 
 ## Acceptance criteria
 
-- [ ] The dataset test and the scoring tests are green.
-- [ ] The pilot confirms a real Gemini call.
-- [ ] The report exists, with every metric and every failure; invented answers are 0, or each one
-  is listed.
-- [ ] No workflow, credential or Neon object changed (checked read-only before and after).
+- [x] The dataset test and the scoring tests are green (`tests/evals/test_eval_answers.py`, 23).
+- [x] The pilot confirms a real Gemini call (execution 406).
+- [x] The report exists, with every metric and every failure; invented answers are 0
+  ([report](../../evals/reports/answers-2026-11-28.md)).
+- [x] No workflow, credential or Neon object changed (checked read-only before and after).
 
 ## Out of scope
 

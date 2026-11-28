@@ -4,7 +4,7 @@ spec_id: SPEC-011
 title: answer quality eval — Technical Plan
 description: How to run the answer eval — a 1-question pilot through the published B with only its trigger pinned, the 73-item dataset and the scoring test-first, the runs through the MCP 10 s apart with re-runs only for llm_error, the read-only scoring from n8n's local database, and the Spanish report. Nothing in A, B, C or Neon changes.
 tags: [plan, evals, SPEC-011, NFR-03]
-status: verified
+status: implemented
 sources: [./spec.md, ./clarifications.md]
 generated: { by: claude-code, at: 2026-11-28T00:00:00Z }
 verified: { by: human, at: 2026-11-28T00:00:00Z }

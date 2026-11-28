@@ -17,8 +17,10 @@ The phases come from the project roadmap (Whiteboard).
   and cancel), SPEC-009 (reminders).
 - **Phase 3, reception — implemented:** SPEC-010 (handoff through a Telegram group, complaints and
   ratings).
-- **Phase 4, quality — out of the bootcamp's scope:** evals of NFR-03, NFR-05, NFR-06, NFR-01 and
-  NFR-02, and a larger knowledge base.
+- **Phase 4, quality — minimal eval done:** SPEC-011 measured the published flow B over 73
+  synthetic questions (2026-11-28): NFR-03 98 % (49/50), 20/20 correct answers, 0 invented answers,
+  NFR-06 100 % ([report](evals/reports/answers-2026-11-28.md)). Out of the bootcamp's scope: NFR-01,
+  NFR-02, an LLM judge and a larger knowledge base.
 - **Phase 5, production — out of the bootcamp's scope:** a paid Gemini plan, a server, the
   clinic's real data, and DEP-04.
 
@@ -101,6 +103,11 @@ Documents link to each other with relative Markdown links (e.g. `[plan](./plan.m
    # Retrieval eval (NFR-05, Recall@5): re-ingests kb/ into the test branch and reports the
    # result; exits non-zero below 90%. Uses TEST_DATABASE_URL and refuses to run against main.
    python -m evals.eval_retrieval
+   # Answer eval of flow B (SPEC-011, NFR-03/NFR-06): prints the trigger to pin for each question
+   # (sent one by one with the n8n MCP test_workflow), then scores B's executions read-only from
+   # ~/.n8n/database.sqlite and writes evals/reports/answers-<date>.md.
+   python -m evals.eval_answers --plan
+   python -m evals.eval_answers --score --after-id <last execution before the run>
    ```
 
 ## Demo (n8n + Telegram)
