@@ -274,6 +274,19 @@ patients** until DEP-04 (consent, pseudonymization and retention policy) and the
   - Workflow: A, [`n8n/workflows/lifecenter-telegram-demo.json`](../n8n/workflows/lifecenter-telegram-demo.json);
     B and C unchanged
 
+- **012-answer-eval**: a minimal eval of B's answers (Phase 4). PRD `NFR-03`, `NFR-06`, `RF-003`;
+  traceability row **SPEC-011**.
+  - **Dataset:** `evals/answer_dataset.yaml`, 73 items: 20 answerable (expected document and
+    fact), 50 unanswerable (traps included), 3 urgency.
+  - **Run:** each question through the published B with only its trigger pinned; B only reads
+    `kb_fragments`. Deterministic scoring, no LLM judge; a Spanish report in `evals/reports/`.
+  - **Status: specified** (2026-11-28; clarifications, spec, plan and tasks verified by the human;
+    E0–E3 pending).
+  - [clarifications](./012-answer-eval/clarifications.md), D1–D3 and P1–P6
+  - [spec](./012-answer-eval/spec.md), RE1–RE12
+  - [plan](./012-answer-eval/plan.md) — Steps 0–3
+  - [tasks](./012-answer-eval/tasks.md) — E0–E3
+
 Pending (not yet scaffolded): US-007's remaining parts and RF-008 (reception marks answers for the
 evals), per `docs/03-prd.md` §11.
 
